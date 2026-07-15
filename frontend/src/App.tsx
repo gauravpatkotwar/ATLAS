@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   Users, Briefcase, Search, MessageSquare, UploadCloud, 
   Trash2, MapPin, DollarSign, LogOut, 
-  AlertCircle, Sparkles, Send, Plus, X, Award, HelpCircle, Settings, CreditCard, CheckCircle
+  AlertCircle, Sparkles, Send, Plus, X, Award, HelpCircle, Settings, CreditCard, CheckCircle,
+  Mic, Volume2, VolumeX
 } from 'lucide-react';
 import { api } from './services/api';
 
@@ -125,6 +126,11 @@ export default function App() {
   const [chatLoading, setChatLoading] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
+  // Voice Assistant state
+  const [isListening, setIsListening] = useState<boolean>(false);
+  const [voiceEnabled, setVoiceEnabled] = useState<boolean>(true); // default to true so it reads back immediately!
+  const [recognitionInstance, setRecognitionInstance] = useState<any>(null);
+
   // Billing state
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [activeCheckoutSession, setActiveCheckoutSession] = useState<any | null>(null);
@@ -229,6 +235,82 @@ export default function App() {
       loadChatHistory();
     }
   }, [user, activeTab]);
+
+  // Voice Assistant Speech Recognition & Synthesis Initializer
+  useEffect(() => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      const rec = new SpeechRecognition();
+      rec.continuous = false;
+      rec.interimResults = false;
+      rec.lang = 'en-US';
+
+      rec.onstart = () => {
+        setIsListening(true);
+      };
+
+      rec.onresult = (event: any) => {
+        const transcript = event.results[0][0].transcript;
+        setChatQuery(transcript);
+      };
+
+      rec.onerror = (event: any) => {
+        console.error("Speech recognition error:", event.error);
+        setIsListening(false);
+      };
+
+      rec.onend = () => {
+        setIsListening(false);
+      };
+
+      setRecognitionInstance(rec);
+    }
+  }, []);
+
+  const handleToggleListening = () => {
+    if (!recognitionInstance) {
+      alert("Speech recognition is not supported in this browser. Please use Chrome, Edge, or Safari.");
+      return;
+    }
+    if (isListening) {
+      recognitionInstance.stop();
+    } else {
+      try {
+        recognitionInstance.start();
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  };
+
+  const speakText = (text: string) => {
+    if (!voiceEnabled || !window.speechSynthesis) return;
+
+    // Stop any ongoing speech
+    window.speechSynthesis.cancel();
+
+    // Clean markdown formatting out of the text
+    const cleanText = text
+      .replace(/[*#_`\[\]()\-+]/g, '') // remove formatting symbols
+      .replace(/https?:\/\/[^\s]+/g, 'link') // replace URLs with "link"
+      .trim();
+
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    utterance.rate = 1.05;
+    utterance.pitch = 1.0;
+
+    const voices = window.speechSynthesis.getVoices();
+    const premiumVoice = voices.find(v => 
+      v.lang.startsWith('en') && 
+      (v.name.includes('Google') || v.name.includes('Natural') || v.name.includes('Premium'))
+    );
+    if (premiumVoice) {
+      utterance.voice = premiumVoice;
+    }
+
+    window.speechSynthesis.speak(utterance);
+  };
+
 
   const loadChatHistory = async () => {
     try {
@@ -351,6 +433,9 @@ export default function App() {
   };
 
   const handleLogout = () => {
+    if (window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
     api.auth.logout();
     setToken(null);
     setUser(null);
@@ -531,6 +616,7 @@ export default function App() {
     try {
       const response = await api.copilot.chat(userMessage.content);
       setChatHistory(prev => [...prev, { role: 'assistant', content: response.reply }]);
+      speakText(response.reply);
     } catch (err: any) {
       setChatHistory(prev => [...prev, { role: 'assistant', content: 'Connection timed out. Verify Ollama models are initialized.' }]);
     } finally {
@@ -2028,16 +2114,46 @@ export default function App() {
               </div>
 
               {/* Chat Input form */}
-              <form onSubmit={handleSendChatMessage} style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
+              <form onSubmit={handleSendChatMessage} style={{ display: 'flex', gap: '8px', marginTop: '16px', alignItems: 'center' }}>
                 <input 
                   type="text" 
                   required 
                   className="input-field lining-copilot" 
-                  placeholder="Ask a question about candidates or jobs..." 
+                  placeholder={isListening ? "Listening... Speak clearly..." : "Ask a question about candidates or jobs..."} 
                   value={chatQuery}
                   onChange={e => setChatQuery(e.target.value)}
+                  style={{ flex: 1 }}
                 />
-                <button type="submit" disabled={chatLoading} className="btn-primary lining-copilot">
+                
+                {/* Voice Input Mic Button */}
+                <button 
+                  type="button"
+                  onClick={handleToggleListening}
+                  className={isListening ? "btn-primary lining-copilot pulse-glow" : "btn-secondary lining-copilot"}
+                  style={{ padding: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  title="Speak to Assistant"
+                >
+                  <Mic size={16} style={{ color: isListening ? '#ff2d55' : 'inherit' }} />
+                </button>
+
+                {/* Voice Output Speaker Toggle Button */}
+                <button 
+                  type="button"
+                  onClick={() => {
+                    const nextVal = !voiceEnabled;
+                    setVoiceEnabled(nextVal);
+                    if (!nextVal && window.speechSynthesis) {
+                      window.speechSynthesis.cancel();
+                    }
+                  }}
+                  className={voiceEnabled ? "btn-primary lining-copilot" : "btn-secondary lining-copilot"}
+                  style={{ padding: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  title="Toggle Read Aloud"
+                >
+                  {voiceEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
+                </button>
+
+                <button type="submit" disabled={chatLoading} className="btn-primary lining-copilot" style={{ padding: '10px 16px' }}>
                   <Send size={16} />
                 </button>
               </form>
