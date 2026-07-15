@@ -635,7 +635,7 @@ export default function App() {
         <header className="glass-panel" style={{ borderRadius: '0', borderLeft: 'none', borderRight: 'none', borderTop: 'none', padding: '16px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <TitanLogo size={36} />
-            <h1 style={{ fontSize: '20px', fontWeight: 700, background: 'linear-gradient(to right, #fff, var(--text-muted))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+            <h1 style={{ fontSize: '20px', fontWeight: 700, color: '#ffffff' }}>
               Atlas Work Intelligence
             </h1>
           </div>
@@ -1022,7 +1022,7 @@ export default function App() {
       <header className="glass-panel" style={{ borderRadius: '0', borderLeft: 'none', borderRight: 'none', borderTop: 'none', padding: '16px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: '0', zIndex: 50 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <TitanLogo size={36} />
-          <h1 style={{ fontSize: '20px', fontWeight: 700, background: 'linear-gradient(to right, #fff, var(--text-muted))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+          <h1 style={{ fontSize: '20px', fontWeight: 700, color: '#ffffff' }}>
             Atlas Work Intelligence
           </h1>
         </div>
@@ -2224,7 +2224,7 @@ export default function App() {
                         <span style={{ color: 'var(--text-muted)' }}>{candidates.length} / {maxCandidates} profiles</span>
                       </div>
                       <div style={{ height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', overflow: 'hidden' }}>
-                        <div style={{ width: `${Math.min(100, (candidates.length / maxCandidates) * 100)}%`, height: '100%', background: 'linear-gradient(to right, var(--accent-purple), var(--accent-cyan))', borderRadius: '4px' }} />
+                        <div style={{ width: `${Math.min(100, (candidates.length / maxCandidates) * 100)}%`, height: '100%', background: '#ffffff', borderRadius: '4px' }} />
                       </div>
                     </div>
 
@@ -2235,7 +2235,7 @@ export default function App() {
                         <span style={{ color: 'var(--text-muted)' }}>{jobs.filter(j => j.is_active).length} / {maxJobs} openings</span>
                       </div>
                       <div style={{ height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', overflow: 'hidden' }}>
-                        <div style={{ width: `${Math.min(100, (jobs.filter(j => j.is_active).length / maxJobs) * 100)}%`, height: '100%', background: 'linear-gradient(to right, var(--accent-purple), var(--accent-cyan))', borderRadius: '4px' }} />
+                        <div style={{ width: `${Math.min(100, (jobs.filter(j => j.is_active).length / maxJobs) * 100)}%`, height: '100%', background: '#ffffff', borderRadius: '4px' }} />
                       </div>
                     </div>
 
