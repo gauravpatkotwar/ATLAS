@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: atlas_postgres
+    restart: always
+    environment:
+      POSTGRES_DB: atlas
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    container_name: atlas_redis
+    restart: always
+    ports:
+      - "6379:6379"
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: atlas_ollama
+    restart: always
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+
+  backend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.backend
+    container_name: atlas_backend
+    restart: always
+    depends_on:
+      - db
+      - redis
+      - ollama
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@db:5432/atlas
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - SECRET_KEY=DOCKER_SECURE_JWT_KEY_GENERATED_FOR_PRODUCTION_SESSION_DEPLOYMENT
+      - FAISS_INDEX_PATH=/app/vector/vector_index.faiss
+      - UPLOAD_DIR=/app/uploads
+    volumes:
+      - backend_uploads:/app/uploads
+      - backend_vector:/app/vector
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.frontend
+    container_name: atlas_frontend
+    restart: always
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+
+volumes:
+  postgres_data:
+  ollama_data:
+  backend_uploads:
+  backend_vector:
