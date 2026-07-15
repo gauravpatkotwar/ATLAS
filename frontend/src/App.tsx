@@ -779,7 +779,7 @@ export default function App() {
           ) : null}
           {/* Footer */}
           <footer style={{ borderTop: '1px solid var(--border-glass)', padding: '24px', textAlign: 'center', color: 'var(--text-dim)', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: '40px' }}>
-            Developed and Designed by Atlas Work Intelligence
+            DEVELOPED AND DESIGNED BY ATLAS WORK INTELLIGENCE TEAM
           </footer>
         </main>
       </div>
@@ -2314,7 +2314,7 @@ export default function App() {
 
       {/* Footer */}
       <footer style={{ borderTop: '1px solid var(--border-glass)', padding: '24px', textAlign: 'center', color: 'var(--text-dim)', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: 'auto' }}>
-        Developed and Designed by Atlas Work Intelligence
+        DEVELOPED AND DESIGNED BY ATLAS WORK INTELLIGENCE TEAM
       </footer>
 
       {/* MATCH EXPLANATION MODAL */}
