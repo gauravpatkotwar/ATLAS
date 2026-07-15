@@ -85,45 +85,12 @@ h1, h2, h3, h4, h5 {
   box-shadow: 
     inset 0 1px 0 rgba(255, 255, 255, 0.12), /* Light catching top bevel line */
     0 8px 32px rgba(0, 0, 0, 0.8);
-  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.4s ease, box-shadow 0.4s ease, background-color 0.4s ease;
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.4s ease;
 }
 
 .glass-panel:hover {
   transform: translateY(-4px); /* Premium 3D Lift */
   background: rgba(18, 18, 22, 0.75);
-  border-color: rgba(255, 255, 255, 0.15);
-  box-shadow: 
-    inset 0 1px 0 rgba(255, 255, 255, 0.20), /* Brighter top edge reflection */
-    0 16px 48px rgba(0, 0, 0, 0.9);
-}
-
-/* Hover Accent Borders - Chromatic 3D Glass edge highlights */
-.glass-panel.lining-candidates:hover {
-  border-color: rgba(59, 130, 246, 0.4); /* Blue edge glow */
-  box-shadow: 
-    inset 0 1px 0 rgba(59, 130, 246, 0.3),
-    0 16px 48px rgba(0, 0, 0, 0.95);
-}
-.glass-panel.lining-jobs:hover {
-  border-color: rgba(34, 197, 94, 0.4); /* Green edge glow */
-  box-shadow: 
-    inset 0 1px 0 rgba(34, 197, 94, 0.3),
-    0 16px 48px rgba(0, 0, 0, 0.95);
-}
-.glass-panel.lining-search:hover {
-  border-color: rgba(168, 85, 247, 0.4); /* Purple edge glow */
-  box-shadow: 
-    inset 0 1px 0 rgba(168, 85, 247, 0.3),
-    0 16px 48px rgba(0, 0, 0, 0.95);
-}
-.glass-panel.lining-copilot:hover {
-  border-color: rgba(249, 115, 22, 0.4); /* Orange edge glow */
-  box-shadow: 
-    inset 0 1px 0 rgba(249, 115, 22, 0.3),
-    0 16px 48px rgba(0, 0, 0, 0.95);
-}
-.glass-panel.lining-settings:hover {
-  border-color: rgba(255, 255, 255, 0.25); /* White edge glow */
 }
 
 /* Stark Technical Inputs */
