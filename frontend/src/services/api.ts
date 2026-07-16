@@ -6,6 +6,9 @@ async function apiRequest<T>(path: string, options: RequestInit = {}): Promise<T
   const token = localStorage.getItem('atlas_token');
   const headers = new Headers(options.headers || {});
   
+  // Bypass localtunnel warning page for remote staging clients
+  headers.set('bypass-tunnel-reminder', 'true');
+  
   if (token && !headers.has('Authorization')) {
     headers.set('Authorization', `Bearer ${token}`);
   }
