@@ -36,14 +36,23 @@ const AtlasNovaLogo = ({ size = 24, style = {}, className = '' }: { size?: numbe
     fill="none" 
     xmlns="http://www.w3.org/2000/svg"
     className={className}
-    style={{ display: 'inline-block', verticalAlign: 'middle', borderRadius: '50%', ...style }}
+    style={{ display: 'inline-block', verticalAlign: 'middle', ...style }}
   >
-    {/* Indigo Circle Background */}
-    <circle cx="50" cy="50" r="50" fill="#2e2b69" />
-    {/* Warm Gold Star */}
+    <defs>
+      <linearGradient id="novaGoldGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#ffe9b8" />
+        <stop offset="50%" stopColor="#ffcf87" />
+        <stop offset="100%" stopColor="#ffa834" />
+      </linearGradient>
+    </defs>
+    
+    {/* Circular Orbit Ring (Monochromatic) */}
+    <circle cx="50" cy="55" r="25" stroke="currentColor" strokeWidth="9" fill="none" opacity="0.95" />
+    
+    {/* Golden Gradient Star */}
     <path 
-      d="M 50 18 Q 50 50 32 50 Q 50 50 50 82 Q 50 50 68 50 Q 50 50 50 18 Z" 
-      fill="#ffcf87" 
+      d="M 50 10 Q 50 30 38 30 Q 50 30 50 50 Q 50 30 62 30 Q 50 30 50 10 Z" 
+      fill="url(#novaGoldGradient)" 
     />
   </svg>
 );
