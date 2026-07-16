@@ -151,3 +151,43 @@ async def delete_candidate_by_id(
             detail=f"Candidate with ID {candidate_id} not found.",
         )
     return None
+
+
+# --- WebRTC Calling Signaling endpoints ---
+
+class CallInitiateRequest(BaseModel):
+    candidate_id: int
+    sdp_offer: Optional[str] = None
+
+class CallRespondRequest(BaseModel):
+    status: str  # "accepted" | "rejected" | "ended"
+    sdp_answer: Optional[str] = None
+
+ACTIVE_CALLS = {}  # candidate_id -> CallState dict
+
+@router.post("/call/initiate")
+def initiate_call(payload: CallInitiateRequest, current_user: User = Depends(get_current_user)):
+    ACTIVE_CALLS[payload.candidate_id] = {
+        "status": "ringing",
+        "sdp_offer": payload.sdp_offer,
+        "sdp_answer": None,
+        "caller_name": current_user.email
+    }
+    return {"status": "success", "call": ACTIVE_CALLS[payload.candidate_id]}
+
+@router.post("/call/respond/{candidate_id}")
+def respond_call(candidate_id: int, payload: CallRespondRequest):
+    if candidate_id in ACTIVE_CALLS:
+        ACTIVE_CALLS[candidate_id]["status"] = payload.status
+        if payload.sdp_answer:
+            ACTIVE_CALLS[candidate_id]["sdp_answer"] = payload.sdp_answer
+        return {"status": "success", "call": ACTIVE_CALLS[candidate_id]}
+    raise HTTPException(status_code=404, detail="No active call found")
+
+@router.get("/call/status/{candidate_id}")
+def get_call_status(candidate_id: int):
+    call = ACTIVE_CALLS.get(candidate_id)
+    if call:
+        return call
+    return {"status": "idle"}
+

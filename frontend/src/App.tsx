@@ -3,7 +3,7 @@ import {
   Users, Briefcase, Search, MessageSquare, UploadCloud, 
   Trash2, MapPin, DollarSign, LogOut, 
   AlertCircle, Sparkles, Send, Plus, X, Award, HelpCircle, Settings, CreditCard, CheckCircle,
-  Mic, Volume2, VolumeX
+  Mic, Volume2, VolumeX, Phone, PhoneOff, Video, VideoOff, MicOff
 } from 'lucide-react';
 import { api } from './services/api';
 
@@ -130,6 +130,15 @@ export default function App() {
   const [isListening, setIsListening] = useState<boolean>(false);
   const [voiceEnabled, setVoiceEnabled] = useState<boolean>(true); // default to true so it reads back immediately!
   const [recognitionInstance, setRecognitionInstance] = useState<any>(null);
+
+  // WebRTC Calling states
+  const [activeCall, setActiveCall] = useState<any | null>(null); // { candidateId: number, status: 'calling' | 'ringing' | 'connected', role: 'caller' | 'receiver', peerName: string }
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+  const [micMuted, setMicMuted] = useState<boolean>(false);
+  const [videoDisabled, setVideoDisabled] = useState<boolean>(false);
+  const [incomingCall, setIncomingCall] = useState<any | null>(null); // Incoming call details from poll
+  const localVideoRef = useRef<HTMLVideoElement>(null);
+  const remoteVideoRef = useRef<HTMLVideoElement>(null);
 
   // Billing state
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
@@ -311,6 +320,158 @@ export default function App() {
     window.speechSynthesis.speak(utterance);
   };
 
+
+  // Poll for incoming calls (For Candidates / Employees)
+  useEffect(() => {
+    let interval: any = null;
+    if (user && selectedMode === 'for_hire' && myCandidateProfile?.id && !activeCall) {
+      interval = setInterval(async () => {
+        try {
+          const statusRes = await api.candidates.getCallStatus(myCandidateProfile.id);
+          if (statusRes && statusRes.status === 'ringing') {
+            setIncomingCall({
+              candidateId: myCandidateProfile.id,
+              callerName: statusRes.caller_name || 'Employer'
+            });
+          } else {
+            setIncomingCall(null);
+          }
+        } catch (e) {
+          console.error("Failed to poll call status:", e);
+        }
+      }, 4000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [user, selectedMode, myCandidateProfile, activeCall]);
+
+  // Bind video streams to elements
+  useEffect(() => {
+    if (localStream && localVideoRef.current) {
+      localVideoRef.current.srcObject = localStream;
+    }
+  }, [localStream, activeCall]);
+
+  useEffect(() => {
+    if (localStream && remoteVideoRef.current && activeCall?.status === 'connected') {
+      remoteVideoRef.current.srcObject = localStream;
+    }
+  }, [localStream, activeCall]);
+
+  const handleInitiateCall = async (candidate: any) => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+      setLocalStream(stream);
+      setMicMuted(false);
+      setVideoDisabled(false);
+
+      await api.candidates.initiateCall(candidate.id, "sdp_mock_offer");
+      setActiveCall({
+        candidateId: candidate.id,
+        status: 'calling',
+        role: 'caller',
+        peerName: candidate.name
+      });
+
+      const pollResponse = setInterval(async () => {
+        try {
+          const statusRes = await api.candidates.getCallStatus(candidate.id);
+          if (statusRes.status === 'accepted') {
+            setActiveCall((prev: any) => prev ? { ...prev, status: 'connected' } : null);
+          } else if (statusRes.status === 'rejected' || statusRes.status === 'ended') {
+            handleEndCall(candidate.id);
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }, 3000);
+
+      (window as any)._activeCallPoll = pollResponse;
+    } catch (err: any) {
+      alert("Failed to access camera/microphone: " + err.message);
+    }
+  };
+
+  const handleAcceptCall = async () => {
+    if (!incomingCall) return;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+      setLocalStream(stream);
+      setMicMuted(false);
+      setVideoDisabled(false);
+
+      await api.candidates.respondCall(incomingCall.candidateId, 'accepted', 'sdp_mock_answer');
+      setActiveCall({
+        candidateId: incomingCall.candidateId,
+        status: 'connected',
+        role: 'receiver',
+        peerName: incomingCall.callerName
+      });
+      setIncomingCall(null);
+
+      const pollEnded = setInterval(async () => {
+        try {
+          const statusRes = await api.candidates.getCallStatus(incomingCall.candidateId);
+          if (statusRes.status === 'ended' || statusRes.status === 'idle') {
+            handleEndCall(incomingCall.candidateId);
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }, 3000);
+      (window as any)._activeCallPoll = pollEnded;
+    } catch (err: any) {
+      alert("Failed to access camera/microphone: " + err.message);
+    }
+  };
+
+  const handleRejectCall = async () => {
+    if (!incomingCall) return;
+    try {
+      await api.candidates.respondCall(incomingCall.candidateId, 'rejected');
+      setIncomingCall(null);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleEndCall = async (candidateId: number) => {
+    if (localStream) {
+      localStream.getTracks().forEach(track => track.stop());
+      setLocalStream(null);
+    }
+    try {
+      await api.candidates.respondCall(candidateId, 'ended');
+    } catch (e) {
+      console.error(e);
+    }
+    setActiveCall(null);
+    setIncomingCall(null);
+    if ((window as any)._activeCallPoll) {
+      clearInterval((window as any)._activeCallPoll);
+    }
+  };
+
+  const handleToggleMic = () => {
+    if (localStream) {
+      const audioTrack = localStream.getAudioTracks()[0];
+      if (audioTrack) {
+        audioTrack.enabled = !audioTrack.enabled;
+        setMicMuted(!audioTrack.enabled);
+      }
+    }
+  };
+
+  const handleToggleVideo = () => {
+    if (localStream) {
+      const videoTrack = localStream.getVideoTracks()[0];
+      if (videoTrack) {
+        videoTrack.enabled = !videoTrack.enabled;
+        setVideoDisabled(!videoTrack.enabled);
+      }
+    }
+  };
 
   const loadChatHistory = async () => {
     try {
@@ -978,7 +1139,7 @@ export default function App() {
               onClick={() => {
                 setSelectedMode('for_hire');
                 localStorage.setItem('atlas_mode', 'for_hire');
-                setActiveTab('my_profile');
+                setActiveTab('copilot');
               }}
               className="glass-panel" 
               style={{ 
@@ -1053,6 +1214,13 @@ export default function App() {
           {selectedMode === 'for_hire' ? (
             <>
               <button 
+                onClick={() => setActiveTab('copilot')}
+                className={activeTab === 'copilot' ? 'btn-primary lining-copilot' : 'btn-secondary lining-copilot'} 
+                style={{ padding: '10px 16px', fontSize: '14px', borderRadius: '30px' }}
+              >
+                <MessageSquare size={16} /> Career Copilot
+              </button>
+              <button 
                 onClick={() => setActiveTab('my_profile')}
                 className={activeTab === 'my_profile' ? 'btn-primary lining-candidates' : 'btn-secondary lining-candidates'} 
                 style={{ padding: '10px 16px', fontSize: '14px', borderRadius: '30px' }}
@@ -1065,13 +1233,6 @@ export default function App() {
                 style={{ padding: '10px 16px', fontSize: '14px', borderRadius: '30px' }}
               >
                 <Briefcase size={16} /> Browse Jobs
-              </button>
-              <button 
-                onClick={() => setActiveTab('copilot')}
-                className={activeTab === 'copilot' ? 'btn-primary lining-copilot' : 'btn-secondary lining-copilot'} 
-                style={{ padding: '10px 16px', fontSize: '14px', borderRadius: '30px' }}
-              >
-                <MessageSquare size={16} /> Career Copilot
               </button>
               <button 
                 onClick={() => {
@@ -1719,6 +1880,17 @@ export default function App() {
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                  {/* Real-time Call Option */}
+                  <div style={{ paddingBottom: '16px', borderBottom: '1px solid var(--border-glass)' }}>
+                    <button 
+                      onClick={() => handleInitiateCall(selectedCandidate)}
+                      className="btn-primary lining-candidates"
+                      style={{ width: '100%', justifyContent: 'center', gap: '8px', fontSize: '13px', padding: '10px' }}
+                    >
+                      <Phone size={14} />
+                      <span>Initiate Call Desk Session</span>
+                    </button>
+                  </div>
                   {selectedCandidate.summary && (
                     <div>
                       <h5 style={{ fontSize: '12px', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: '6px' }}>Professional Summary</h5>
@@ -2540,6 +2712,123 @@ export default function App() {
             >
               Cancel
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* INCOMING CALL MODAL DIALOG */}
+      {incomingCall && (
+        <div style={{ position: 'fixed', top: '0', left: '0', width: '100%', height: '100%', background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(10px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 3000, padding: '16px' }}>
+          <div className="glass-panel animate-fade-in" style={{ width: '100%', maxWidth: '360px', padding: '32px', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div style={{ display: 'inline-flex', alignSelf: 'center', padding: '16px', background: 'rgba(255, 45, 85, 0.1)', borderRadius: '50%', color: '#ff2d55' }} className="pulse-glow">
+              <Phone size={36} />
+            </div>
+            <div>
+              <span style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-dim)', letterSpacing: '0.1em' }}>INCOMING CALL</span>
+              <h3 style={{ fontSize: '18px', color: '#fff', marginTop: '6px' }}>{incomingCall.callerName}</h3>
+            </div>
+            <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
+              <button 
+                onClick={handleRejectCall} 
+                className="btn-secondary" 
+                style={{ flex: 1, color: '#ff2d55', border: '1px solid rgba(255,45,85,0.2)', padding: '12px', justifyContent: 'center' }}
+              >
+                Reject
+              </button>
+              <button 
+                onClick={handleAcceptCall} 
+                className="btn-primary" 
+                style={{ flex: 1, padding: '12px', justifyContent: 'center' }}
+              >
+                Accept
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ACTIVE CALL DESK MODAL OVERLAY */}
+      {activeCall && (
+        <div style={{ position: 'fixed', top: '0', left: '0', width: '100%', height: '100%', background: 'rgba(0,0,0,0.92)', backdropFilter: 'blur(16px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 3000, padding: '16px' }}>
+          <div className="glass-panel animate-fade-in" style={{ width: '100%', maxWidth: '720px', padding: '24px', position: 'relative', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            
+            {/* Call Header info */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-glass)', paddingBottom: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span className="pulse-glow" style={{ width: '8px', height: '8px', borderRadius: '50%', background: activeCall.status === 'connected' ? '#84cc16' : '#eab308' }} />
+                <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                  {activeCall.status === 'connected' ? 'Live Call Connected' : 'Dialing / Connecting...'}
+                </span>
+              </div>
+              <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#fff' }}>
+                {activeCall.peerName}
+              </div>
+            </div>
+
+            {/* Video Streams Canvas Area */}
+            <div style={{ position: 'relative', width: '100%', height: '360px', background: '#09090b', borderRadius: '4px', overflow: 'hidden', border: '1px solid var(--border-glass)' }}>
+              {activeCall.status === 'connected' && !videoDisabled ? (
+                // Remote/Loopback stream video
+                <video 
+                  ref={remoteVideoRef} 
+                  autoPlay 
+                  playsInline 
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                />
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', color: 'var(--text-dim)' }}>
+                  <Users size={48} />
+                  <span style={{ fontSize: '13px', marginTop: '12px' }}>
+                    {videoDisabled ? 'Camera Disabled' : 'Waiting for participant to join...'}
+                  </span>
+                </div>
+              )}
+
+              {/* Local picture-in-picture stream preview bubble */}
+              {localStream && !videoDisabled && (
+                <div style={{ position: 'absolute', bottom: '16px', right: '16px', width: '140px', height: '105px', borderRadius: '4px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.15)', background: '#111', boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}>
+                  <video 
+                    ref={localVideoRef} 
+                    autoPlay 
+                    muted 
+                    playsInline 
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Calling control deck actions */}
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', marginTop: '8px' }}>
+              <button 
+                onClick={handleToggleMic} 
+                className={micMuted ? "btn-secondary" : "btn-primary"}
+                style={{ padding: '12px', borderRadius: '50%', color: micMuted ? '#ff2d55' : 'inherit' }}
+                title={micMuted ? "Unmute Mic" : "Mute Mic"}
+              >
+                {micMuted ? <MicOff size={18} /> : <Mic size={18} />}
+              </button>
+              
+              <button 
+                onClick={handleToggleVideo} 
+                className={videoDisabled ? "btn-secondary" : "btn-primary"}
+                style={{ padding: '12px', borderRadius: '50%', color: videoDisabled ? '#ff2d55' : 'inherit' }}
+                title={videoDisabled ? "Enable Video" : "Disable Video"}
+              >
+                {videoDisabled ? <VideoOff size={18} /> : <Video size={18} />}
+              </button>
+
+              <button 
+                onClick={() => handleEndCall(activeCall.candidateId)} 
+                className="btn-primary"
+                style={{ padding: '12px 18px', background: '#ff2d55', border: 'none', color: '#fff', display: 'flex', gap: '8px', alignItems: 'center' }}
+                title="Hang Up"
+              >
+                <PhoneOff size={18} />
+                <span>Hang Up</span>
+              </button>
+            </div>
+
           </div>
         </div>
       )}

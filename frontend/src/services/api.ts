@@ -114,6 +114,26 @@ export const api = {
       return apiRequest(`/candidates/${id}`, {
         method: 'DELETE'
       });
+    },
+
+    async initiateCall(candidateId: number, sdpOffer?: string): Promise<any> {
+      return apiRequest('/candidates/call/initiate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ candidate_id: candidateId, sdp_offer: sdpOffer })
+      });
+    },
+    
+    async respondCall(candidateId: number, status: string, sdpAnswer?: string): Promise<any> {
+      return apiRequest(`/candidates/call/respond/${candidateId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status, sdp_answer: sdpAnswer })
+      });
+    },
+    
+    async getCallStatus(candidateId: number): Promise<any> {
+      return apiRequest(`/candidates/call/status/${candidateId}`);
     }
   },
   
