@@ -28,6 +28,31 @@ const TitanLogo = ({ size = 24, style = {}, className = '' }: { size?: number; s
   </svg>
 );
 
+const AtlasNovaLogo = ({ size = 24, style = {}, className = '' }: { size?: number; style?: React.CSSProperties; className?: string }) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 100 100" 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+    style={{ display: 'inline-block', verticalAlign: 'middle', ...style }}
+  >
+    {/* Outer Orbit Ring (Atlas) */}
+    <circle cx="50" cy="50" r="44" stroke="currentColor" strokeWidth="1.5" strokeDasharray="3 3" opacity="0.3" />
+    <circle cx="50" cy="50" r="44" stroke="currentColor" strokeWidth="1" strokeDasharray="40 180" opacity="0.8" />
+    
+    {/* Central Stellar Nova Core (Four-pointed star intersection) */}
+    <path d="M50 16 L53 47 L84 50 L53 53 L50 84 L47 53 L16 50 L47 47 Z" fill="currentColor" />
+    
+    {/* Abstract Inner Core Layer */}
+    <circle cx="50" cy="50" r="8" fill="var(--bg-dark, #000)" stroke="currentColor" strokeWidth="1.5" />
+    
+    {/* Signature Nothing Red Glyph Indicator Dot (Nova spark) */}
+    <circle cx="78" cy="22" r="4.5" fill="#ff2d55" className="pulse-glow" />
+  </svg>
+);
+
 export default function App() {
   // Entrance Preloader state
   const [showEntrance, setShowEntrance] = useState(true);
@@ -1941,7 +1966,7 @@ export default function App() {
           onClick={() => setActiveTab('copilot')}
           className={activeTab === 'copilot' ? 'btn-primary lining-copilot' : 'btn-secondary'} 
           style={{ width: '40px', height: '40px', borderRadius: '50%', padding: 0, justifyContent: 'center' }}
-          title="Career Copilot AI"
+          title="Ask Nova"
         >
           <Sparkles size={18} />
         </button>
@@ -1985,7 +2010,7 @@ export default function App() {
                 className={activeTab === 'copilot' ? 'btn-primary lining-copilot' : 'btn-secondary lining-copilot'} 
                 style={{ padding: '10px 16px', fontSize: '14px', borderRadius: '30px' }}
               >
-                <MessageSquare size={16} /> Career Copilot
+                <MessageSquare size={16} /> Career Nova
               </button>
               <button 
                 onClick={() => setActiveTab('my_profile')}
@@ -2040,7 +2065,7 @@ export default function App() {
                 className={activeTab === 'copilot' ? 'btn-primary lining-copilot' : 'btn-secondary lining-copilot'} 
                 style={{ padding: '10px 16px', fontSize: '14px', borderRadius: '30px' }}
               >
-                <MessageSquare size={16} /> Recruiter Copilot
+                <MessageSquare size={16} /> Recruiter Nova
               </button>
               <button 
                 onClick={() => setActiveTab('candidates')}
@@ -3033,8 +3058,8 @@ export default function App() {
             {/* Minimalist Prompt Desk Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-glass)', paddingBottom: '12px', marginBottom: '8px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <TitanLogo size={24} />
-                <span style={{ fontSize: '15px', fontWeight: 600, color: '#fff' }}>Atlas Work Intelligence Prompt Desk</span>
+                <AtlasNovaLogo size={24} />
+                <span style={{ fontSize: '15px', fontWeight: 600, color: '#fff' }}>Ask Nova</span>
               </div>
               <button 
                 onClick={handleClearChatHistory} 
@@ -3053,7 +3078,7 @@ export default function App() {
                 {chatHistory.length === 0 && (
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-muted)', textAlign: 'center', padding: '48px 16px', gap: '16px', flex: 1 }}>
                     <h2 style={{ fontSize: '20px', fontWeight: 600, color: '#fff', letterSpacing: '-0.02em' }}>
-                      {selectedMode === 'for_hire' ? 'Hello. How can Atlas Career Copilot help you today?' : 'Hello. How can Atlas Work Intelligence help build your team today?'}
+                      {selectedMode === 'for_hire' ? 'Hello. How can Ask Nova help you today?' : 'Hello. How can Atlas Work Intelligence help build your team today?'}
                     </h2>
                     <p style={{ color: 'var(--text-dim)', fontSize: '13px', maxWidth: '440px', lineHeight: '1.5' }}>
                       {selectedMode === 'for_hire' ? 
@@ -3086,7 +3111,7 @@ export default function App() {
                       whiteSpace: 'pre-wrap'
                     }}
                   >
-                    <strong>{msg.role === 'user' ? 'You' : 'ATLAS Copilot'}</strong>
+                    <strong>{msg.role === 'user' ? 'You' : 'Nova'}</strong>
                     <div style={{ marginTop: '4px' }}>{msg.content}</div>
                   </div>
                 ))}
@@ -3094,7 +3119,7 @@ export default function App() {
                 {chatLoading && (
                   <div style={{ alignSelf: 'flex-start', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-glass)', borderRadius: '12px', padding: '12px 16px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <Sparkles size={14} className="pulse-glow" style={{ color: 'var(--accent-purple)' }} />
-                    <span style={{ color: 'var(--text-muted)' }}>Copilot is thinking...</span>
+                    <span style={{ color: 'var(--text-muted)' }}>Nova is thinking...</span>
                   </div>
                 )}
                 <div ref={chatEndRef} />
@@ -3427,7 +3452,7 @@ export default function App() {
                         <li>Up to 5 candidate resumes parsing</li>
                         <li>Up to 2 active job openings</li>
                         <li>Semantic vector search indexing</li>
-                        <li>Basic Recruiter Copilot assistant</li>
+                        <li>Basic Recruiter Nova assistant</li>
                       </ul>
                     </div>
 
