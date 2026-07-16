@@ -36,20 +36,15 @@ const AtlasNovaLogo = ({ size = 24, style = {}, className = '' }: { size?: numbe
     fill="none" 
     xmlns="http://www.w3.org/2000/svg"
     className={className}
-    style={{ display: 'inline-block', verticalAlign: 'middle', ...style }}
+    style={{ display: 'inline-block', verticalAlign: 'middle', borderRadius: '50%', ...style }}
   >
-    {/* Outer Orbit Ring (Atlas) */}
-    <circle cx="50" cy="50" r="44" stroke="currentColor" strokeWidth="1.5" strokeDasharray="3 3" opacity="0.3" />
-    <circle cx="50" cy="50" r="44" stroke="currentColor" strokeWidth="1" strokeDasharray="40 180" opacity="0.8" />
-    
-    {/* Central Stellar Nova Core (Four-pointed star intersection) */}
-    <path d="M50 16 L53 47 L84 50 L53 53 L50 84 L47 53 L16 50 L47 47 Z" fill="currentColor" />
-    
-    {/* Abstract Inner Core Layer */}
-    <circle cx="50" cy="50" r="8" fill="var(--bg-dark, #000)" stroke="currentColor" strokeWidth="1.5" />
-    
-    {/* Signature Nothing Red Glyph Indicator Dot (Nova spark) */}
-    <circle cx="78" cy="22" r="4.5" fill="#ff2d55" className="pulse-glow" />
+    {/* Indigo Circle Background */}
+    <circle cx="50" cy="50" r="50" fill="#2e2b69" />
+    {/* Warm Gold Star */}
+    <path 
+      d="M 50 18 Q 50 50 32 50 Q 50 50 50 82 Q 50 50 68 50 Q 50 50 50 18 Z" 
+      fill="#ffcf87" 
+    />
   </svg>
 );
 
@@ -3057,9 +3052,12 @@ export default function App() {
             
             {/* Minimalist Prompt Desk Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-glass)', paddingBottom: '12px', marginBottom: '8px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <AtlasNovaLogo size={24} />
-                <span style={{ fontSize: '15px', fontWeight: 600, color: '#fff' }}>Ask Nova</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <AtlasNovaLogo size={36} />
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <span style={{ fontSize: '16px', fontWeight: 700, color: '#fff', letterSpacing: '0.05em' }}>ATLAS NOVA</span>
+                  <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>AI copilot</span>
+                </div>
               </div>
               <button 
                 onClick={handleClearChatHistory} 
