@@ -238,20 +238,26 @@ class CopilotService:
             logger.error(f"Copilot LLM response failed: {e}")
             response = "Recruiter Copilot could not complete your request. Please ensure Ollama is running."
 
-        # 8. Persist chat exchange in the database memory scoped to the tenant
-        try:
-            user_msg = CopilotMessage(
-                tenant_id=self.tenant_id, user_id=user_id, role="user", content=query
-            )
-            assistant_msg = CopilotMessage(
-                tenant_id=self.tenant_id,
-                user_id=user_id,
-                role="assistant",
-                content=response,
-            )
-            await self.msg_repo.create(user_msg)
-            await self.msg_repo.create(assistant_msg)
-        except Exception as e:
-            logger.error(f"Persisting chat message to database memory failed: {e}")
+        # 8. Persist chat exchange in the database memory only if it succeeded online
+        is_offline_error = (
+            "offline" in response.lower() or 
+            "please check your ollama service" in response.lower() or
+            "please ensure ollama is running" in response.lower()
+        )
+        if not is_offline_error:
+            try:
+                user_msg = CopilotMessage(
+                    tenant_id=self.tenant_id, user_id=user_id, role="user", content=query
+                )
+                assistant_msg = CopilotMessage(
+                    tenant_id=self.tenant_id,
+                    user_id=user_id,
+                    role="assistant",
+                    content=response,
+                )
+                await self.msg_repo.create(user_msg)
+                await self.msg_repo.create(assistant_msg)
+            except Exception as e:
+                logger.error(f"Persisting chat message to database memory failed: {e}")
 
         return response
