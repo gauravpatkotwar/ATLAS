@@ -72,6 +72,7 @@ class User(Base):
         default="recruiter", nullable=False
     )  # admin, recruiter
     is_active: Mapped[bool] = mapped_column(default=True, nullable=False)
+    video_path: Mapped[Optional[str]] = mapped_column(nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(
         default=get_utc_now, nullable=False
     )
@@ -112,6 +113,7 @@ class Candidate(Base):
     github: Mapped[Optional[str]] = mapped_column(nullable=True)
     portfolio: Mapped[Optional[str]] = mapped_column(nullable=True)
     resume_path: Mapped[Optional[str]] = mapped_column(nullable=True)
+    video_path: Mapped[Optional[str]] = mapped_column(nullable=True)
 
     ai_score: Mapped[float] = mapped_column(default=0.0, nullable=False)
     recruiter_rating: Mapped[float] = mapped_column(default=0.0, nullable=False)
@@ -190,3 +192,75 @@ class CopilotMessage(Base):
 
     tenant: Mapped[Tenant] = relationship(back_populates="copilot_messages")
     user: Mapped[User] = relationship(back_populates="copilot_messages")
+
+
+class Post(Base):
+    __tablename__ = "posts"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    tenant_id: Mapped[int] = mapped_column(
+        ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False
+    )
+    title: Mapped[str] = mapped_column(nullable=False)
+    content: Mapped[str] = mapped_column(nullable=False)
+    author_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    author_name: Mapped[Optional[str]] = mapped_column(nullable=True)
+    is_anonymous: Mapped[bool] = mapped_column(default=True, nullable=False)
+    post_type: Mapped[str] = mapped_column(default="discussion", nullable=False)  # "discussion" or "whistleblower"
+    votes: Mapped[int] = mapped_column(default=0, nullable=False)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        default=get_utc_now, nullable=False
+    )
+
+
+class Comment(Base):
+    __tablename__ = "comments"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    post_id: Mapped[int] = mapped_column(
+        ForeignKey("posts.id", ondelete="CASCADE"), nullable=False
+    )
+    content: Mapped[str] = mapped_column(nullable=False)
+    author_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    author_name: Mapped[Optional[str]] = mapped_column(nullable=True)
+    is_anonymous: Mapped[bool] = mapped_column(default=True, nullable=False)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        default=get_utc_now, nullable=False
+    )
+
+
+class MarketplaceProduct(Base):
+    __tablename__ = "marketplace_products"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    tenant_id: Mapped[int] = mapped_column(
+        ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False
+    )
+    name: Mapped[str] = mapped_column(nullable=False)
+    description: Mapped[str] = mapped_column(nullable=False)
+    price: Mapped[float] = mapped_column(nullable=False)
+    category: Mapped[str] = mapped_column(nullable=False)  # "software" or "service"
+    download_url: Mapped[Optional[str]] = mapped_column(nullable=True)
+    author_email: Mapped[str] = mapped_column(nullable=False)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        default=get_utc_now, nullable=False
+    )
+
+
+class MarketplacePurchase(Base):
+    __tablename__ = "marketplace_purchases"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    tenant_id: Mapped[int] = mapped_column(
+        ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False
+    )
+    product_id: Mapped[int] = mapped_column(
+        ForeignKey("marketplace_products.id", ondelete="CASCADE"), nullable=False
+    )
+    purchased_at: Mapped[datetime.datetime] = mapped_column(
+        default=get_utc_now, nullable=False
+    )

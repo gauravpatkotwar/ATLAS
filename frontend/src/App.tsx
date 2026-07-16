@@ -74,7 +74,7 @@ export default function App() {
   const [authError, setAuthError] = useState('');
 
   // App navigation
-  const [activeTab, setActiveTab] = useState<'candidates' | 'jobs' | 'search' | 'copilot' | 'settings' | 'my_profile' | 'jobs_board' | 'interview_prep'>('copilot');
+  const [activeTab, setActiveTab] = useState<'candidates' | 'jobs' | 'search' | 'copilot' | 'settings' | 'my_profile' | 'jobs_board' | 'interview_prep' | 'community' | 'marketplace'>('copilot');
 
   // SaaS Tenant state
   const [orgName, setOrgName] = useState('');
@@ -155,6 +155,91 @@ export default function App() {
   const [appliedJobId, setAppliedJobId] = useState<number | null>(null);
   const myCandidateProfile = user ? candidates.find((c: any) => c.email?.toLowerCase() === user.email?.toLowerCase()) : null;
 
+  // Video Recorder & Uploader states
+  const [recording, setRecording] = useState(false);
+  const [recordedVideoUrl, setRecordedVideoUrl] = useState<string | null>(null);
+  const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
+  const [cameraActive, setCameraActive] = useState(false);
+  
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordingPreviewRef = useRef<HTMLVideoElement>(null);
+  const recorderStreamRef = useRef<MediaStream | null>(null);
+
+  // Community & Whistleblower states
+  const [communityPosts, setCommunityPosts] = useState<any[]>([]);
+  const [communityLoading, setCommunityLoading] = useState(false);
+  const [newPostTitle, setNewPostTitle] = useState('');
+  const [newPostContent, setNewPostContent] = useState('');
+  const [newPostIsAnonymous, setNewPostIsAnonymous] = useState(true);
+  const [newPostType, setNewPostType] = useState('discussion'); // 'discussion' or 'whistleblower'
+  const [activePostComments, setActivePostComments] = useState<Record<number, any[]>>({});
+  const [newCommentText, setNewCommentText] = useState<Record<number, string>>({});
+  const [newCommentIsAnonymous, setNewCommentIsAnonymous] = useState<Record<number, boolean>>({});
+  const [expandedPostIds, setExpandedPostIds] = useState<number[]>([]);
+  const [communityFilter, setCommunityFilter] = useState('all'); // 'all', 'discussion', 'whistleblower'
+
+  // Marketplace states
+  const [marketplaceProducts, setMarketplaceProducts] = useState<any[]>([]);
+  const [marketplacePurchases, setMarketplacePurchases] = useState<any[]>([]);
+  const [marketplaceLoading, setMarketplaceLoading] = useState(false);
+  const [newProductName, setNewProductName] = useState('');
+  const [newProductDescription, setNewProductDescription] = useState('');
+  const [newProductPrice, setNewProductPrice] = useState('');
+  const [newProductCategory, setNewProductCategory] = useState('software'); // 'software' or 'service'
+  const [newProductDownloadUrl, setNewProductDownloadUrl] = useState('');
+
+  // Appearance customization states
+  const [themeMode, setThemeMode] = useState<'dark' | 'light'>(() => (localStorage.getItem('atlas_theme') as any) || 'dark');
+  const [accentColor, setAccentColor] = useState<'default' | 'cyan' | 'mint'>(() => (localStorage.getItem('atlas_accent') as any) || 'default');
+  const [densityMode, setDensityMode] = useState<'relaxed' | 'compact'>(() => (localStorage.getItem('atlas_density') as any) || 'relaxed');
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (themeMode === 'light') {
+      root.style.setProperty('--bg-dark', '#f4f4f7');
+      root.style.setProperty('--bg-card', '#ffffff');
+      root.style.setProperty('--text-main', '#1c1c1e');
+      root.style.setProperty('--text-muted', '#68686e');
+      root.style.setProperty('--border-glass', 'rgba(0, 0, 0, 0.08)');
+    } else {
+      root.style.setProperty('--bg-dark', '#000000');
+      root.style.setProperty('--bg-card', '#0a0a0c');
+      root.style.setProperty('--text-main', '#f5f5f7');
+      root.style.setProperty('--text-muted', '#86868b');
+      root.style.setProperty('--border-glass', 'rgba(255, 255, 255, 0.08)');
+    }
+    localStorage.setItem('atlas_theme', themeMode);
+  }, [themeMode]);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (accentColor === 'cyan') {
+      root.style.setProperty('--accent-orange', '#00d2ff');
+      root.style.setProperty('--accent-orange-glow', 'rgba(0, 210, 255, 0.15)');
+    } else if (accentColor === 'mint') {
+      root.style.setProperty('--accent-orange', '#00ffaa');
+      root.style.setProperty('--accent-orange-glow', 'rgba(0, 255, 170, 0.15)');
+    } else {
+      root.style.setProperty('--accent-orange', '#ff2d55');
+      root.style.setProperty('--accent-orange-glow', 'rgba(255, 45, 85, 0.12)');
+    }
+    localStorage.setItem('atlas_accent', accentColor);
+  }, [accentColor]);
+
+  useEffect(() => {
+    localStorage.setItem('atlas_density', densityMode);
+  }, [densityMode]);
+
+  // Meet / Zoom states
+  const [activeMeetRoom, setActiveMeetRoom] = useState<string | null>(null);
+  const [meetIsJoined, setMeetIsJoined] = useState(false);
+  const [meetParticipants, setMeetParticipants] = useState<any[]>([]);
+  const [meetLocalStream, setMeetLocalStream] = useState<MediaStream | null>(null);
+  const [meetRemoteStreams, setMeetRemoteStreams] = useState<Record<string, MediaStream>>({});
+  const [meetPeerConnections, setMeetPeerConnections] = useState<Record<string, RTCPeerConnection>>({});
+  const [meetMicMuted, setMeetMicMuted] = useState(false);
+  const [meetVideoDisabled, setMeetVideoDisabled] = useState(false);
+
   // Public Job View states
   const [publicJobId, setPublicJobId] = useState<number | null>(null);
   const [publicJob, setPublicJob] = useState<any | null>(null);
@@ -230,6 +315,8 @@ export default function App() {
     if (user) {
       loadCandidates();
       loadJobs();
+      loadCommunityPosts();
+      loadMarketplaceData();
     }
   }, [user]);
 
@@ -242,6 +329,12 @@ export default function App() {
   useEffect(() => {
     if (user && activeTab === 'copilot') {
       loadChatHistory();
+    }
+    if (user && activeTab === 'community') {
+      loadCommunityPosts();
+    }
+    if (user && activeTab === 'marketplace') {
+      loadMarketplaceData();
     }
   }, [user, activeTab]);
 
@@ -579,6 +672,395 @@ export default function App() {
       setJobs(res);
     } catch (e) {
       console.error(e);
+    }
+  };
+
+  // --- WEBCAM VIDEO INTRO RECORDER LOGIC ---
+  const handleStartCamera = async () => {
+    try {
+      setRecordedVideoUrl(null);
+      setRecordedBlob(null);
+      
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      recorderStreamRef.current = stream;
+      if (recordingPreviewRef.current) {
+        recordingPreviewRef.current.srcObject = stream;
+      }
+      setCameraActive(true);
+    } catch (e: any) {
+      console.error("Failed to start camera:", e);
+      alert("Could not access webcam or audio inputs: " + e.message);
+    }
+  };
+
+  const handleStopCamera = () => {
+    if (recorderStreamRef.current) {
+      recorderStreamRef.current.getTracks().forEach(track => track.stop());
+      recorderStreamRef.current = null;
+    }
+    setCameraActive(false);
+    setRecording(false);
+  };
+
+  const handleStartRecording = () => {
+    if (!recorderStreamRef.current) return;
+    const chunks: Blob[] = [];
+    const recorder = new MediaRecorder(recorderStreamRef.current, { mimeType: 'video/webm' });
+    
+    recorder.ondataavailable = (event) => {
+      if (event.data && event.data.size > 0) {
+        chunks.push(event.data);
+      }
+    };
+    
+    recorder.onstop = () => {
+      const blob = new Blob(chunks, { type: 'video/webm' });
+      const url = URL.createObjectURL(blob);
+      setRecordedBlob(blob);
+      setRecordedVideoUrl(url);
+    };
+    
+    mediaRecorderRef.current = recorder;
+    recorder.start();
+    setRecording(true);
+  };
+
+  const handleStopRecording = () => {
+    if (mediaRecorderRef.current && recording) {
+      mediaRecorderRef.current.stop();
+      setRecording(false);
+    }
+  };
+
+  const handleUploadVideoFile = async (e: React.ChangeEvent<HTMLInputElement> | null, target: 'user' | 'candidate', candidateId?: number) => {
+    let file: File | Blob | null = null;
+    if (e && e.target.files && e.target.files[0]) {
+      file = e.target.files[0];
+    } else if (recordedBlob) {
+      file = recordedBlob;
+    }
+
+    if (!file) {
+      alert("No video file selected or recorded.");
+      return;
+    }
+
+    try {
+      if (target === 'user') {
+        await api.auth.uploadVideo(file);
+      } else {
+        const id = candidateId || myCandidateProfile?.id;
+        if (!id) {
+          alert("No candidate profile found to attach video.");
+          return;
+        }
+        await api.candidates.uploadVideo(id, file);
+      }
+
+      alert("Video introduction uploaded successfully!");
+      handleStopCamera();
+      setRecordedVideoUrl(null);
+      setRecordedBlob(null);
+
+      // Reload profile
+      if (target === 'user') {
+        const me = await api.auth.me();
+        setUser(me);
+      } else {
+        await loadCandidates();
+      }
+    } catch (err: any) {
+      alert("Failed to upload video: " + err.message);
+    }
+  };
+
+  // --- COMMUNITY & WHISTLEBLOWER FORUM LOGIC ---
+  const loadCommunityPosts = async () => {
+    setCommunityLoading(true);
+    try {
+      const posts = await api.community.listPosts();
+      setCommunityPosts(posts);
+    } catch (e) {
+      console.error("Failed to load community board posts:", e);
+    } finally {
+      setCommunityLoading(false);
+    }
+  };
+
+  const handleCreatePost = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPostTitle.trim() || !newPostContent.trim()) {
+      alert("Title and content body are required.");
+      return;
+    }
+    try {
+      await api.community.createPost(
+        newPostTitle,
+        newPostContent,
+        newPostType === 'whistleblower' ? true : newPostIsAnonymous,
+        newPostType
+      );
+      setNewPostTitle('');
+      setNewPostContent('');
+      setNewPostIsAnonymous(true);
+      setNewPostType('discussion');
+      await loadCommunityPosts();
+      alert("Post published on ATLAS Community successfully!");
+    } catch (err: any) {
+      alert("Failed to create post: " + err.message);
+    }
+  };
+
+  const handleVotePost = async (postId: number, direction: 'up' | 'down') => {
+    try {
+      await api.community.vote(postId, direction);
+      await loadCommunityPosts();
+    } catch (e: any) {
+      alert("Failed to record vote: " + e.message);
+    }
+  };
+
+  const handleToggleComments = async (postId: number) => {
+    const isExpanded = expandedPostIds.includes(postId);
+    if (isExpanded) {
+      setExpandedPostIds(prev => prev.filter(id => id !== postId));
+    } else {
+      setExpandedPostIds(prev => [...prev, postId]);
+      try {
+        const comments = await api.community.listComments(postId);
+        setActivePostComments(prev => ({ ...prev, [postId]: comments }));
+      } catch (e) {
+        console.error("Failed to retrieve comments:", e);
+      }
+    }
+  };
+
+  const handleSubmitComment = async (postId: number) => {
+    const text = newCommentText[postId] || "";
+    const isAnon = newCommentIsAnonymous[postId] ?? true;
+    if (!text.trim()) {
+      alert("Comment content cannot be empty.");
+      return;
+    }
+    try {
+      await api.community.createComment(postId, text, isAnon);
+      setNewCommentText(prev => ({ ...prev, [postId]: "" }));
+      const comments = await api.community.listComments(postId);
+      setActivePostComments(prev => ({ ...prev, [postId]: comments }));
+    } catch (e: any) {
+      alert("Failed to post comment: " + e.message);
+    }
+  };
+
+  // --- DEVELOPER SOFTWARE & SERVICES MARKETPLACE LOGIC ---
+  const loadMarketplaceData = async () => {
+    setMarketplaceLoading(true);
+    try {
+      const [prods, purchs] = await Promise.all([
+        api.marketplace.listProducts(),
+        api.marketplace.listPurchases()
+      ]);
+      setMarketplaceProducts(prods);
+      setMarketplacePurchases(purchs);
+    } catch (e) {
+      console.error("Failed to load marketplace details:", e);
+    } finally {
+      setMarketplaceLoading(false);
+    }
+  };
+
+  const handleCreateProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newProductName.trim() || !newProductDescription.trim() || !newProductPrice.trim()) {
+      alert("Product name, description, and price cannot be empty.");
+      return;
+    }
+    const priceNum = parseFloat(newProductPrice);
+    if (isNaN(priceNum) || priceNum < 0) {
+      alert("Please enter a valid price (greater than or equal to 0).");
+      return;
+    }
+    try {
+      await api.marketplace.createProduct(
+        newProductName,
+        newProductDescription,
+        priceNum,
+        newProductCategory,
+        newProductDownloadUrl || undefined
+      );
+      setNewProductName('');
+      setNewProductDescription('');
+      setNewProductPrice('');
+      setNewProductCategory('software');
+      setNewProductDownloadUrl('');
+      await loadMarketplaceData();
+      alert("Listing published on ATLAS Marketplace successfully!");
+    } catch (e: any) {
+      alert("Failed to publish listing: " + e.message);
+    }
+  };
+
+  const handlePurchaseProduct = async (productId: number) => {
+    try {
+      const res = await api.marketplace.purchaseProduct(productId);
+      alert(res.message);
+      await loadMarketplaceData();
+    } catch (e: any) {
+      alert("Failed to purchase product: " + e.message);
+    }
+  };
+
+  // --- ZOOM / MEET ROOM LOGIC ---
+  const handleCreateMeetRoom = async () => {
+    try {
+      const res = await api.meet.createRoom();
+      setActiveMeetRoom(res.room_code);
+    } catch (e: any) {
+      alert("Failed to create meeting room: " + e.message);
+    }
+  };
+
+  const handleJoinMeetRoom = async (roomCode: string) => {
+    if (!roomCode.trim()) return;
+    try {
+      const myId = 'user_' + Math.random().toString(36).substring(2, 11);
+      (window as any)._meetMyId = myId;
+      
+      const res = await api.meet.joinRoom(roomCode, myId, user.email);
+      if (res.status !== 'success') {
+        alert("Failed to join meeting space.");
+        return;
+      }
+
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      setMeetLocalStream(stream);
+      setMeetIsJoined(true);
+
+      const pcs: Record<string, RTCPeerConnection> = {};
+
+      const pollInterval = setInterval(async () => {
+        try {
+          const pollRes = await api.meet.poll(roomCode, myId);
+          setMeetParticipants(pollRes.participants);
+
+          for (const sig of pollRes.signals) {
+            const sender = sig.sender_id;
+            
+            if (sig.type === 'offer') {
+              const pc = new RTCPeerConnection({
+                iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+              });
+              
+              stream.getTracks().forEach(track => pc.addTrack(track, stream));
+
+              pc.onicecandidate = (event) => {
+                if (event.candidate) {
+                  api.meet.sendSignal(roomCode, myId, sender, 'candidate', event.candidate);
+                }
+              };
+
+              pc.ontrack = (event) => {
+                const remoteStream = event.streams[0] || new MediaStream([event.track]);
+                setMeetRemoteStreams(prev => ({ ...prev, [sender]: remoteStream }));
+              };
+
+              await pc.setRemoteDescription(new RTCSessionDescription(sig.data));
+              const answer = await pc.createAnswer();
+              await pc.setLocalDescription(answer);
+              await api.meet.sendSignal(roomCode, myId, sender, 'answer', answer);
+
+              pcs[sender] = pc;
+              setMeetPeerConnections({ ...pcs });
+            } 
+            else if (sig.type === 'answer') {
+              const pc = pcs[sender];
+              if (pc) {
+                await pc.setRemoteDescription(new RTCSessionDescription(sig.data));
+              }
+            } 
+            else if (sig.type === 'candidate') {
+              const pc = pcs[sender];
+              if (pc) {
+                await pc.addIceCandidate(new RTCIceCandidate(sig.data));
+              }
+            }
+          }
+
+          const activePeerIds = pollRes.participants.map((p: any) => p.id);
+          for (const peerId of Object.keys(pcs)) {
+            if (!activePeerIds.includes(peerId)) {
+              pcs[peerId].close();
+              delete pcs[peerId];
+              
+              setMeetRemoteStreams(prev => {
+                const updated = { ...prev };
+                delete updated[peerId];
+                return updated;
+              });
+            }
+          }
+          setMeetPeerConnections({ ...pcs });
+
+        } catch (e) {
+          console.error("Meet signaling error:", e);
+        }
+      }, 2000);
+
+      (window as any)._meetPollInterval = pollInterval;
+
+    } catch (err: any) {
+      alert("Failed to join meeting: " + err.message);
+    }
+  };
+
+  const handleLeaveMeetRoom = async () => {
+    if (activeMeetRoom) {
+      const myId = (window as any)._meetMyId;
+      if (myId) {
+        try {
+          await api.meet.leave(activeMeetRoom, myId);
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    }
+
+    if (meetLocalStream) {
+      meetLocalStream.getTracks().forEach(track => track.stop());
+    }
+    setMeetLocalStream(null);
+
+    for (const key of Object.keys(meetPeerConnections)) {
+      meetPeerConnections[key].close();
+    }
+    setMeetPeerConnections({});
+    setMeetRemoteStreams({});
+    setMeetParticipants([]);
+    setMeetIsJoined(false);
+    setActiveMeetRoom(null);
+
+    if ((window as any)._meetPollInterval) {
+      clearInterval((window as any)._meetPollInterval);
+    }
+  };
+
+  const handleMeetToggleMic = () => {
+    if (meetLocalStream) {
+      const audioTrack = meetLocalStream.getAudioTracks()[0];
+      if (audioTrack) {
+        audioTrack.enabled = !audioTrack.enabled;
+        setMeetMicMuted(!audioTrack.enabled);
+      }
+    }
+  };
+
+  const handleMeetToggleVideo = () => {
+    if (meetLocalStream) {
+      const videoTrack = meetLocalStream.getVideoTracks()[0];
+      if (videoTrack) {
+        videoTrack.enabled = !videoTrack.enabled;
+        setMeetVideoDisabled(!videoTrack.enabled);
+      }
     }
   };
 
@@ -962,6 +1444,176 @@ export default function App() {
     );
   }
 
+  const renderMeetRoom = () => {
+    const otherPeers = meetParticipants.filter(p => p.id !== (window as any)._meetMyId);
+    const totalTiles = 1 + otherPeers.length;
+    let gridStyle: React.CSSProperties = {
+      display: 'grid',
+      gap: '16px',
+      width: '100%',
+      height: '100%',
+      maxHeight: '70vh'
+    };
+    if (totalTiles === 1) {
+      gridStyle.gridTemplateColumns = '1fr';
+    } else if (totalTiles === 2) {
+      gridStyle.gridTemplateColumns = '1fr 1fr';
+    } else if (totalTiles <= 4) {
+      gridStyle.gridTemplateColumns = '1fr 1fr';
+      gridStyle.gridTemplateRows = '1fr 1fr';
+    } else {
+      gridStyle.gridTemplateColumns = '1fr 1fr 1fr';
+      gridStyle.gridTemplateRows = '1fr 1fr';
+    }
+
+    if (!meetIsJoined) {
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, padding: '32px' }}>
+          <div className="glass-panel" style={{ width: '100%', maxWidth: '480px', padding: '32px', textAlign: 'center' }}>
+            <h3 style={{ fontSize: '20px', color: '#fff', marginBottom: '16px' }}>Join Meeting Room</h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: '13px', marginBottom: '24px' }}>
+              You are about to enter room code: <strong style={{ color: '#fff', fontFamily: 'monospace' }}>{activeMeetRoom}</strong>
+            </p>
+            
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+              <button onClick={handleLeaveMeetRoom} className="btn-secondary" style={{ padding: '10px 20px', fontSize: '13px' }}>
+                Cancel
+              </button>
+              <button onClick={() => handleJoinMeetRoom(activeMeetRoom!)} className="btn-primary lining-settings" style={{ padding: '10px 20px', fontSize: '13px' }}>
+                Join Meet Room
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    const publicMeetUrl = `${window.location.origin}${window.location.pathname}?meet=${activeMeetRoom}`;
+
+    return (
+      <div style={{ display: 'flex', flex: 1, height: 'calc(100vh - 60px)', padding: '24px', gap: '24px' }}>
+        {/* Left Grid: Participant Tiles */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={gridStyle}>
+            {/* Local Video */}
+            <div className="glass-panel" style={{ position: 'relative', overflow: 'hidden', background: '#000', borderRadius: '12px', minHeight: '200px' }}>
+              <video 
+                ref={el => {
+                  if (el && meetLocalStream) el.srcObject = meetLocalStream;
+                }} 
+                autoPlay 
+                playsInline 
+                muted 
+                style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }} 
+              />
+              <div style={{ position: 'absolute', bottom: '12px', left: '12px', background: 'rgba(0,0,0,0.5)', padding: '4px 8px', borderRadius: '4px', fontSize: '12px', color: '#fff' }}>
+                You ({user.email}) {meetMicMuted && '🎙️ Muted'}
+              </div>
+            </div>
+
+            {/* Remote Videos */}
+            {otherPeers.map((p) => {
+              const remoteStream = meetRemoteStreams[p.id];
+              return (
+                <div key={p.id} className="glass-panel" style={{ position: 'relative', overflow: 'hidden', background: '#000', borderRadius: '12px', minHeight: '200px' }}>
+                  {remoteStream ? (
+                    <video 
+                      ref={el => {
+                        if (el) el.srcObject = remoteStream;
+                      }} 
+                      autoPlay 
+                      playsInline 
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                    />
+                  ) : (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', color: 'var(--text-muted)' }}>
+                      Connecting audio/video streams...
+                    </div>
+                  )}
+                  <div style={{ position: 'absolute', bottom: '12px', left: '12px', background: 'rgba(0,0,0,0.5)', padding: '4px 8px', borderRadius: '4px', fontSize: '12px', color: '#fff' }}>
+                    {p.name}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Meeting Space Bottom Controls */}
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-glass)', padding: '16px', borderRadius: '40px' }}>
+            <button 
+              onClick={handleMeetToggleMic} 
+              className={meetMicMuted ? "btn-secondary" : "btn-primary"} 
+              style={{ width: '48px', height: '48px', padding: 0, borderRadius: '50%', justifyContent: 'center', color: meetMicMuted ? '#ff2d55' : 'inherit' }}
+            >
+              {meetMicMuted ? <MicOff size={18} /> : <Mic size={18} />}
+            </button>
+
+            <button 
+              onClick={handleMeetToggleVideo} 
+              className={meetVideoDisabled ? "btn-secondary" : "btn-primary"} 
+              style={{ width: '48px', height: '48px', padding: 0, borderRadius: '50%', justifyContent: 'center', color: meetVideoDisabled ? '#ff2d55' : 'inherit' }}
+            >
+              {meetVideoDisabled ? <VideoOff size={18} /> : <Video size={18} />}
+            </button>
+
+            <button 
+              onClick={handleLeaveMeetRoom} 
+              className="btn-primary" 
+              style={{ width: '48px', height: '48px', padding: 0, borderRadius: '50%', justifyContent: 'center', background: '#ff2d55', border: 'none', color: '#fff' }}
+            >
+              <PhoneOff size={18} />
+            </button>
+          </div>
+        </div>
+
+        {/* Right Sidebar: Share details & participants list */}
+        <div className="glass-panel" style={{ width: '320px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div>
+            <h4 style={{ fontSize: '14px', color: '#fff', marginBottom: '8px' }}>Invite Link</h4>
+            <input 
+              type="text" 
+              readOnly 
+              className="input-field" 
+              value={publicMeetUrl} 
+              onClick={e => {
+                (e.target as any).select();
+                navigator.clipboard.writeText(publicMeetUrl);
+                alert("Invite link copied to clipboard!");
+              }}
+              style={{ fontSize: '11px', fontFamily: 'monospace', cursor: 'pointer' }}
+            />
+            <span style={{ fontSize: '10px', color: 'var(--text-dim)', marginTop: '4px', display: 'block' }}>
+              Click field to copy link and invite guests.
+            </span>
+          </div>
+
+          <div style={{ flex: 1 }}>
+            <h4 style={{ fontSize: '14px', color: '#fff', marginBottom: '12px' }}>Participants ({meetParticipants.length})</h4>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {meetParticipants.map(p => (
+                <div key={p.id} style={{ display: 'flex', justifyItems: 'center', justifyContent: 'space-between', padding: '10px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-glass)', borderRadius: '8px' }}>
+                  <span style={{ fontSize: '13px', color: '#fff' }}>{p.name}</span>
+                  <span style={{ fontSize: '11px', color: 'var(--text-dim)' }}>
+                    {p.id === (window as any)._meetMyId ? 'You' : 'Guest'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  if (activeMeetRoom) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: '#0b0c10', color: '#fff' }}>
+        {renderPreloader()}
+        {renderMeetRoom()}
+      </div>
+    );
+  }
+
   if (!token || !user) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: '16px' }}>
@@ -1245,8 +1897,55 @@ export default function App() {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+    <div className={densityMode === 'compact' ? 'theme-compact' : ''} style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', paddingLeft: '80px' }}>
       {renderPreloader()}
+      {/* Vertical Floating Navigation Bar */}
+      <div 
+        className="glass-panel" 
+        style={{ 
+          position: 'fixed', 
+          left: '20px', 
+          top: '50%', 
+          transform: 'translateY(-50%)', 
+          display: 'flex', 
+          flexDirection: 'column', 
+          gap: '20px', 
+          padding: '24px 12px', 
+          zIndex: 1000, 
+          borderRadius: '32px', 
+          background: 'rgba(10, 10, 12, 0.45)', 
+          backdropFilter: 'blur(20px)', 
+          border: '1px solid var(--border-glass)',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)' 
+        }}
+      >
+        <button 
+          onClick={handleCreateMeetRoom}
+          className="btn-secondary" 
+          style={{ width: '40px', height: '40px', borderRadius: '50%', padding: 0, justifyContent: 'center', color: 'var(--accent-purple)' }}
+          title="Start Meeting Space"
+        >
+          <Video size={18} />
+        </button>
+
+        <button 
+          onClick={() => setActiveTab('community')}
+          className={activeTab === 'community' ? 'btn-primary lining-settings' : 'btn-secondary'} 
+          style={{ width: '40px', height: '40px', borderRadius: '50%', padding: 0, justifyContent: 'center' }}
+          title="Atlas Community Board"
+        >
+          <MessageSquare size={18} />
+        </button>
+
+        <button 
+          onClick={() => setActiveTab('copilot')}
+          className={activeTab === 'copilot' ? 'btn-primary lining-copilot' : 'btn-secondary'} 
+          style={{ width: '40px', height: '40px', borderRadius: '50%', padding: 0, justifyContent: 'center' }}
+          title="Career Copilot AI"
+        >
+          <Sparkles size={18} />
+        </button>
+      </div>
       {/* Top Header */}
       <header className="glass-panel" style={{ borderRadius: '0', borderLeft: 'none', borderRight: 'none', borderTop: 'none', padding: '16px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: '0', zIndex: 50 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -1278,7 +1977,7 @@ export default function App() {
 
       {/* Tabs Switcher */}
       <div style={{ maxWidth: '1200px', width: '100%', margin: '24px auto 0 auto', padding: '0 16px' }}>
-        <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--border-glass)', paddingBottom: '8px' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', borderBottom: '1px solid var(--border-glass)', paddingBottom: '8px' }}>
           {selectedMode === 'for_hire' ? (
             <>
               <button 
@@ -1312,6 +2011,27 @@ export default function App() {
               >
                 <Award size={16} /> Interview Prep Desk
               </button>
+              <button 
+                onClick={() => setActiveTab('community')}
+                className={activeTab === 'community' ? 'btn-primary lining-settings' : 'btn-secondary lining-settings'} 
+                style={{ padding: '10px 16px', fontSize: '14px', borderRadius: '30px' }}
+              >
+                <MessageSquare size={16} /> Community
+              </button>
+              <button 
+                onClick={() => setActiveTab('marketplace')}
+                className={activeTab === 'marketplace' ? 'btn-primary lining-settings' : 'btn-secondary lining-settings'} 
+                style={{ padding: '10px 16px', fontSize: '14px', borderRadius: '30px' }}
+              >
+                <Sparkles size={16} style={{ color: 'var(--accent-cyan)' }} /> Developer Store
+              </button>
+              <button 
+                onClick={() => setActiveTab('settings')}
+                className={activeTab === 'settings' ? 'btn-primary lining-settings' : 'btn-secondary lining-settings'} 
+                style={{ padding: '10px 16px', fontSize: '14px', borderRadius: '30px' }}
+              >
+                <Settings size={16} /> Settings
+              </button>
             </>
           ) : (
             <>
@@ -1342,6 +2062,20 @@ export default function App() {
                 style={{ padding: '10px 16px', fontSize: '14px', borderRadius: '30px' }}
               >
                 <Search size={16} /> Semantic Search
+              </button>
+              <button 
+                onClick={() => setActiveTab('community')}
+                className={activeTab === 'community' ? 'btn-primary lining-settings' : 'btn-secondary lining-settings'} 
+                style={{ padding: '10px 16px', fontSize: '14px', borderRadius: '30px' }}
+              >
+                <MessageSquare size={16} /> Community
+              </button>
+              <button 
+                onClick={() => setActiveTab('marketplace')}
+                className={activeTab === 'marketplace' ? 'btn-primary lining-settings' : 'btn-secondary lining-settings'} 
+                style={{ padding: '10px 16px', fontSize: '14px', borderRadius: '30px' }}
+              >
+                <Sparkles size={16} style={{ color: 'var(--accent-cyan)' }} /> Developer Store
               </button>
               <button 
                 onClick={() => setActiveTab('settings')}
@@ -1959,6 +2693,19 @@ export default function App() {
                       <span>Initiate Call Desk Session</span>
                     </button>
                   </div>
+                  
+                  {/* Candidate Video Introduction Subsection */}
+                  {selectedCandidate.video_path && (
+                    <div style={{ paddingBottom: '16px', borderBottom: '1px solid var(--border-glass)' }}>
+                      <h5 style={{ fontSize: '12px', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: '8px' }}>Video Introduction Pitch</h5>
+                      <video 
+                        src={selectedCandidate.video_path} 
+                        controls 
+                        style={{ width: '100%', borderRadius: '8px', background: '#000', border: '1px solid var(--border-glass)' }} 
+                      />
+                    </div>
+                  )}
+
                   {selectedCandidate.summary && (
                     <div>
                       <h5 style={{ fontSize: '12px', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: '6px' }}>Professional Summary</h5>
@@ -2391,7 +3138,7 @@ export default function App() {
                   title="Toggle Read Aloud"
                 >
                   {voiceEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
-                </button>
+</button>
 
                 <button type="submit" disabled={chatLoading} className="btn-primary lining-copilot" style={{ padding: '10px 16px' }}>
                   <Send size={16} />
@@ -2408,148 +3155,715 @@ export default function App() {
           return (
             <div className="glass-panel animate-fade-in" style={{ padding: '32px' }}>
               <h2 style={{ fontSize: '22px', color: '#fff', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Settings style={{ color: 'var(--accent-cyan)' }} /> Workspace Settings
+                <Settings style={{ color: 'var(--accent-cyan)' }} /> 
+                <span>{selectedMode === 'for_hire' ? 'Appearance & Theme Settings' : 'Workspace & Appearance Settings'}</span>
               </h2>
               <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginBottom: '24px' }}>
-                Manage your SaaS tenant subscription limits, pricing tiers, and invite team recruiters to collaborate.
+                Configure UI visual properties, manage video introductions, and view active subscription tier settings.
               </p>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px', alignItems: 'start' }}>
-                {/* Organization Profile info */}
-                <div className="glass-panel" style={{ padding: '24px', background: 'rgba(255,255,255,0.01)' }}>
-                  <h3 style={{ fontSize: '16px', color: '#fff', marginBottom: '16px' }}>Organization Workspace</h3>
-                  
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    <div>
-                      <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: '12px', marginBottom: '6px' }}>Workspace ID</label>
-                      <div className="input-field" style={{ padding: '10px 12px', background: 'rgba(255,255,255,0.02)', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                        Tenant #{user?.tenant_id}
+                
+                {/* Left Column: Tenant profile/limits OR Profile video upload */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                  {selectedMode !== 'for_hire' ? (
+                    <div className="glass-panel" style={{ padding: '24px', background: 'rgba(255,255,255,0.01)' }}>
+                      <h3 style={{ fontSize: '16px', color: '#fff', marginBottom: '16px', fontWeight: 600 }}>Organization Workspace</h3>
+                      
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                        <div>
+                          <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: '12px', marginBottom: '6px' }}>Workspace ID</label>
+                          <div className="input-field" style={{ padding: '10px 12px', background: 'rgba(255,255,255,0.02)', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                            Tenant #{user?.tenant_id}
+                          </div>
+                        </div>
+
+                        <div>
+                          <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: '12px', marginBottom: '6px' }}>Invite Recruiter Code</label>
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <input 
+                              type="text" 
+                              readOnly 
+                              className="input-field" 
+                              value={user?.invite_code || 'FREE-INVITE'} 
+                              style={{ fontFamily: 'monospace', fontWeight: 'bold', color: 'var(--accent-cyan)' }} 
+                            />
+                            <button 
+                              onClick={() => { navigator.clipboard.writeText(user?.invite_code || 'FREE-INVITE'); alert("Invite code copied!"); }} 
+                              className="btn-secondary" 
+                              style={{ fontSize: '12px' }}
+                            >
+                              Copy Invite
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Active candidates count */}
+                        <div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '8px' }}>
+                            <span style={{ color: '#fff' }}>Candidates Resumes Uploaded</span>
+                            <span style={{ color: 'var(--text-muted)' }}>{candidates.length} / {maxCandidates} profiles</span>
+                          </div>
+                          <div style={{ height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', overflow: 'hidden' }}>
+                            <div style={{ width: `${Math.min(100, (candidates.length / maxCandidates) * 100)}%`, height: '100%', background: '#ffffff', borderRadius: '4px' }} />
+                          </div>
+                        </div>
+
+                        {/* Active jobs limit count */}
+                        <div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '8px' }}>
+                            <span style={{ color: '#fff' }}>Active Job Listings Published</span>
+                            <span style={{ color: 'var(--text-muted)' }}>{jobs.filter(j => j.is_active).length} / {maxJobs} openings</span>
+                          </div>
+                          <div style={{ height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', overflow: 'hidden' }}>
+                            <div style={{ width: `${Math.min(100, (jobs.filter(j => j.is_active).length / maxJobs) * 100)}%`, height: '100%', background: '#ffffff', borderRadius: '4px' }} />
+                          </div>
+                        </div>
+
+                        {isPro ? (
+                          <div style={{ display: 'flex', gap: '8px', padding: '12px', background: 'rgba(34, 197, 94, 0.05)', border: '1px solid rgba(34, 197, 94, 0.15)', borderRadius: '8px', fontSize: '12px', color: '#22c55e', alignItems: 'center' }}>
+                            <CheckCircle size={16} style={{ flexShrink: 0 }} />
+                            <span>Recruiter Pro subscription plan active. Thank you!</span>
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', gap: '8px', padding: '12px', background: 'rgba(236, 72, 153, 0.05)', border: '1px solid rgba(236, 72, 153, 0.15)', borderRadius: '8px', fontSize: '12px', color: '#ec4899' }}>
+                            <HelpCircle size={16} style={{ flexShrink: 0 }} />
+                            <span>Free Workspace subscription plan active. Limits are strictly monitored.</span>
+                          </div>
+                        )}
                       </div>
                     </div>
+                  ) : (
+                    <div className="glass-panel" style={{ padding: '24px', background: 'rgba(255,255,255,0.01)' }}>
+                      <h3 style={{ fontSize: '16px', color: '#fff', marginBottom: '8px', fontWeight: 600 }}>Candidate Profile Overview</h3>
+                      <p style={{ color: 'var(--text-muted)', fontSize: '12px', marginBottom: '16px' }}>
+                        Your candidate matching score is active. Keep your details and introduction video updated.
+                      </p>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '13px' }}>
+                        <div style={{ color: '#fff' }}><strong>Email:</strong> {user.email}</div>
+                        <div style={{ color: '#fff' }}><strong>Status:</strong> Vectorized & Searchable</div>
+                      </div>
+                    </div>
+                  )}
 
-                    <div>
-                      <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: '12px', marginBottom: '6px' }}>Invite Recruiter Code</label>
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                        <input 
-                          type="text" 
-                          readOnly 
-                          className="input-field" 
-                          value={user?.invite_code || 'FREE-INVITE'} 
-                          style={{ fontFamily: 'monospace', fontWeight: 'bold', color: 'var(--accent-cyan)' }} 
-                        />
+                  {/* Profile Video Intro Recorder Section */}
+                  <div className="glass-panel" style={{ padding: '24px', background: 'rgba(255,255,255,0.01)' }}>
+                    <h3 style={{ fontSize: '16px', color: '#fff', marginBottom: '12px', fontWeight: 600 }}>Webcam Video Introduction</h3>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '12px', marginBottom: '16px' }}>
+                      Record a short pitch video directly to attach to your profile card.
+                    </p>
+
+                    {/* Camera Recording Window */}
+                    {cameraActive && (
+                      <div style={{ position: 'relative', background: '#000', borderRadius: '12px', overflow: 'hidden', marginBottom: '16px', aspectRatio: '16/9' }}>
+                        <video ref={recordingPreviewRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <div style={{ position: 'absolute', top: '12px', right: '12px', display: 'flex', gap: '8px' }}>
+                          <span className="pulse-glow" style={{ background: recording ? '#ff2d55' : 'rgba(255,255,255,0.2)', padding: '4px 8px', borderRadius: '4px', fontSize: '11px', color: '#fff', fontWeight: 'bold' }}>
+                            {recording ? '● RECORDING' : 'CAMERA ACTIVE'}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Upload/Record preview */}
+                    {recordedVideoUrl && !cameraActive && (
+                      <div style={{ position: 'relative', borderRadius: '12px', overflow: 'hidden', marginBottom: '16px', background: '#000', aspectRatio: '16/9' }}>
+                        <video src={recordedVideoUrl} controls style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                      </div>
+                    )}
+
+                    {/* Camera Control Buttons */}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '16px' }}>
+                      {!cameraActive ? (
+                        <button onClick={handleStartCamera} className="btn-secondary" style={{ fontSize: '12px' }}>
+                          📹 Enable Camera
+                        </button>
+                      ) : (
+                        <>
+                          {!recording ? (
+                            <button onClick={handleStartRecording} className="btn-primary" style={{ fontSize: '12px', background: '#22c55e', border: 'none', color: '#fff' }}>
+                              ● Start Record
+                            </button>
+                          ) : (
+                            <button onClick={handleStopRecording} className="btn-primary" style={{ fontSize: '12px', background: '#ff2d55', border: 'none', color: '#fff' }}>
+                              ■ Stop Record
+                            </button>
+                          )}
+                          <button onClick={handleStopCamera} className="btn-secondary" style={{ fontSize: '12px' }}>
+                            Turn Off
+                          </button>
+                        </>
+                      )}
+
+                      {recordedBlob && (
                         <button 
-                          onClick={() => { navigator.clipboard.writeText(user?.invite_code || 'FREE-INVITE'); alert("Invite code copied!"); }} 
-                          className="btn-secondary" 
+                          onClick={() => handleUploadVideoFile(null, selectedMode === 'for_hire' ? 'candidate' : 'user')} 
+                          className="btn-primary lining-settings" 
                           style={{ fontSize: '12px' }}
                         >
-                          Copy Invite
+                          ✓ Upload Recorded Video
                         </button>
-                      </div>
-                      <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
-                        Share this code with other recruiters in your organization to let them register and join this workspace.
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Usage Quota limits tracker */}
-                <div className="glass-panel" style={{ padding: '24px', background: 'rgba(255,255,255,0.01)' }}>
-                  <h3 style={{ fontSize: '16px', color: '#fff', marginBottom: '16px' }}>SaaS Plan Usage Quotas</h3>
-                  
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                    {/* Candidates limit count */}
-                    <div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '8px' }}>
-                        <span style={{ color: '#fff' }}>Candidates Resumes Uploaded</span>
-                        <span style={{ color: 'var(--text-muted)' }}>{candidates.length} / {maxCandidates} profiles</span>
-                      </div>
-                      <div style={{ height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', overflow: 'hidden' }}>
-                        <div style={{ width: `${Math.min(100, (candidates.length / maxCandidates) * 100)}%`, height: '100%', background: '#ffffff', borderRadius: '4px' }} />
-                      </div>
+                      )}
                     </div>
 
-                    {/* Active jobs limit count */}
-                    <div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '8px' }}>
-                        <span style={{ color: '#fff' }}>Active Job Listings Published</span>
-                        <span style={{ color: 'var(--text-muted)' }}>{jobs.filter(j => j.is_active).length} / {maxJobs} openings</span>
-                      </div>
-                      <div style={{ height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', overflow: 'hidden' }}>
-                        <div style={{ width: `${Math.min(100, (jobs.filter(j => j.is_active).length / maxJobs) * 100)}%`, height: '100%', background: '#ffffff', borderRadius: '4px' }} />
-                      </div>
+                    {/* Upload Video file manually */}
+                    <div style={{ borderTop: '1px solid var(--border-glass)', paddingTop: '16px' }}>
+                      <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: '12px', marginBottom: '8px' }}>
+                        Or upload pre-recorded video file (.mp4, .webm, .mov)
+                      </label>
+                      <input 
+                        type="file" 
+                        accept="video/*" 
+                        onChange={(e) => handleUploadVideoFile(e, selectedMode === 'for_hire' ? 'candidate' : 'user')} 
+                        style={{ fontSize: '12px', color: 'var(--text-muted)' }}
+                      />
                     </div>
 
-                    {isPro ? (
-                      <div style={{ display: 'flex', gap: '8px', padding: '12px', background: 'rgba(34, 197, 94, 0.05)', border: '1px solid rgba(34, 197, 94, 0.15)', borderRadius: '8px', fontSize: '12px', color: '#22c55e', alignItems: 'center' }}>
-                        <CheckCircle size={16} style={{ flexShrink: 0 }} />
-                        <span>Recruiter Pro subscription plan active. Thank you!</span>
-                      </div>
-                    ) : (
-                      <div style={{ display: 'flex', gap: '8px', padding: '12px', background: 'rgba(236, 72, 153, 0.05)', border: '1px solid rgba(236, 72, 153, 0.15)', borderRadius: '8px', fontSize: '12px', color: '#ec4899' }}>
-                        <HelpCircle size={16} style={{ flexShrink: 0 }} />
-                        <span>Free Workspace subscription plan active. Limits are strictly monitored.</span>
+                    {/* Stream Current Video Intro */}
+                    {(selectedMode === 'for_hire' ? myCandidateProfile?.video_path : user?.video_path) && (
+                      <div style={{ marginTop: '20px', borderTop: '1px solid var(--border-glass)', paddingTop: '16px' }}>
+                        <h4 style={{ fontSize: '13px', color: '#fff', marginBottom: '10px' }}>Active Profile Video Intro:</h4>
+                        <video 
+                          src={selectedMode === 'for_hire' ? myCandidateProfile?.video_path : user?.video_path} 
+                          controls 
+                          style={{ width: '100%', borderRadius: '8px', background: '#000', border: '1px solid var(--border-glass)' }} 
+                        />
                       </div>
                     )}
                   </div>
                 </div>
+
+                {/* Right Column: Theme & Appearance customizing dashboard */}
+                <div className="glass-panel" style={{ padding: '24px', background: 'rgba(255,255,255,0.01)', border: '1px solid var(--border-glass)', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                  <h3 style={{ fontSize: '16px', color: '#fff', marginBottom: '4px', fontWeight: 600 }}>App Customization</h3>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '12px', marginBottom: '12px' }}>
+                    Adjust typography themes, highlight colors, and layout densities.
+                  </p>
+
+                  {/* Theme Mode Selector */}
+                  <div>
+                    <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: '12px', marginBottom: '8px', fontWeight: 'bold' }}>UI Theme Mode</label>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button 
+                        onClick={() => setThemeMode('dark')} 
+                        className={themeMode === 'dark' ? 'btn-primary' : 'btn-secondary'}
+                        style={{ flex: 1, fontSize: '12px', padding: '10px', justifyContent: 'center' }}
+                      >
+                        Titan Dark
+                      </button>
+                      <button 
+                        onClick={() => setThemeMode('light')} 
+                        className={themeMode === 'light' ? 'btn-primary' : 'btn-secondary'}
+                        style={{ flex: 1, fontSize: '12px', padding: '10px', justifyContent: 'center' }}
+                      >
+                        Solar Light
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Accent Highlight Color Selector */}
+                  <div>
+                    <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: '12px', marginBottom: '8px', fontWeight: 'bold' }}>Accent Palette</label>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button 
+                        onClick={() => setAccentColor('default')} 
+                        className={accentColor === 'default' ? 'btn-primary' : 'btn-secondary'}
+                        style={{ flex: 1, fontSize: '12px', padding: '10px', justifyContent: 'center', borderColor: accentColor === 'default' ? '#ff2d55' : undefined }}
+                      >
+                        Violet
+                      </button>
+                      <button 
+                        onClick={() => setAccentColor('cyan')} 
+                        className={accentColor === 'cyan' ? 'btn-primary' : 'btn-secondary'}
+                        style={{ flex: 1, fontSize: '12px', padding: '10px', justifyContent: 'center', borderColor: accentColor === 'cyan' ? '#00d2ff' : undefined }}
+                      >
+                        Cyan
+                      </button>
+                      <button 
+                        onClick={() => setAccentColor('mint')} 
+                        className={accentColor === 'mint' ? 'btn-primary' : 'btn-secondary'}
+                        style={{ flex: 1, fontSize: '12px', padding: '10px', justifyContent: 'center', borderColor: accentColor === 'mint' ? '#00ffaa' : undefined }}
+                      >
+                        Mint
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Density Grid Padding Selector */}
+                  <div>
+                    <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: '12px', marginBottom: '8px', fontWeight: 'bold' }}>Layout Density</label>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button 
+                        onClick={() => setDensityMode('relaxed')} 
+                        className={densityMode === 'relaxed' ? 'btn-primary' : 'btn-secondary'}
+                        style={{ flex: 1, fontSize: '12px', padding: '10px', justifyContent: 'center' }}
+                      >
+                        Relaxed
+                      </button>
+                      <button 
+                        onClick={() => setDensityMode('compact')} 
+                        className={densityMode === 'compact' ? 'btn-primary' : 'btn-secondary'}
+                        style={{ flex: 1, fontSize: '12px', padding: '10px', justifyContent: 'center' }}
+                      >
+                        Compact
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
               </div>
 
-              {/* Billing pricing tiers */}
-              <div style={{ marginTop: '32px' }}>
-                <h3 style={{ fontSize: '16px', color: '#fff', marginBottom: '16px' }}>Subscription Pricing Plans</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px' }}>
-                  {/* Free plan details */}
-                  <div style={{ border: isPro ? '1px solid var(--border-glass)' : '1px solid var(--accent-cyan)', borderRadius: '12px', padding: '20px', background: 'rgba(255,255,255,0.01)', position: 'relative' }}>
-                    {!isPro && <span style={{ position: 'absolute', top: '12px', right: '12px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-glass)', borderRadius: '12px', padding: '3px 8px', fontSize: '10px', color: 'var(--accent-cyan)' }}>Active Plan</span>}
-                    <h4 style={{ fontSize: '15px', color: '#fff', marginBottom: '8px' }}>Free Basic</h4>
-                    <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#fff', marginBottom: '16px' }}>$0 <span style={{ fontSize: '12px', fontWeight: 'normal', color: 'var(--text-muted)' }}>/mo</span></div>
-                    <ul style={{ paddingLeft: '16px', color: 'var(--text-muted)', fontSize: '12px', display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '20px' }}>
-                      <li>Up to 5 candidate resumes parsing</li>
-                      <li>Up to 2 active job openings</li>
-                      <li>Semantic vector search indexing</li>
-                      <li>Basic Recruiter Copilot assistant</li>
-                    </ul>
-                  </div>
+              {selectedMode !== 'for_hire' && (
+                /* Billing Pricing Plans for Recruiter */
+                <div style={{ marginTop: '32px', borderTop: '1px solid var(--border-glass)', paddingTop: '32px' }}>
+                  <h3 style={{ fontSize: '16px', color: '#fff', marginBottom: '16px' }}>Subscription Pricing Plans</h3>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px' }}>
+                    {/* Free plan details */}
+                    <div style={{ border: isPro ? '1px solid var(--border-glass)' : '1px solid var(--accent-cyan)', borderRadius: '12px', padding: '20px', background: 'rgba(255,255,255,0.01)', position: 'relative' }}>
+                      {!isPro && <span style={{ position: 'absolute', top: '12px', right: '12px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-glass)', borderRadius: '12px', padding: '3px 8px', fontSize: '10px', color: 'var(--accent-cyan)' }}>Active Plan</span>}
+                      <h4 style={{ fontSize: '15px', color: '#fff', marginBottom: '8px' }}>Free Basic</h4>
+                      <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#fff', marginBottom: '16px' }}>$0 <span style={{ fontSize: '12px', fontWeight: 'normal', color: 'var(--text-muted)' }}>/mo</span></div>
+                      <ul style={{ paddingLeft: '16px', color: 'var(--text-muted)', fontSize: '12px', display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '20px' }}>
+                        <li>Up to 5 candidate resumes parsing</li>
+                        <li>Up to 2 active job openings</li>
+                        <li>Semantic vector search indexing</li>
+                        <li>Basic Recruiter Copilot assistant</li>
+                      </ul>
+                    </div>
 
-                  {/* Pro plan details */}
-                  <div style={{ border: isPro ? '1px solid #22c55e' : '1px solid var(--accent-purple)', borderRadius: '12px', padding: '20px', background: isPro ? 'rgba(34, 197, 94, 0.02)' : 'rgba(147, 51, 234, 0.02)', position: 'relative' }}>
-                    {isPro ? (
-                      <span style={{ position: 'absolute', top: '12px', right: '12px', background: '#22c55e', borderRadius: '12px', padding: '3px 8px', fontSize: '10px', color: '#fff' }}>Active Plan</span>
-                    ) : (
-                      <span style={{ position: 'absolute', top: '12px', right: '12px', background: 'var(--accent-purple)', borderRadius: '12px', padding: '3px 8px', fontSize: '10px', color: '#fff' }}>Recommended</span>
-                    )}
-                    <h4 style={{ fontSize: '15px', color: '#fff', marginBottom: '8px' }}>Recruiter Pro</h4>
-                    <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#fff', marginBottom: '16px' }}>$79 <span style={{ fontSize: '12px', fontWeight: 'normal', color: 'var(--text-muted)' }}>/mo</span></div>
-                    <ul style={{ paddingLeft: '16px', color: 'var(--text-muted)', fontSize: '12px', display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '20px' }}>
-                      <li>Up to 100 candidate resumes parsing</li>
-                      <li>Up to 10 active job openings</li>
-                      <li>Full history chat session memory</li>
-                      <li>High-priority AI extraction parsing queues</li>
-                    </ul>
-                    {isPro ? (
-                      <button disabled className="btn-secondary" style={{ width: '100%', justifyContent: 'center', fontSize: '12px', opacity: 0.6, cursor: 'not-allowed' }}>Subscribed</button>
-                    ) : (
-                      <button onClick={() => setShowUpgradeModal(true)} className="btn-primary" style={{ width: '100%', justifyContent: 'center', fontSize: '12px' }}>Upgrade to Pro</button>
-                    )}
-                  </div>
+                    {/* Pro plan details */}
+                    <div style={{ border: isPro ? '1px solid #22c55e' : '1px solid var(--accent-purple)', borderRadius: '12px', padding: '20px', background: isPro ? 'rgba(34, 197, 94, 0.02)' : 'rgba(147, 51, 234, 0.02)', position: 'relative' }}>
+                      {isPro ? (
+                        <span style={{ position: 'absolute', top: '12px', right: '12px', background: '#22c55e', borderRadius: '12px', padding: '3px 8px', fontSize: '10px', color: '#fff' }}>Active Plan</span>
+                      ) : (
+                        <span style={{ position: 'absolute', top: '12px', right: '12px', background: 'var(--accent-purple)', borderRadius: '12px', padding: '3px 8px', fontSize: '10px', color: '#fff' }}>Recommended</span>
+                      )}
+                      <h4 style={{ fontSize: '15px', color: '#fff', marginBottom: '8px' }}>Recruiter Pro</h4>
+                      <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#fff', marginBottom: '16px' }}>$79 <span style={{ fontSize: '12px', fontWeight: 'normal', color: 'var(--text-muted)' }}>/mo</span></div>
+                      <ul style={{ paddingLeft: '16px', color: 'var(--text-muted)', fontSize: '12px', display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '20px' }}>
+                        <li>Up to 100 candidate resumes parsing</li>
+                        <li>Up to 10 active job openings</li>
+                        <li>Full history chat session memory</li>
+                        <li>High-priority AI extraction parsing queues</li>
+                      </ul>
+                      {isPro ? (
+                        <button disabled className="btn-secondary" style={{ width: '100%', justifyContent: 'center', fontSize: '12px', opacity: 0.6, cursor: 'not-allowed' }}>Subscribed</button>
+                      ) : (
+                        <button onClick={() => setShowUpgradeModal(true)} className="btn-primary" style={{ width: '100%', justifyContent: 'center', fontSize: '12px' }}>Upgrade to Pro</button>
+                      )}
+                    </div>
 
-                  {/* Enterprise plan details */}
-                  <div style={{ border: '1px solid var(--border-glass)', borderRadius: '12px', padding: '20px', background: 'rgba(255,255,255,0.01)' }}>
-                    <h4 style={{ fontSize: '15px', color: '#fff', marginBottom: '8px' }}>Enterprise AI</h4>
-                    <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#fff', marginBottom: '16px' }}>Custom <span style={{ fontSize: '12px', fontWeight: 'normal', color: 'var(--text-muted)' }}>billing</span></div>
-                    <ul style={{ paddingLeft: '16px', color: 'var(--text-muted)', fontSize: '12px', display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '20px' }}>
-                      <li>Unlimited candidate uploads & jobs</li>
-                      <li>Custom dedicated LLM integrations</li>
-                      <li>Audit history tracking exports</li>
-                      <li>SLA support & private instance hosts</li>
-                    </ul>
-                    <button onClick={() => alert("Contacting sales team...")} className="btn-secondary" style={{ width: '100%', justifyContent: 'center', fontSize: '12px' }}>Contact Sales</button>
+                    {/* Enterprise plan details */}
+                    <div style={{ border: '1px solid var(--border-glass)', borderRadius: '12px', padding: '20px', background: 'rgba(255,255,255,0.01)' }}>
+                      <h4 style={{ fontSize: '15px', color: '#fff', marginBottom: '8px' }}>Enterprise AI</h4>
+                      <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#fff', marginBottom: '16px' }}>Custom <span style={{ fontSize: '12px', fontWeight: 'normal', color: 'var(--text-muted)' }}>billing</span></div>
+                      <ul style={{ paddingLeft: '16px', color: 'var(--text-muted)', fontSize: '12px', display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '20px' }}>
+                        <li>Unlimited candidate uploads & jobs</li>
+                        <li>Custom dedicated LLM integrations</li>
+                        <li>Audit history tracking exports</li>
+                        <li>SLA support & private instance hosts</li>
+                      </ul>
+                      <button onClick={() => alert("Contacting sales team...")} className="btn-secondary" style={{ width: '100%', justifyContent: 'center', fontSize: '12px' }}>Contact Sales</button>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
           );
         })()}
+        {/* TAB 9: COMMUNITY DISCUSSION BOARD & WHISTLEBLOWER NEWS */}
+        {activeTab === 'community' && (
+          <div className="animate-fade-in" style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '24px', alignItems: 'start' }}>
+            
+            {/* Left Column: Create Post & Feed */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              
+              {/* Whistleblower Warn Banner */}
+              {communityFilter === 'whistleblower' && (
+                <div style={{ padding: '16px', background: 'rgba(239, 68, 68, 0.05)', border: '1px solid rgba(239, 68, 68, 0.25)', borderRadius: '12px', color: '#ff4444', fontSize: '13px', display: 'flex', gap: '12px', alignItems: 'center' }}>
+                  <AlertCircle size={20} style={{ flexShrink: 0 }} />
+                  <div>
+                    <strong>ATLAS Anonymous Whistleblower Safe Space.</strong> All publications here bypass user registration trails and are structurally encrypted to prevent tracking. Speak freely.
+                  </div>
+                </div>
+              )}
+
+              {/* Feed Filter controls */}
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button onClick={() => setCommunityFilter('all')} className={communityFilter === 'all' ? 'btn-primary' : 'btn-secondary'} style={{ fontSize: '12px', padding: '8px 16px' }}>All Activities</button>
+                <button onClick={() => setCommunityFilter('discussion')} className={communityFilter === 'discussion' ? 'btn-primary' : 'btn-secondary'} style={{ fontSize: '12px', padding: '8px 16px' }}>Anonymous Discussions</button>
+                <button onClick={() => setCommunityFilter('whistleblower')} className={communityFilter === 'whistleblower' ? 'btn-primary' : 'btn-secondary'} style={{ fontSize: '12px', padding: '8px 16px', color: communityFilter === 'whistleblower' ? '#fff' : '#ff4444' }}>Whistleblower News</button>
+              </div>
+
+              {/* Feed of Posts */}
+              {communityLoading ? (
+                <div className="glass-panel pulse-glow" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                  Retrieving ATLAS boards feed streams...
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  {communityPosts
+                    .filter(p => communityFilter === 'all' || p.post_type === communityFilter)
+                    .map((post) => {
+                      const isExpanded = expandedPostIds.includes(post.id);
+                      const comments = activePostComments[post.id] || [];
+                      return (
+                        <div key={post.id} className="glass-panel" style={{ padding: '20px', borderLeft: post.post_type === 'whistleblower' ? '3px solid #ff4444' : undefined }}>
+                          <div style={{ display: 'flex', justifyItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                            <span style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: post.post_type === 'whistleblower' ? '#ff4444' : 'var(--accent-cyan)' }}>
+                              {post.post_type === 'whistleblower' ? '⚠ Whistleblower News' : '💬 Anonymous Discussion'}
+                            </span>
+                            <span style={{ fontSize: '11px', color: 'var(--text-dim)' }}>
+                              {new Date(post.created_at).toLocaleString()}
+                            </span>
+                          </div>
+
+                          <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: '#fff', marginBottom: '8px' }}>
+                            {post.title}
+                          </h3>
+
+                          <p style={{ color: 'var(--text-muted)', fontSize: '13px', lineHeight: '1.5', whiteSpace: 'pre-wrap', marginBottom: '16px' }}>
+                            {post.content}
+                          </p>
+
+                          {/* Action Bar */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '20px', fontSize: '12px', color: 'var(--text-muted)', borderTop: '1px solid var(--border-glass)', paddingTop: '12px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <button onClick={() => handleVotePost(post.id, 'up')} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: '4px' }} title="Upvote">▲</button>
+                              <span style={{ fontWeight: 'bold', color: '#fff' }}>{post.votes}</span>
+                              <button onClick={() => handleVotePost(post.id, 'down')} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: '4px' }} title="Downvote">▼</button>
+                            </div>
+
+                            <button onClick={() => handleToggleComments(post.id)} style={{ background: 'none', border: 'none', color: 'var(--accent-cyan)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              {isExpanded ? 'Hide Comments' : `Show Comments (${post.comment_count})`}
+                            </button>
+
+                            <span style={{ marginLeft: 'auto', fontSize: '11px', color: 'var(--text-dim)' }}>
+                              Published by {post.is_anonymous ? 'Anonymous user' : (post.user?.email || 'System')}
+                            </span>
+                          </div>
+
+                          {/* Comments section if expanded */}
+                          {isExpanded && (
+                            <div style={{ marginTop: '20px', paddingLeft: '12px', borderLeft: '1px solid var(--border-glass)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                              
+                              {/* Submit comment field */}
+                              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                <input 
+                                  type="text" 
+                                  className="input-field" 
+                                  placeholder="Reply to this thread anonymously..." 
+                                  value={newCommentText[post.id] || ""} 
+                                  onChange={e => setNewCommentText(prev => ({ ...prev, [post.id]: e.target.value }))}
+                                  style={{ flex: 1, fontSize: '12px', padding: '8px 12px' }}
+                                />
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: 'var(--text-muted)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                                  <input 
+                                    type="checkbox" 
+                                    checked={newCommentIsAnonymous[post.id] ?? true} 
+                                    onChange={e => setNewCommentIsAnonymous(prev => ({ ...prev, [post.id]: e.target.checked }))} 
+                                  />
+                                  Anon
+                                </label>
+                                <button onClick={() => handleSubmitComment(post.id)} className="btn-primary lining-settings" style={{ fontSize: '11px', padding: '8px 12px' }}>
+                                  Reply
+                                </button>
+                              </div>
+
+                              {/* Comments lists */}
+                              {comments.map((comm) => (
+                                <div key={comm.id} style={{ background: 'rgba(255,255,255,0.01)', border: '1px solid var(--border-glass)', padding: '10px 14px', borderRadius: '8px' }}>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: 'var(--text-dim)', marginBottom: '4px' }}>
+                                    <span>{comm.is_anonymous ? 'Anonymous reply' : (comm.user?.email || 'User')}</span>
+                                    <span>{new Date(comm.created_at).toLocaleString()}</span>
+                                  </div>
+                                  <div style={{ fontSize: '12px', color: '#fff' }}>{comm.content}</div>
+                                </div>
+                              ))}
+
+                            </div>
+                          )}
+
+                        </div>
+                      );
+                    })}
+                </div>
+              )}
+            </div>
+
+            {/* Right Column: Create Post Form */}
+            <div className="glass-panel" style={{ padding: '24px', position: 'sticky', top: '100px' }}>
+              <h3 style={{ fontSize: '18px', color: '#fff', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <MessageSquare size={16} style={{ color: 'var(--accent-cyan)' }} /> Share to Board
+              </h3>
+              
+              <form onSubmit={handleCreatePost} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div>
+                  <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: '12px', marginBottom: '6px' }}>Post Type</label>
+                  <select 
+                    className="input-field" 
+                    value={newPostType} 
+                    onChange={e => setNewPostType(e.target.value)}
+                    style={{ width: '100%', padding: '10px' }}
+                  >
+                    <option value="discussion">Anonymous Discussion</option>
+                    <option value="whistleblower">Whistleblower Safe Leak</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: '12px', marginBottom: '6px' }}>Title</label>
+                  <input 
+                    type="text" 
+                    required 
+                    className="input-field" 
+                    placeholder="Brief outline or heading..." 
+                    value={newPostTitle} 
+                    onChange={e => setNewPostTitle(e.target.value)} 
+                    style={{ width: '100%' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: '12px', marginBottom: '6px' }}>Message body</label>
+                  <textarea 
+                    required 
+                    className="input-field" 
+                    placeholder="Provide details, facts, or discussions..." 
+                    value={newPostContent} 
+                    onChange={e => setNewPostContent(e.target.value)} 
+                    style={{ width: '100%', minHeight: '120px', resize: 'vertical' }}
+                  />
+                </div>
+
+                {newPostType !== 'whistleblower' && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <input 
+                      type="checkbox" 
+                      id="isAnonPost" 
+                      checked={newPostIsAnonymous} 
+                      onChange={e => setNewPostIsAnonymous(e.target.checked)} 
+                    />
+                    <label htmlFor="isAnonPost" style={{ fontSize: '12px', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                      Publish anonymously to protect identity
+                    </label>
+                  </div>
+                )}
+
+                <button type="submit" className="btn-primary lining-settings" style={{ width: '100%', justifyContent: 'center', marginTop: '8px' }}>
+                  Publish to ATLAS Board
+                </button>
+              </form>
+            </div>
+
+          </div>
+        )}
+
+        {/* TAB 10: DEVELOPER SOFTWARE & SERVICES MARKETPLACE STORE */}
+        {activeTab === 'marketplace' && (
+          <div className="animate-fade-in" style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '24px', alignItems: 'start' }}>
+            
+            {/* Left Column: Products Listing Store */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              
+              <div>
+                <h2 style={{ fontSize: '20px', color: '#fff', fontWeight: 600 }}>ATLAS Integrations & Services Marketplace</h2>
+                <p style={{ color: 'var(--text-muted)', fontSize: '13px', marginTop: '4px' }}>
+                  Acquire custom scripts, plugins, and recruiting services published by verified third-party developers.
+                </p>
+              </div>
+
+              {marketplaceLoading ? (
+                <div className="glass-panel pulse-glow" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                  Loading marketplace store modules...
+                </div>
+              ) : (
+                <div>
+                  <h3 style={{ fontSize: '16px', color: '#fff', marginBottom: '16px', fontWeight: 600 }}>Available Products</h3>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                    {marketplaceProducts.map((prod) => {
+                      const isBought = marketplacePurchases.some(p => p.product_id === prod.id);
+                      return (
+                        <div key={prod.id} className="glass-panel" style={{ padding: '20px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: '200px' }}>
+                          <div>
+                            <div style={{ display: 'flex', justifyItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                              <span style={{ fontSize: '10px', background: 'rgba(255,255,255,0.04)', padding: '3px 8px', borderRadius: '12px', color: 'var(--accent-cyan)' }}>
+                                {prod.category === 'software' ? '💾 Software integration' : '🤝 Hiring Service'}
+                              </span>
+                              <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#fff' }}>
+                                ${prod.price.toFixed(2)}
+                              </span>
+                            </div>
+
+                            <h4 style={{ fontSize: '15px', color: '#fff', fontWeight: 'bold', marginBottom: '6px' }}>
+                              {prod.name}
+                            </h4>
+
+                            <p style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.4', marginBottom: '16px' }}>
+                              {prod.description}
+                            </p>
+                          </div>
+
+                          <div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-dim)', marginBottom: '8px' }}>
+                              Publisher: {prod.author_email}
+                            </div>
+                            
+                            {isBought ? (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                <div style={{ display: 'flex', gap: '6px', fontSize: '12px', color: '#22c55e', fontWeight: 'bold', alignItems: 'center' }}>
+                                  ✓ Purchased & Unlocked
+                                </div>
+                                {prod.download_url && (
+                                  <a 
+                                    href={prod.download_url} 
+                                    target="_blank" 
+                                    rel="noreferrer" 
+                                    className="btn-primary lining-settings" 
+                                    style={{ justifyContent: 'center', fontSize: '12px', padding: '6px 12px', textDecoration: 'none' }}
+                                  >
+                                    Access / Download Resource
+                                  </a>
+                                )}
+                              </div>
+                            ) : (
+                              <button 
+                                onClick={() => handlePurchaseProduct(prod.id)}
+                                className="btn-primary" 
+                                style={{ width: '100%', justifyContent: 'center', fontSize: '12px', padding: '8px' }}
+                              >
+                                Buy & Unlock
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* My Purchased Inventory */}
+              <div>
+                <h3 style={{ fontSize: '16px', color: '#fff', marginBottom: '16px', fontWeight: 600 }}>My Purchased Inventory</h3>
+                
+                {marketplacePurchases.length === 0 ? (
+                  <div className="glass-panel" style={{ padding: '24px', textAlign: 'center', color: 'var(--text-dim)', fontSize: '13px' }}>
+                    You have not acquired any software integrations or services yet.
+                  </div>
+                ) : (
+                  <div className="glass-panel" style={{ padding: '0 20px' }}>
+                    {marketplacePurchases.map((purch, idx) => (
+                      <div key={purch.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 0', borderBottom: idx < marketplacePurchases.length - 1 ? '1px solid var(--border-glass)' : 'none' }}>
+                        <div>
+                          <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#fff' }}>
+                            {purch.product?.name || "Unknown Product"}
+                          </div>
+                          <div style={{ fontSize: '11px', color: 'var(--text-dim)', marginTop: '4px' }}>
+                            Acquired on {new Date(purch.purchased_at).toLocaleString()}
+                          </div>
+                        </div>
+
+                        {purch.product?.download_url && (
+                          <a 
+                            href={purch.product.download_url} 
+                            target="_blank" 
+                            rel="noreferrer" 
+                            className="btn-secondary" 
+                            style={{ fontSize: '11px', padding: '6px 12px', textDecoration: 'none' }}
+                          >
+                            Download Link
+                          </a>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+            </div>
+
+            {/* Right Column: Publish New Product Form */}
+            <div className="glass-panel" style={{ padding: '24px' }}>
+              <h3 style={{ fontSize: '18px', color: '#fff', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Sparkles size={16} style={{ color: 'var(--accent-cyan)' }} /> Publish to Store
+              </h3>
+              
+              <form onSubmit={handleCreateProduct} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div>
+                  <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: '12px', marginBottom: '6px' }}>Item Name / Title</label>
+                  <input 
+                    type="text" 
+                    required 
+                    className="input-field" 
+                    placeholder="e.g. ATLAS Slack Notification Plugin" 
+                    value={newProductName} 
+                    onChange={e => setNewProductName(e.target.value)} 
+                    style={{ width: '100%' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: '12px', marginBottom: '6px' }}>Description</label>
+                  <textarea 
+                    required 
+                    className="input-field" 
+                    placeholder="Detailed explanation of the utility, benefits, and support options..." 
+                    value={newProductDescription} 
+                    onChange={e => setNewProductDescription(e.target.value)} 
+                    style={{ width: '100%', minHeight: '80px', resize: 'vertical' }}
+                  />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div>
+                    <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: '12px', marginBottom: '6px' }}>Price (USD)</label>
+                    <input 
+                      type="number" 
+                      step="0.01" 
+                      required 
+                      className="input-field" 
+                      placeholder="e.g. 29.99" 
+                      value={newProductPrice} 
+                      onChange={e => setNewProductPrice(e.target.value)} 
+                      style={{ width: '100%' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: '12px', marginBottom: '6px' }}>Category</label>
+                    <select 
+                      className="input-field" 
+                      value={newProductCategory} 
+                      onChange={e => setNewProductCategory(e.target.value)}
+                      style={{ width: '100%', padding: '10px' }}
+                    >
+                      <option value="software">Software / Script</option>
+                      <option value="service">Recruiting Service</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: '12px', marginBottom: '6px' }}>Resource Download / Support URL (Optional)</label>
+                  <input 
+                    type="url" 
+                    className="input-field" 
+                    placeholder="e.g. https://github.com/my-plugin-repo" 
+                    value={newProductDownloadUrl} 
+                    onChange={e => setNewProductDownloadUrl(e.target.value)} 
+                    style={{ width: '100%' }}
+                  />
+                </div>
+
+                <button type="submit" className="btn-primary lining-settings" style={{ width: '100%', justifyContent: 'center', marginTop: '8px' }}>
+                  List Item For Sale
+                </button>
+              </form>
+            </div>
+
+          </div>
+        )}
       </main>
 
       {/* Footer */}

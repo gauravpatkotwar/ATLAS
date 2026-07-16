@@ -30,6 +30,7 @@ class CandidateResponse(BaseModel):
     github: Optional[str]
     portfolio: Optional[str]
     resume_path: Optional[str]
+    video_path: Optional[str] = None
     ai_score: float
     recruiter_rating: float
 

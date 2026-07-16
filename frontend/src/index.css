@@ -314,3 +314,23 @@ h1, h2, h3, h4, h5 {
   width: 0%;
   animation: progressLoad 2s cubic-bezier(0.65, 0.05, 0.36, 1) forwards;
 }
+
+/* Layout Density Override Classes */
+.theme-compact .glass-panel {
+  padding: 12px 16px !important;
+  margin-top: 12px !important;
+}
+
+.theme-compact .btn-primary,
+.theme-compact .btn-secondary {
+  padding: 8px 16px !important;
+}
+
+.theme-compact .input-field {
+  padding: 8px 12px !important;
+}
+
+.theme-compact table td,
+.theme-compact table th {
+  padding: 8px 12px !important;
+}

@@ -79,8 +79,17 @@ export const api = {
       return res;
     },
     
-    async me(): Promise<{ id: number; email: string; role: string; is_active: boolean }> {
+    async me(): Promise<{ id: number; email: string; role: string; is_active: boolean; video_path?: string }> {
       return apiRequest('/auth/me');
+    },
+    
+    async uploadVideo(fileBlob: Blob): Promise<{ status: string; video_path: string }> {
+      const formData = new FormData();
+      formData.append('file', fileBlob, 'video.webm');
+      return apiRequest<{ status: string; video_path: string }>('/video/users/video', {
+        method: 'POST',
+        body: formData
+      });
     },
     
     logout(): void {
@@ -139,6 +148,15 @@ export const api = {
     
     async getCallStatus(candidateId: number): Promise<any> {
       return apiRequest(`/candidates/call/status/${candidateId}`);
+    },
+    
+    async uploadVideo(candidateId: number, fileBlob: Blob): Promise<{ status: string; video_path: string }> {
+      const formData = new FormData();
+      formData.append('file', fileBlob, 'video.webm');
+      return apiRequest<{ status: string; video_path: string }>(`/video/candidates/${candidateId}/video`, {
+        method: 'POST',
+        body: formData
+      });
     }
   },
   
@@ -239,6 +257,83 @@ export const api = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ provider, reference_id: referenceId })
       });
+    }
+  },
+  
+  meet: {
+    async createRoom(): Promise<{ room_code: string }> {
+      return apiRequest<{ room_code: string }>('/meet/create', { method: 'POST' });
+    },
+    async joinRoom(roomCode: string, participantId: string, name: string): Promise<{ status: string; other_participants: any[] }> {
+      return apiRequest<{ status: string; other_participants: any[] }>(`/meet/join/${roomCode}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ participant_id: participantId, name })
+      });
+    },
+    async sendSignal(roomCode: string, senderId: string, targetId: string, type: string, data: any): Promise<{ status: string }> {
+      return apiRequest<{ status: string }>(`/meet/signal/${roomCode}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sender_id: senderId, target_id: targetId, type, data })
+      });
+    },
+    async poll(roomCode: string, participantId: string): Promise<{ signals: any[]; participants: any[] }> {
+      return apiRequest<{ signals: any[]; participants: any[] }>(`/meet/poll/${roomCode}/${participantId}`);
+    },
+    async leave(roomCode: string, participantId: string): Promise<{ status: string }> {
+      return apiRequest<{ status: string }>(`/meet/leave/${roomCode}/${participantId}`, { method: 'POST' });
+    }
+  },
+  
+  community: {
+    async listPosts(): Promise<any[]> {
+      return apiRequest<any[]>('/community/posts');
+    },
+    async createPost(title: string, content: string, isAnonymous: boolean, postType: string): Promise<any> {
+      return apiRequest<any>('/community/posts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, content, is_anonymous: isAnonymous, post_type: postType })
+      });
+    },
+    async vote(postId: number, direction: 'up' | 'down'): Promise<any> {
+      return apiRequest<any>(`/community/posts/${postId}/vote`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ direction })
+      });
+    },
+    async listComments(postId: number): Promise<any[]> {
+      return apiRequest<any[]>(`/community/posts/${postId}/comments`);
+    },
+    async createComment(postId: number, content: string, isAnonymous: boolean): Promise<any> {
+      return apiRequest<any>(`/community/posts/${postId}/comments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content, is_anonymous: isAnonymous })
+      });
+    }
+  },
+
+  marketplace: {
+    async listProducts(): Promise<any[]> {
+      return apiRequest<any[]>('/marketplace/products');
+    },
+    async createProduct(name: string, description: string, price: number, category: string, downloadUrl?: string): Promise<any> {
+      return apiRequest<any>('/marketplace/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, description, price, category, download_url: downloadUrl })
+      });
+    },
+    async purchaseProduct(productId: number): Promise<any> {
+      return apiRequest<any>(`/marketplace/products/${productId}/purchase`, {
+        method: 'POST'
+      });
+    },
+    async listPurchases(): Promise<any[]> {
+      return apiRequest<any[]>('/marketplace/purchases');
     }
   }
 };

@@ -25,6 +25,7 @@ class UserResponse(BaseModel):
     email: EmailStr
     role: str
     is_active: bool
+    video_path: Optional[str] = None
     subscription_tier: Optional[str] = "free"
     invite_code: Optional[str] = ""
 
@@ -99,6 +100,7 @@ async def get_me(
         email=current_user.email,
         role=current_user.role,
         is_active=current_user.is_active,
+        video_path=current_user.video_path,
         subscription_tier=tier,
         invite_code=code,
     )

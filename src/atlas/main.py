@@ -11,6 +11,10 @@ from atlas.api.v1.jobs import router as jobs_router
 from atlas.api.v1.search import router as search_router
 from atlas.api.v1.copilot import router as copilot_router
 from atlas.api.v1.billing import router as billing_router
+from atlas.api.v1.video import router as video_router
+from atlas.api.v1.meet import router as meet_router
+from atlas.api.v1.community import router as community_router
+from atlas.api.v1.marketplace import router as marketplace_router
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -26,7 +30,11 @@ async def lifespan(app: FastAPI):
         await conn.execute(text("ALTER TABLE tenants ADD COLUMN IF NOT EXISTS billing_customer_id VARCHAR(255) NULL"))
         await conn.execute(text("ALTER TABLE tenants ADD COLUMN IF NOT EXISTS billing_subscription_id VARCHAR(255) NULL"))
         await conn.execute(text("ALTER TABLE tenants ADD COLUMN IF NOT EXISTS billing_provider VARCHAR(255) NULL"))
+        await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS video_path VARCHAR(255) NULL"))
+        await conn.execute(text("ALTER TABLE candidates ADD COLUMN IF NOT EXISTS video_path VARCHAR(255) NULL"))
         await conn.run_sync(Base.metadata.create_all)
+        # Run column alterations after tables exist
+        await conn.execute(text("ALTER TABLE posts ADD COLUMN IF NOT EXISTS post_type VARCHAR(255) DEFAULT 'discussion' NOT NULL"))
     logger.info("Database tables verified.")
     yield
 
@@ -70,6 +78,25 @@ app.include_router(
 )
 app.include_router(
     billing_router, prefix=f"{settings.API_V1_STR}/billing", tags=["Billing"]
+)
+app.include_router(
+    video_router, prefix=f"{settings.API_V1_STR}/video", tags=["Video"]
+)
+app.include_router(
+    meet_router, prefix=f"{settings.API_V1_STR}/meet", tags=["Meetings"]
+)
+app.include_router(
+    community_router, prefix=f"{settings.API_V1_STR}/community", tags=["Community"]
+)
+app.include_router(
+    marketplace_router, prefix=f"{settings.API_V1_STR}/marketplace", tags=["Marketplace"]
+)
+
+from fastapi.staticfiles import StaticFiles
+app.mount(
+    f"{settings.API_V1_STR}/uploads",
+    StaticFiles(directory=settings.UPLOAD_DIR),
+    name="uploads"
 )
 
 
