@@ -51,6 +51,8 @@ services:
     volumes:
       - backend_uploads:/app/uploads
       - backend_vector:/app/vector
+      - ./src:/app/src
+    command: uvicorn atlas.main:app --host 0.0.0.0 --port 8000 --reload
 
   frontend:
     build:
