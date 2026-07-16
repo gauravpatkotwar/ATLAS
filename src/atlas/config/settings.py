@@ -27,16 +27,16 @@ class Settings(BaseSettings):
 
     # Models mapping
     MODEL_RESUME_EXTRACTION: str = Field(
-        default="phi4-mini", validation_alias="MODEL_RESUME_EXTRACTION"
+        default="qwen2.5:1.5b", validation_alias="MODEL_RESUME_EXTRACTION"
     )
     MODEL_RECRUITER_CHAT: str = Field(
-        default="qwen3:8b", validation_alias="MODEL_RECRUITER_CHAT"
+        default="qwen2.5:1.5b", validation_alias="MODEL_RECRUITER_CHAT"
     )
     MODEL_RECOMMENDATION_EXPLANATION: str = Field(
-        default="qwen3:8b", validation_alias="MODEL_RECOMMENDATION_EXPLANATION"
+        default="qwen2.5:1.5b", validation_alias="MODEL_RECOMMENDATION_EXPLANATION"
     )
     MODEL_RESUME_SUMMARY: str = Field(
-        default="phi4-mini", validation_alias="MODEL_RESUME_SUMMARY"
+        default="qwen2.5:1.5b", validation_alias="MODEL_RESUME_SUMMARY"
     )
     MODEL_EMBEDDINGS: str = Field(
         default="nomic-embed-text", validation_alias="MODEL_EMBEDDINGS"
