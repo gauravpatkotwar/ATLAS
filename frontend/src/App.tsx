@@ -55,8 +55,8 @@ export default function App() {
         <div className="entrance-logo">
           <TitanLogo size={150} />
         </div>
-        <div className="entrance-text">
-          Atlas Work Intelligence
+        <div className="entrance-text" style={{ textTransform: 'uppercase', letterSpacing: '0.2em' }}>
+          ATLAS
         </div>
         <div className="entrance-progress-track">
           <div className="entrance-progress-bar" />
@@ -796,8 +796,8 @@ export default function App() {
         <header className="glass-panel" style={{ borderRadius: '0', borderLeft: 'none', borderRight: 'none', borderTop: 'none', padding: '16px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <TitanLogo size={36} />
-            <h1 style={{ fontSize: '20px', fontWeight: 700, color: '#ffffff' }}>
-              Atlas Work Intelligence
+            <h1 style={{ fontSize: '20px', fontWeight: 700, color: '#ffffff', letterSpacing: '0.05em' }}>
+              ATLAS
             </h1>
           </div>
           <div>
@@ -956,7 +956,7 @@ export default function App() {
             <div style={{ display: 'inline-flex', padding: '12px', background: 'var(--accent-purple-glow)', borderRadius: '12px', marginBottom: '12px', color: 'var(--accent-purple)' }}>
               <TitanLogo size={60} className="pulse-glow" />
             </div>
-            <h2 style={{ fontSize: '24px', color: '#fff', marginBottom: '8px' }}>Atlas Work Intelligence</h2>
+            <h2 style={{ fontSize: '24px', color: '#fff', marginBottom: '8px', letterSpacing: '0.05em' }}>ATLAS</h2>
             <p style={{ color: 'var(--text-muted)', fontSize: '14px' }}>AI-Powered Applicant Tracking System</p>
           </div>
 
@@ -1183,8 +1183,8 @@ export default function App() {
       <header className="glass-panel" style={{ borderRadius: '0', borderLeft: 'none', borderRight: 'none', borderTop: 'none', padding: '16px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: '0', zIndex: 50 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <TitanLogo size={36} />
-          <h1 style={{ fontSize: '20px', fontWeight: 700, color: '#ffffff' }}>
-            Atlas Work Intelligence
+          <h1 style={{ fontSize: '20px', fontWeight: 700, color: '#ffffff', letterSpacing: '0.05em' }}>
+            ATLAS
           </h1>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
