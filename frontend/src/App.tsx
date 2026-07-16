@@ -676,7 +676,8 @@ export default function App() {
       loadJobs();
       setShowGoogleModal(false);
     } catch (err: any) {
-      alert(`Google Login failed: ${err.message}`);
+      console.error("Google login error:", err);
+      alert(`Google Login failed: ${err.message || JSON.stringify(err)}`);
     }
   };
 
