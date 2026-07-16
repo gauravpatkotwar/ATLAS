@@ -309,10 +309,24 @@ export default function App() {
     utterance.pitch = 1.0;
 
     const voices = window.speechSynthesis.getVoices();
-    const premiumVoice = voices.find(v => 
-      v.lang.startsWith('en') && 
-      (v.name.includes('Google') || v.name.includes('Natural') || v.name.includes('Premium'))
-    );
+    const sortedVoices = [...voices].sort((a, b) => {
+      const aName = a.name.toLowerCase();
+      const bName = b.name.toLowerCase();
+      
+      const score = (name: string) => {
+        if (name.includes('natural')) return 100;
+        if (name.includes('neural')) return 90;
+        if (name.includes('google')) return 80;
+        if (name.includes('samantha')) return 70;
+        if (name.includes('siri')) return 60;
+        if (name.includes('premium')) return 50;
+        return 0;
+      };
+      
+      return score(bName) - score(aName);
+    });
+
+    const premiumVoice = sortedVoices.find(v => v.lang.startsWith('en'));
     if (premiumVoice) {
       utterance.voice = premiumVoice;
     }
