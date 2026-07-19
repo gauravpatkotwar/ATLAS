@@ -1,0 +1,241 @@
+[project]
+name = "atlas-backend"
+version = "0.1.0"
+description = "ATLAS - AI-Powered Recruitment Operating System"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi>=0.110.0",
+    "uvicorn[standard]>=0.29.0",
+    "sqlalchemy[asyncio]>=2.0.30",
+    "alembic>=1.13.0",
+    "asyncpg>=0.29.0",
+    "pydantic>=2.7.0",
+    "pydantic-settings>=2.3.0",
+    "pydantic-extra-types>=2.6.0",
+    "python-jose[cryptography]>=3.3.0",
+    "passlib[bcrypt]>=1.7.4",
+    "python-multipart>=0.0.9",
+    "python-multipart>=0.0.9",
+    "redis>=5.0.0",
+    "celery>=5.3.0",
+    "httpx>=0.27.0",
+    "pydantic-extra-types>=2.6.0",
+    "email-validator>=2.1.0",
+    "python-dateutil>=2.9.0",
+    "python-slugify>=8.0.0",
+    "python-magic>=0.4.27",
+    "python-magic-bin>=0.4.27",
+    "python-docx>=1.1.0",
+    "PyPDF2>=3.0.0",
+    "openpyxl>=3.1.0",
+    "pandas>=2.2.0",
+    "numpy>=1.26.0",
+    "faiss-cpu>=1.8.0",
+    "sentence-transformers>=2.7.0",
+    "ollama>=0.2.0",
+    "openai>=1.20.0",
+    "httpx>=0.27.0",
+    "tenacity>=8.2.0",
+    "structlog>=24.1.0",
+    "python-json-logger>=2.0.0",
+    "prometheus-client>=0.19.0",
+    "opentelemetry-api>=1.21.0",
+    "opentelemetry-sdk>=1.21.0",
+    "opentelemetry-instrumentation-fastapi>=0.42b0",
+    "opentelemetry-instrumentation-sqlalchemy>=0.42b0",
+    "opentelemetry-exporter-otlp>=1.21.0",
+    "python-dotenv>=1.0.0",
+    "pydantic-extra-types>=2.6.0",
+    "cryptography>=42.0.0",
+    "bcrypt>=4.1.0",
+    "argon2-cffi>=23.1.0",
+    "slowapi>=0.1.9",
+    "limits>=3.5.0",
+    "redis>=5.0.0",
+    "celery[redis]>=5.3.0",
+    "flower>=2.0.0",
+    "apscheduler>=3.10.0",
+    "apscheduler[asyncio]>=3.10.0",
+    "aiofiles>=23.2.0",
+    "aiohttp>=3.9.0",
+    "websockets>=12.0",
+    "jinja2>=3.1.0",
+    "markdown>=3.6.0",
+    "weasyprint>=60.0",
+    "reportlab>=4.0.0",
+    "openpyxl>=3.1.0",
+    "python-docx>=1.1.0",
+    "pypdf>=4.0.0",
+    "pdfplumber>=0.11.0",
+    "spacy>=3.7.0",
+    "spacy-transformers>=1.3.0",
+    "transformers>=4.38.0",
+    "torch>=2.2.0",
+    "accelerate>=0.27.0",
+    "sentence-transformers>=2.7.0",
+    "faiss-cpu>=1.8.0",
+    "chromadb>=0.5.0",
+    "langchain>=0.1.0",
+    "langchain-core>=0.1.0",
+    "langchain-community>=0.1.0",
+    "langchain-ollama>=0.1.0",
+    "langchain-openai>=0.1.0",
+    "pydantic-ai>=0.0.1",
+    "instructor>=1.0.0",
+    "tenacity>=8.2.0",
+    "pydub>=0.25.0",
+    "ffmpeg-python>=0.2.0",
+    "whisper>=1.1.0",
+    "ffmpeg-python>=0.2.0",
+    "python-ffmpeg>=1.0.0",
+    "pydub>=0.25.0",
+    "websockets>=12.0",
+    "starlette>=0.37.0",
+    "anyio>=4.0.0",
+    "sniffio>=1.3.0",
+    "exceptiongroup>=1.2.0",
+    "typing-extensions>=4.9.0",
+    "annotated-types>=0.6.0",
+    "msgspec>=0.18.0",
+    "orjson>=3.9.0",
+    "ujson>=5.9.0",
+    "msgpack>=1.0.0",
+    "pyyaml>=6.0.0",
+    "tomli>=2.0.0",
+    "tomli-w>=1.0.0",
+    "watchdog>=4.0.0",
+    "watchfiles>=0.21.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=4.1.0",
+    "pytest-mock>=3.12.0",
+    "pytest-xdist>=3.5.0",
+    "pytest-cov>=4.1.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-mock>=3.12.0",
+    "httpx>=0.27.0",
+    "faker>=25.0.0",
+    "factory-boy>=3.3.0",
+    "pytest-factoryboy>=2.4.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=4.1.0",
+    "pytest-mock>=3.12.0",
+    "pytest-xdist>=3.5.0",
+    "ruff>=0.3.0",
+    "mypy>=1.8.0",
+    "pyright>=1.1.0",
+    "bandit>=1.7.0",
+    "safety>=2.3.0",
+    "pre-commit>=3.6.0",
+    "commitizen>=3.13.0",
+    "pre-commit-hooks>=5.0.0",
+    "black>=24.0.0",
+    "isort>=5.13.0",
+    "mypy>=1.8.0",
+    "types-requests>=2.31.0",
+    "types-python-dateutil>=2.9.0",
+    "types-pyyaml>=6.0.0",
+    "types-pyyaml>=6.0.0",
+    "types-python-dateutil>=2.9.0",
+    "types-requests>=2.31.0",
+]
+
+[build-system]
+requires = ["setuptools>=69.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short --strict-markers --strict-config"
+markers = [
+    "unit: Unit tests",
+    "integration: Integration tests",
+    "api: API tests",
+    "slow: Slow tests",
+    "ai: AI-related tests",
+]
+
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+select = [
+    "E", "F", "W", "I", "N", "UP", "B", "C4", "SIM", "T20", "PTH",
+    "RUF", "ERA", "PD", "PL", "TRY", "NPY", "TID", "QF", "RSE",
+]
+ignore = ["E501", "B008", "C901", "T201", "T203"]
+per-file-ignores = {
+    "tests/*": ["S101", "S106", "T201", "T203"],
+    "tests/**/*.py": ["S101", "S106", "T201", "T203"],
+}
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+indent-width = 4
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+implicit_reexport = true
+enable_error_code = ["ignore-without-code"]
+disable_error_code = ["attr-defined", "union-attr"]
+
+[[tool.mypy.overrides]]
+module = [
+    "tests.*",
+    "tests",
+]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short --strict-markers --strict-config"
+markers = [
+    "unit: Unit tests",
+    "integration: Integration tests",
+    "api: API tests",
+    "slow: Slow tests",
+    "ai: AI-related tests",
+]
+
+[tool.coverage.run]
+source = ["app"]
+omit = ["tests/*", "*/migrations/*", "*/alembic/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+]
+
+[tool.commitizen]
+version = "0.1.0"
+version_files = ["pyproject.toml"]
+tag_format = "v$version"
+changelog_file = "CHANGELOG.md"
