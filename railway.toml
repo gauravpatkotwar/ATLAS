@@ -1,0 +1,188 @@
+# Railway deployment config
+version: 3
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${{ secrets.DB_PASSWORD }}
+      POSTGRES_DB: atlas
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    deploy:
+      resources:
+        limits:
+          memory: 1GB
+          cpu: 500m
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis_data:/data
+    deploy:
+      resources:
+        limits:
+          memory: 512MB
+          cpu: 250m
+
+  ollama:
+    image: ollama/ollama:latest
+    environment:
+      OLLAMA_KEEP_ALIVE: 24h
+      OLLAMA_NUM_PARALLEL: 4
+    volumes:
+      - ollama_data:/root/.ollama
+    deploy:
+      resources:
+        limits:
+          memory: 8GB
+          cpu: 2000m
+
+  chromadb:
+    image: chromadb/chroma:latest
+    environment:
+      ALLOW_RESET: TRUE
+      ANONYMIZED_TELEMETRY: FALSE
+    volumes:
+      - chroma_data:/chroma/chroma
+    deploy:
+      resources:
+        limits:
+          memory: 2GB
+          cpu: 1000m
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      ENVIRONMENT: production
+      DATABASE_HOST: ${{ postgres.RAILWAY_PRIVATE_DOMAIN }}
+      DATABASE_PORT: 5432
+      DATABASE_USERNAME: postgres
+      DATABASE_PASSWORD: ${{ secrets.DB_PASSWORD }}
+      DATABASE_NAME: atlas
+      REDIS_HOST: ${{ redis.RAILWAY_PRIVATE_DOMAIN }}
+      REDIS_PORT: 6379
+      REDIS_DB: 0
+      OLLAMA_BASE_URL: http://${{ ollama.RAILWAY_PRIVATE_DOMAIN }}:11434
+      CHROMA_HOST: ${{ chromadb.RAILWAY_PRIVATE_DOMAIN }}
+      CHROMA_PORT: 8000
+      AI_DEFAULT_PROVIDER: ollama
+      AI_OLLAMA_BASE_URL: http://${{ ollama.RAILWAY_PRIVATE_DOMAIN }}:11434
+      AUTH_SECRET_KEY: ${{ secrets.AUTH_SECRET_KEY }}
+      AUTH_PRIVATE_KEY_PATH: /app/keys/private.pem
+      AUTH_PUBLIC_KEY_PATH: /app/keys/public.pem
+      CORS_ALLOW_ORIGINS: https://${{ frontend.RAILWAY_PUBLIC_DOMAIN }}
+      MONITORING_LOG_LEVEL: INFO
+      MONITORING_LOG_FORMAT: json
+    depends_on:
+      - postgres
+      - redis
+      - ollama
+      - chromadb
+    deploy:
+      resources:
+        limits:
+          memory: 2GB
+          cpu: 1000m
+      replicas: 2
+
+  celery-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: celery -A app.infrastructure.celery worker --loglevel=info --concurrency=4
+    environment:
+      ENVIRONMENT: production
+      DATABASE_HOST: ${{ postgres.RAILWAY_PRIVATE_DOMAIN }}
+      DATABASE_PORT: 5432
+      DATABASE_USERNAME: postgres
+      DATABASE_PASSWORD: ${{ secrets.DB_PASSWORD }}
+      DATABASE_NAME: atlas
+      REDIS_HOST: ${{ redis.RAILWAY_PRIVATE_DOMAIN }}
+      REDIS_PORT: 6379
+      REDIS_DB: 0
+      OLLAMA_BASE_URL: http://${{ ollama.RAILWAY_PRIVATE_DOMAIN }}:11434
+      CHROMA_HOST: ${{ chromadb.RAILWAY_PRIVATE_DOMAIN }}
+      CHROMA_PORT: 8000
+      AI_DEFAULT_PROVIDER: ollama
+      AI_OLLAMA_BASE_URL: http://${{ ollama.RAILWAY_PRIVATE_DOMAIN }}:11434
+    depends_on:
+      - postgres
+      - redis
+      - ollama
+      - chromadb
+    deploy:
+      resources:
+        limits:
+          memory: 2GB
+          cpu: 1000m
+      replicas: 2
+
+  celery-beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: celery -A app.infrastructure.celery beat --loglevel=info
+    environment:
+      ENVIRONMENT: production
+      DATABASE_HOST: ${{ postgres.RAILWAY_PRIVATE_DOMAIN }}
+      DATABASE_PORT: 5432
+      DATABASE_USERNAME: postgres
+      DATABASE_PASSWORD: ${{ secrets.DB_PASSWORD }}
+      DATABASE_NAME: atlas
+      REDIS_HOST: ${{ redis.RAILWAY_PRIVATE_DOMAIN }}
+      REDIS_PORT: 6379
+      REDIS_DB: 0
+    depends_on:
+      - postgres
+      - redis
+    deploy:
+      resources:
+        limits:
+          memory: 512MB
+          cpu: 250m
+
+  flower:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: celery -A app.infrastructure.celery flower --port=5555
+    environment:
+      CELERY_BROKER_URL: redis://${{ redis.RAILWAY_PRIVATE_DOMAIN }}:6379/0
+      CELERY_RESULT_BACKEND: redis://${{ redis.RAILWAY_PRIVATE_DOMAIN }}:6379/0
+    depends_on:
+      - redis
+      - celery-worker
+    ports:
+      - "5555:5555"
+    deploy:
+      resources:
+        limits:
+          memory: 512MB
+          cpu: 250m
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    environment:
+      VITE_API_URL: https://${{ backend.RAILWAY_PUBLIC_DOMAIN }}/api/v1
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+    deploy:
+      resources:
+        limits:
+          memory: 512MB
+          cpu: 250m
+      replicas: 2
+
+volumes:
+  postgres_data:
+  redis_data:
+  ollama_data:
+  chroma_data:

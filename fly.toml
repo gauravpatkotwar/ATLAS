@@ -1,0 +1,67 @@
+# Fly.io deployment config for ATLAS
+# Run: fly launch --config fly.toml
+
+app = "atlas-recruitment"
+primary_region = "ord"
+
+[build]
+  dockerfile = "backend/Dockerfile"
+
+[env]
+  ENVIRONMENT = "production"
+  DATABASE_HOST = "atlas-db.internal"
+  DATABASE_PORT = "5432"
+  DATABASE_USERNAME = "postgres"
+  DATABASE_NAME = "atlas"
+  REDIS_HOST = "atlas-redis.internal"
+  REDIS_PORT = "6379"
+  REDIS_DB = "0"
+  AUTH_SECRET_KEY = ""
+  AUTH_PRIVATE_KEY_PATH = "/app/keys/private.pem"
+  AUTH_PUBLIC_KEY_PATH = "/app/keys/public.pem"
+  CORS_ALLOW_ORIGINS = "https://atlas-frontend.fly.dev"
+  MONITORING_LOG_LEVEL = "INFO"
+  MONITORING_LOG_FORMAT = "json"
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 1
+
+[[services]]
+  protocol = "tcp"
+  internal_port = 5555
+  processes = ["flower"]
+  [services.ports]
+    handlers = ["tls"]
+    port = 443
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 2
+  memory_mb = 2048
+
+[processes]
+  app = "uvicorn app.main:app --host 0.0.0.0 --port 8000"
+  worker = "celery -A app.infrastructure.celery worker --loglevel=info --concurrency=4"
+  beat = "celery -A app.infrastructure.celery beat --loglevel=info"
+  flower = "celery -A app.infrastructure.celery flower --port=5555"
+
+[experimental]
+  auto_rollback = true
+
+# PostgreSQL
+[[services]]
+  name = "postgres"
+
+# Redis
+[[services]]
+  name = "redis"
+
+# Deploy commands:
+# fly postgres create --name atlas-db --region ord
+# fly redis create --name atlas-redis --region ord
+# fly secrets set DATABASE_PASSWORD=<from postgres> REDIS_PASSWORD=<from redis> AUTH_SECRET_KEY=<generate>
+# fly deploy

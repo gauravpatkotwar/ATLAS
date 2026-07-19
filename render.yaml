@@ -1,0 +1,198 @@
+# Render.com Blueprint for ATLAS
+# Connect your GitHub repo at https://dashboard.render.com/blueprints
+
+services:
+  # PostgreSQL Database
+  - type: pserv
+    name: atlas-postgres
+    plan: starter
+    ipAllowList: []
+
+  # Redis
+  - type: pserv
+    name: atlas-redis
+    plan: starter
+    ipAllowList: []
+
+  # Backend API
+  - type: web
+    name: atlas-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    buildCommand: ""
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    plan: standard
+    region: oregon
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: DATABASE_HOST
+        fromDatabase:
+          name: atlas-postgres
+          property: host
+      - key: DATABASE_PORT
+        fromDatabase:
+          name: atlas-postgres
+          property: port
+      - key: DATABASE_USERNAME
+        fromDatabase:
+          name: atlas-postgres
+          property: username
+      - key: DATABASE_PASSWORD
+        fromDatabase:
+          name: atlas-postgres
+          property: password
+      - key: DATABASE_NAME
+        fromDatabase:
+          name: atlas-postgres
+          property: database
+      - key: REDIS_HOST
+        fromDatabase:
+          name: atlas-redis
+          property: host
+      - key: REDIS_PORT
+        fromDatabase:
+          name: atlas-redis
+          property: port
+      - key: REDIS_DB
+        value: "0"
+      - key: AUTH_SECRET_KEY
+        generateValue: true
+      - key: AUTH_PRIVATE_KEY_PATH
+        value: /app/keys/private.pem
+      - key: AUTH_PUBLIC_KEY_PATH
+        value: /app/keys/public.pem
+      - key: CORS_ALLOW_ORIGINS
+        value: https://atlas-frontend.onrender.com
+      - key: MONITORING_LOG_LEVEL
+        value: INFO
+      - key: MONITORING_LOG_FORMAT
+        value: json
+    scaling:
+      minInstances: 1
+      maxInstances: 3
+
+  # Celery Worker
+  - type: worker
+    name: atlas-celery-worker
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    buildCommand: ""
+    startCommand: celery -A app.infrastructure.celery worker --loglevel=info --concurrency=4
+    plan: standard
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: DATABASE_HOST
+        fromDatabase:
+          name: atlas-postgres
+          property: host
+      - key: DATABASE_PORT
+        fromDatabase:
+          name: atlas-postgres
+          property: port
+      - key: DATABASE_USERNAME
+        fromDatabase:
+          name: atlas-postgres
+          property: username
+      - key: DATABASE_PASSWORD
+        fromDatabase:
+          name: atlas-postgres
+          property: password
+      - key: DATABASE_NAME
+        fromDatabase:
+          name: atlas-postgres
+          property: database
+      - key: REDIS_HOST
+        fromDatabase:
+          name: atlas-redis
+          property: host
+      - key: REDIS_PORT
+        fromDatabase:
+          name: atlas-redis
+          property: port
+      - key: REDIS_DB
+        value: "0"
+    scaling:
+      minInstances: 1
+      maxInstances: 3
+
+  # Celery Beat
+  - type: worker
+    name: atlas-celery-beat
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    buildCommand: ""
+    startCommand: celery -A app.infrastructure.celery beat --loglevel=info
+    plan: starter
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: DATABASE_HOST
+        fromDatabase:
+          name: atlas-postgres
+          property: host
+      - key: DATABASE_PORT
+        fromDatabase:
+          name: atlas-postgres
+          property: port
+      - key: DATABASE_USERNAME
+        fromDatabase:
+          name: atlas-postgres
+          property: username
+      - key: DATABASE_PASSWORD
+        fromDatabase:
+          name: atlas-postgres
+          property: password
+      - key: DATABASE_NAME
+        fromDatabase:
+          name: atlas-postgres
+          property: database
+      - key: REDIS_HOST
+        fromDatabase:
+          name: atlas-redis
+          property: host
+      - key: REDIS_PORT
+        fromDatabase:
+          name: atlas-redis
+          property: port
+      - key: REDIS_DB
+        value: "0"
+
+  # Flower (Celery Monitor)
+  - type: web
+    name: atlas-flower
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    buildCommand: ""
+    startCommand: celery -A app.infrastructure.celery flower --port=$PORT --basic-auth=admin:${FLOWER_PASSWORD}
+    plan: starter
+    envVars:
+      - key: CELERY_BROKER_URL
+        value: redis://${atlas-redis.HOST}:${atlas-redis.PORT}/0
+      - key: CELERY_RESULT_BACKEND
+        value: redis://${atlas-redis.HOST}:${atlas-redis.PORT}/0
+      - key: FLOWER_PASSWORD
+        generateValue: true
+
+  # Frontend
+  - type: web
+    name: atlas-frontend
+    runtime: docker
+    dockerfilePath: ./frontend/Dockerfile
+    buildCommand: ""
+    startCommand: nginx -g 'daemon off;'
+    plan: starter
+    envVars:
+      - key: VITE_API_URL
+        value: https://atlas-backend.onrender.com/api/v1
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+
+databases:
+  - name: atlas-postgres
+    plan: starter
+  - name: atlas-redis
+    plan: starter
