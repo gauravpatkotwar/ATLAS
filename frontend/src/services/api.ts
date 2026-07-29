@@ -519,6 +519,39 @@ export const api = {
     async submitProject(courseId: number, data: any): Promise<any> {
       return apiRequest(`/academy/projects/${courseId}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
     },
+  },
+
+  career: {
+    async generateResume(data: { template?: string; target_role?: string }): Promise<any> {
+      return apiRequest('/career/resume/generate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+    },
+    async scoreResume(data: { resume_text: string; job_description: string }): Promise<any> {
+      return apiRequest('/career/resume/score', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+    },
+    async matchResumeToJob(jobId: number): Promise<any> {
+      return apiRequest(`/career/resume/match-job/${jobId}`, { method: 'POST' });
+    },
+    async getSalaryInsights(data: { job_title: string; location?: string; experience_years?: number }): Promise<any> {
+      return apiRequest('/career/salary/insights', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+    },
+    async getCareerAnalytics(): Promise<any> {
+      return apiRequest('/career/career/analytics');
+    },
+    async getProfileScore(): Promise<any> {
+      return apiRequest('/career/career/profile-score');
+    },
+    async getGamificationStats(): Promise<any> {
+      return apiRequest('/career/gamification/stats');
+    },
+    async getLeaderboard(): Promise<any> {
+      return apiRequest('/career/gamification/leaderboard');
+    },
+    async submitShowcaseProject(data: any): Promise<any> {
+      return apiRequest('/career/showcase/submit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+    },
+    async listShowcaseProjects(): Promise<any> {
+      return apiRequest('/career/showcase/projects');
+    },
   }
 };
 

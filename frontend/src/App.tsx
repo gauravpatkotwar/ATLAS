@@ -3,7 +3,7 @@ import {
   Users, Briefcase, Search, MessageSquare, UploadCloud, 
   Trash2, MapPin, DollarSign, LogOut, 
   AlertCircle, Sparkles, Send, Plus, X, Award, HelpCircle, Settings, CreditCard, CheckCircle,
-  Mic, Volume2, VolumeX, Phone, PhoneOff, Video, VideoOff, MicOff, TrendingUp, Shield, Key, Activity, Share2, ShoppingBag, GraduationCap, BookOpen, Star, CheckCircle2, Lock, PlayCircle, Trophy, Zap, Target
+  Mic, Volume2, VolumeX, Phone, PhoneOff, Video, VideoOff, MicOff, TrendingUp, Shield, Key, Activity, Share2, ShoppingBag, GraduationCap, BookOpen, Star, CheckCircle2, Lock, PlayCircle, Trophy, Zap, Target, FileText, Github, ExternalLink
 } from 'lucide-react';
 import { api } from './services/api';
 
@@ -103,7 +103,7 @@ export default function App() {
   const [authError, setAuthError] = useState('');
 
   // App navigation
-  const [activeTab, setActiveTab] = useState<'candidates' | 'jobs' | 'search' | 'copilot' | 'settings' | 'my_profile' | 'jobs_board' | 'interview_prep' | 'community' | 'marketplace' | 'analytics' | 'academy'>('copilot');
+  const [activeTab, setActiveTab] = useState<'candidates' | 'jobs' | 'search' | 'copilot' | 'settings' | 'my_profile' | 'jobs_board' | 'interview_prep' | 'community' | 'marketplace' | 'analytics' | 'academy' | 'resume_builder'>('copilot');
   const [settingsSubPage, setSettingsSubPage] = useState<'appearance' | 'sso' | 'developer' | 'automations' | 'integrations'>('appearance');
 
   // ── ATLAS ACADEMY STATE ─────────────────────────────────────────────────
@@ -128,6 +128,30 @@ export default function App() {
   const [academyCourseForm, setAcademyCourseForm] = useState({ title: '', description: '', short_description: '', category: 'Programming', level: 'beginner', skills_taught: '', tags: '', is_free: true, price: 0 });
   const [academySkillGapJobTitle, setAcademySkillGapJobTitle] = useState('');
   const [academySkillGapJobSkills, setAcademySkillGapJobSkills] = useState('');
+  // ────────────────────────────────────────────────────────────────────────
+
+  // ── RESUME BUILDER STATE ──────────────────────────────────────────────────
+  const [resumeSubView, setResumeSubView] = useState<'builder' | 'score' | 'salary' | 'analytics' | 'showcase' | 'gamification'>('builder');
+  const [resumeTemplate, setResumeTemplate] = useState<'modern' | 'minimal' | 'technical'>('modern');
+  const [resumeTargetRole, setResumeTargetRole] = useState('');
+  const [resumeGenerated, setResumeGenerated] = useState<any>(null);
+  const [resumeGenerating, setResumeGenerating] = useState(false);
+  const [resumeScoreResult, setResumeScoreResult] = useState<any>(null);
+  const [resumeScoreLoading, setResumeScoreLoading] = useState(false);
+  const [resumeTextInput, setResumeTextInput] = useState('');
+  const [resumeJobDescInput, setResumeJobDescInput] = useState('');
+  const [salaryJobTitle, setSalaryJobTitle] = useState('');
+  const [salaryLocation, setSalaryLocation] = useState('Remote');
+  const [salaryExpYears, setSalaryExpYears] = useState(3);
+  const [salaryResult, setSalaryResult] = useState<any>(null);
+  const [salaryLoading, setSalaryLoading] = useState(false);
+  const [careerAnalytics, setCareerAnalytics] = useState<any>(null);
+  const [profileScore, setProfileScore] = useState<any>(null);
+  const [gamificationStats, setGamificationStats] = useState<any>(null);
+  const [leaderboard, setLeaderboard] = useState<any[]>([]);
+  const [showcaseProjects, setShowcaseProjects] = useState<any[]>([]);
+  const [showcaseForm, setShowcaseForm] = useState({ title: '', description: '', github_url: '', demo_url: '', tech_stack: '', category: 'Web Development' });
+  const [showcaseSubmitting, setShowcaseSubmitting] = useState(false);
   // ────────────────────────────────────────────────────────────────────────
 
   // SaaS Tenant state
@@ -453,6 +477,24 @@ export default function App() {
           setAcademyStats(stats);
           setAcademyInstructor(instr);
         } catch (e) { console.error('Academy load failed:', e); }
+      })();
+    }
+    if (user && activeTab === 'resume_builder') {
+      (async () => {
+        try {
+          const [analytics, pScore, gamStats, lb, showcase] = await Promise.all([
+            api.career.getCareerAnalytics(),
+            api.career.getProfileScore(),
+            api.career.getGamificationStats(),
+            api.career.getLeaderboard(),
+            api.career.listShowcaseProjects(),
+          ]);
+          setCareerAnalytics(analytics);
+          setProfileScore(pScore);
+          setGamificationStats(gamStats);
+          setLeaderboard(lb?.leaderboard || []);
+          setShowcaseProjects(showcase?.projects || []);
+        } catch (e) { console.error('Career Hub load failed:', e); }
       })();
     }
   }, [user, activeTab]);
@@ -2292,6 +2334,15 @@ export default function App() {
           title="Atlas Academy"
         >
           <GraduationCap size={18} />
+        </button>
+
+        <button 
+          onClick={() => setActiveTab('resume_builder')}
+          className={activeTab === 'resume_builder' ? 'btn-primary' : 'btn-secondary'} 
+          style={{ width: '40px', height: '40px', borderRadius: '50%', padding: 0, justifyContent: 'center', background: activeTab === 'resume_builder' ? 'linear-gradient(135deg, #10b981, #059669)' : undefined }}
+          title="Career Hub"
+        >
+          <FileText size={18} />
         </button>
 
         <button 
@@ -5019,6 +5070,707 @@ export default function App() {
                             </div>
                           </div>
                         )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* TAB: CAREER HUB */}
+        {activeTab === 'resume_builder' && (() => {
+          const handleGenerateResume = async () => {
+            setResumeGenerating(true);
+            try {
+              const res = await api.career.generateResume({ template: resumeTemplate, target_role: resumeTargetRole });
+              setResumeGenerated(res);
+              if (res.resume_text) setResumeTextInput(res.resume_text);
+            } catch(e:any){ alert(e.message); } finally { setResumeGenerating(false); }
+          };
+
+          const handleScoreResume = async () => {
+            if (!resumeTextInput || !resumeJobDescInput) return;
+            setResumeScoreLoading(true);
+            try {
+              const res = await api.career.scoreResume({ resume_text: resumeTextInput, job_description: resumeJobDescInput });
+              setResumeScoreResult(res);
+            } catch(e:any){ alert(e.message); } finally { setResumeScoreLoading(false); }
+          };
+
+          const handleSalaryLookup = async () => {
+            if (!salaryJobTitle) return;
+            setSalaryLoading(true);
+            try {
+              const res = await api.career.getSalaryInsights({ job_title: salaryJobTitle, location: salaryLocation, experience_years: salaryExpYears });
+              setSalaryResult(res);
+            } catch(e:any){ alert(e.message); } finally { setSalaryLoading(false); }
+          };
+
+          const handleSubmitShowcase = async () => {
+            if (!showcaseForm.title) return;
+            setShowcaseSubmitting(true);
+            try {
+              await api.career.submitShowcaseProject(showcaseForm);
+              alert('🚀 Project submitted!');
+              setShowcaseForm({ title: '', description: '', github_url: '', demo_url: '', tech_stack: '', category: 'Web Development' });
+              const showcase = await api.career.listShowcaseProjects();
+              setShowcaseProjects(showcase?.projects || []);
+            } catch(e:any){ alert(e.message); } finally { setShowcaseSubmitting(false); }
+          };
+
+          const scoreColor = (s: number) => s >= 75 ? '#22c55e' : s >= 50 ? '#f59e0b' : '#ef4444';
+          const verdictBg: Record<string,string> = { 'Excellent Match': '#22c55e', 'Strong Match': '#22c55e', 'Good Match': '#f59e0b', 'Partial Match': '#f59e0b', 'Weak Match': '#ef4444' };
+
+          return (
+            <div className="animate-fade-in" style={{ display:'flex', flexDirection:'column', gap:'0', minHeight:'100%' }}>
+
+              {/* ── CAREER HUB HEADER ─── */}
+              <div style={{ background:'linear-gradient(135deg, #0a1a0a 0%, #0d2818 50%, #0f3020 100%)', borderBottom:'1px solid rgba(16,185,129,0.2)', padding:'28px 32px', position:'relative', overflow:'hidden' }}>
+                <div style={{ position:'absolute', top:'-40px', right:'-40px', width:'200px', height:'200px', background:'radial-gradient(circle, rgba(16,185,129,0.12) 0%, transparent 70%)', borderRadius:'50%' }} />
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:'16px', position:'relative', zIndex:1 }}>
+                  <div>
+                    <div style={{ display:'flex', alignItems:'center', gap:'12px', marginBottom:'8px' }}>
+                      <div style={{ width:'42px', height:'42px', background:'linear-gradient(135deg, #10b981, #059669)', borderRadius:'12px', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                        <FileText size={22} color="#fff" />
+                      </div>
+                      <div>
+                        <h1 style={{ fontSize:'26px', fontWeight:800, color:'#fff', margin:0 }}>Career Hub</h1>
+                        <p style={{ color:'rgba(16,185,129,0.9)', fontSize:'13px', margin:0, fontWeight:500 }}>Build · Score · Earn · Showcase</p>
+                      </div>
+                    </div>
+                    <p style={{ color:'var(--text-muted)', fontSize:'14px', maxWidth:'500px', lineHeight:'1.5' }}>
+                      AI-powered resume builder, salary intelligence, career analytics, gamification & project showcase.
+                    </p>
+                  </div>
+                  {/* Quick stats */}
+                  <div style={{ display:'flex', gap:'14px', flexWrap:'wrap' }}>
+                    {[
+                      { label: 'XP Level', value: gamificationStats ? `Lv.${gamificationStats.level}` : '—', emoji:'⚡', color:'#f59e0b' },
+                      { label: 'Profile', value: profileScore ? `${profileScore.total_score}pts` : '—', emoji:'👤', color:'#10b981' },
+                      { label: 'Applications', value: careerAnalytics?.total_applications ?? '—', emoji:'📬', color:'#6366f1' },
+                      { label: 'Response Rate', value: careerAnalytics ? `${careerAnalytics.response_rate}%` : '—', emoji:'📈', color:'#22c55e' },
+                    ].map(s => (
+                      <div key={s.label} style={{ textAlign:'center', background:'rgba(255,255,255,0.04)', borderRadius:'12px', padding:'10px 16px', border:`1px solid ${s.color}25` }}>
+                        <div style={{ fontSize:'18px' }}>{s.emoji}</div>
+                        <div style={{ fontSize:'18px', fontWeight:800, color:s.color }}>{s.value}</div>
+                        <div style={{ fontSize:'10px', color:'var(--text-muted)', textTransform:'uppercase' }}>{s.label}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Sub-nav */}
+                <div style={{ display:'flex', gap:'6px', marginTop:'20px', flexWrap:'wrap' }}>
+                  {([
+                    { id: 'builder', label: '📄 Resume Builder' },
+                    { id: 'score', label: '🎯 ATS Score' },
+                    { id: 'salary', label: '💰 Salary Intel' },
+                    { id: 'analytics', label: '📊 Career Analytics' },
+                    { id: 'gamification', label: '🏆 Achievements' },
+                    { id: 'showcase', label: '🚀 Showcase' },
+                  ] as const).map(t => (
+                    <button key={t.id} onClick={() => setResumeSubView(t.id)}
+                      style={{ padding:'7px 16px', borderRadius:'20px', fontSize:'13px', fontWeight:600, border:'none', cursor:'pointer', transition:'all 0.2s',
+                        background: resumeSubView === t.id ? 'linear-gradient(135deg, #10b981, #059669)' : 'rgba(255,255,255,0.07)',
+                        color: resumeSubView === t.id ? '#fff' : 'var(--text-muted)' }}>
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ padding:'28px 32px', flex:1 }}>
+
+                {/* ══ RESUME BUILDER ══ */}
+                {resumeSubView === 'builder' && (
+                  <div style={{ display:'flex', flexDirection:'column', gap:'24px' }}>
+                    <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'24px' }}>
+                      {/* Left: Config */}
+                      <div style={{ display:'flex', flexDirection:'column', gap:'16px' }}>
+                        <div className="glass-panel" style={{ padding:'22px' }}>
+                          <h3 style={{ color:'#fff', fontSize:'15px', fontWeight:700, marginBottom:'16px', display:'flex', alignItems:'center', gap:'8px' }}>
+                            <FileText size={16} color="#10b981" /> Generate AI Resume
+                          </h3>
+                          <div style={{ display:'flex', flexDirection:'column', gap:'12px' }}>
+                            <div>
+                              <label style={{ fontSize:'12px', color:'var(--text-muted)', fontWeight:600, display:'block', marginBottom:'5px' }}>Template Style</label>
+                              <div style={{ display:'flex', gap:'8px' }}>
+                                {(['modern', 'minimal', 'technical'] as const).map(t => (
+                                  <button key={t} onClick={() => setResumeTemplate(t)}
+                                    style={{ flex:1, padding:'8px', borderRadius:'8px', border:`1px solid ${resumeTemplate===t?'#10b981':'rgba(255,255,255,0.1)'}`, background: resumeTemplate===t?'rgba(16,185,129,0.15)':'transparent', color: resumeTemplate===t?'#10b981':'var(--text-muted)', fontSize:'12px', cursor:'pointer', fontWeight:600, textTransform:'capitalize' }}>
+                                    {t}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                            <div>
+                              <label style={{ fontSize:'12px', color:'var(--text-muted)', fontWeight:600, display:'block', marginBottom:'5px' }}>Target Role (optional)</label>
+                              <input value={resumeTargetRole} onChange={e => setResumeTargetRole(e.target.value)}
+                                placeholder="e.g. Senior Full Stack Engineer"
+                                style={{ width:'100%', padding:'9px 13px', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'8px', color:'#fff', fontSize:'13px', boxSizing:'border-box' }} />
+                            </div>
+                            <button onClick={handleGenerateResume} disabled={resumeGenerating}
+                              style={{ padding:'11px', background:'linear-gradient(135deg,#10b981,#059669)', border:'none', borderRadius:'8px', color:'#fff', fontWeight:700, fontSize:'13px', cursor:'pointer', opacity:resumeGenerating?0.7:1, display:'flex', alignItems:'center', justifyContent:'center', gap:'8px' }}>
+                              {resumeGenerating ? <><span className="pulse-glow">⏳</span> Building Your Resume…</> : '✨ Generate AI Resume'}
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* ATS Score card after generation */}
+                        {resumeGenerated && (
+                          <div className="glass-panel" style={{ padding:'18px', border:'1px solid rgba(16,185,129,0.2)' }}>
+                            <h4 style={{ color:'#fff', fontSize:'14px', fontWeight:700, marginBottom:'12px' }}>📊 Resume Report</h4>
+                            <div style={{ display:'flex', gap:'12px', marginBottom:'12px' }}>
+                              <div style={{ flex:1, textAlign:'center', background:'rgba(16,185,129,0.08)', borderRadius:'10px', padding:'12px' }}>
+                                <div style={{ fontSize:'28px', fontWeight:900, color: scoreColor(resumeGenerated.ats_score) }}>{resumeGenerated.ats_score}</div>
+                                <div style={{ fontSize:'11px', color:'var(--text-muted)', textTransform:'uppercase' }}>ATS Score</div>
+                              </div>
+                              <div style={{ flex:1, textAlign:'center', background:'rgba(99,102,241,0.08)', borderRadius:'10px', padding:'12px' }}>
+                                <div style={{ fontSize:'28px', fontWeight:900, color:'#6366f1' }}>{resumeGenerated.word_count}</div>
+                                <div style={{ fontSize:'11px', color:'var(--text-muted)', textTransform:'uppercase' }}>Words</div>
+                              </div>
+                            </div>
+                            {resumeGenerated.tips?.map((tip: string, i: number) => (
+                              <div key={i} style={{ display:'flex', gap:'8px', marginBottom:'6px', fontSize:'12px', color:'var(--text-muted)', alignItems:'flex-start' }}>
+                                <span style={{ color:'#f59e0b', flexShrink:0 }}>💡</span>{tip}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Right: Generated Resume */}
+                      <div className="glass-panel" style={{ padding:'0', overflow:'hidden', display:'flex', flexDirection:'column' }}>
+                        <div style={{ padding:'12px 16px', borderBottom:'1px solid rgba(255,255,255,0.06)', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                          <span style={{ fontSize:'13px', color:'var(--text-muted)', fontWeight:600 }}>
+                            {resumeGenerated ? `✅ Generated (${resumeTemplate} template)` : 'Your Resume Preview'}
+                          </span>
+                          {resumeGenerated && (
+                            <button onClick={() => { navigator.clipboard.writeText(resumeGenerated.resume_text); alert('Copied to clipboard!'); }}
+                              style={{ padding:'4px 12px', background:'rgba(16,185,129,0.15)', border:'1px solid #10b981', borderRadius:'6px', color:'#10b981', fontSize:'12px', cursor:'pointer', fontWeight:600 }}>
+                              Copy
+                            </button>
+                          )}
+                        </div>
+                        <textarea value={resumeTextInput} onChange={e => setResumeTextInput(e.target.value)}
+                          placeholder="Your AI-generated resume will appear here...&#10;&#10;You can also paste your existing resume here to score it against job descriptions."
+                          style={{ flex:1, minHeight:'400px', padding:'16px', background:'transparent', border:'none', color:'#fff', fontSize:'13px', lineHeight:'1.6', resize:'none', fontFamily:'monospace', outline:'none' }} />
+                      </div>
+                    </div>
+
+                    {/* Score against JD */}
+                    <div className="glass-panel" style={{ padding:'20px' }}>
+                      <h3 style={{ color:'#fff', fontSize:'15px', fontWeight:700, marginBottom:'4px', display:'flex', alignItems:'center', gap:'8px' }}>
+                        🎯 Quick ATS Check — Score Against a Job
+                      </h3>
+                      <p style={{ color:'var(--text-muted)', fontSize:'13px', marginBottom:'14px' }}>Paste a job description below to instantly score your resume.</p>
+                      <div style={{ display:'flex', gap:'12px', alignItems:'flex-end' }}>
+                        <div style={{ flex:1 }}>
+                          <label style={{ fontSize:'12px', color:'var(--text-muted)', fontWeight:600, display:'block', marginBottom:'5px' }}>Job Description</label>
+                          <textarea value={resumeJobDescInput} onChange={e => setResumeJobDescInput(e.target.value)} rows={3}
+                            placeholder="Paste the job description here…"
+                            style={{ width:'100%', padding:'9px 13px', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'8px', color:'#fff', fontSize:'13px', resize:'vertical', boxSizing:'border-box' }} />
+                        </div>
+                        <button onClick={handleScoreResume} disabled={resumeScoreLoading}
+                          style={{ padding:'10px 20px', background:'linear-gradient(135deg,#10b981,#059669)', border:'none', borderRadius:'8px', color:'#fff', fontWeight:700, fontSize:'13px', cursor:'pointer', opacity:resumeScoreLoading?0.7:1, flexShrink:0, height:'48px' }}>
+                          {resumeScoreLoading ? '⏳' : '⚡ Score'}
+                        </button>
+                      </div>
+                      {resumeScoreResult && (
+                        <div style={{ marginTop:'16px', display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(140px,1fr))', gap:'10px' }}>
+                          {[
+                            { label:'Overall Score', value: resumeScoreResult.overall_score, color: scoreColor(resumeScoreResult.overall_score) },
+                            { label:'ATS Friendly', value: resumeScoreResult.ats_score, color: scoreColor(resumeScoreResult.ats_score) },
+                            { label:'Keyword Match', value: resumeScoreResult.keyword_match_score, color: scoreColor(resumeScoreResult.keyword_match_score) },
+                            { label:'Experience Fit', value: resumeScoreResult.experience_match, color: scoreColor(resumeScoreResult.experience_match) },
+                          ].map(m => (
+                            <div key={m.label} style={{ textAlign:'center', background:'rgba(255,255,255,0.03)', borderRadius:'10px', padding:'12px', border:`1px solid ${m.color}30` }}>
+                              <div style={{ fontSize:'26px', fontWeight:900, color:m.color }}>{m.value}%</div>
+                              <div style={{ fontSize:'11px', color:'var(--text-muted)' }}>{m.label}</div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* ══ ATS SCORE (DETAILED) ══ */}
+                {resumeSubView === 'score' && (
+                  <div style={{ display:'flex', flexDirection:'column', gap:'24px', maxWidth:'800px' }}>
+                    <div>
+                      <h2 style={{ color:'#fff', fontSize:'20px', fontWeight:800, marginBottom:'6px' }}>🎯 Detailed Resume Scorer</h2>
+                      <p style={{ color:'var(--text-muted)', fontSize:'14px' }}>Deep analysis of your resume vs any job description. Get keyword gaps, strengths, and improvements.</p>
+                    </div>
+                    <div className="glass-panel" style={{ padding:'22px', display:'flex', flexDirection:'column', gap:'14px' }}>
+                      <div>
+                        <label style={{ fontSize:'13px', color:'var(--text-muted)', fontWeight:600, display:'block', marginBottom:'6px' }}>Your Resume</label>
+                        <textarea value={resumeTextInput} onChange={e => setResumeTextInput(e.target.value)} rows={8}
+                          placeholder="Paste your resume text here…"
+                          style={{ width:'100%', padding:'10px 14px', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'10px', color:'#fff', fontSize:'13px', resize:'vertical', boxSizing:'border-box', fontFamily:'monospace', lineHeight:'1.5' }} />
+                      </div>
+                      <div>
+                        <label style={{ fontSize:'13px', color:'var(--text-muted)', fontWeight:600, display:'block', marginBottom:'6px' }}>Job Description</label>
+                        <textarea value={resumeJobDescInput} onChange={e => setResumeJobDescInput(e.target.value)} rows={5}
+                          placeholder="Paste the target job description…"
+                          style={{ width:'100%', padding:'10px 14px', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'10px', color:'#fff', fontSize:'13px', resize:'vertical', boxSizing:'border-box' }} />
+                      </div>
+                      <button onClick={handleScoreResume} disabled={resumeScoreLoading}
+                        style={{ padding:'12px', background:'linear-gradient(135deg,#10b981,#059669)', border:'none', borderRadius:'10px', color:'#fff', fontWeight:700, fontSize:'14px', cursor:'pointer', opacity:resumeScoreLoading?0.7:1, display:'flex', alignItems:'center', justifyContent:'center', gap:'8px' }}>
+                        {resumeScoreLoading ? <><span className="pulse-glow">⏳</span> Analyzing…</> : '🔬 Deep Analyze'}
+                      </button>
+                    </div>
+
+                    {resumeScoreResult && (
+                      <div style={{ display:'flex', flexDirection:'column', gap:'16px' }}>
+                        {/* Big score + verdict */}
+                        <div className="glass-panel" style={{ padding:'24px', textAlign:'center', background:`linear-gradient(135deg, ${scoreColor(resumeScoreResult.overall_score)}15, transparent)`, border:`1px solid ${scoreColor(resumeScoreResult.overall_score)}30` }}>
+                          <div style={{ fontSize:'64px', fontWeight:900, color:scoreColor(resumeScoreResult.overall_score), lineHeight:1 }}>{resumeScoreResult.overall_score}%</div>
+                          <div style={{ marginTop:'8px', display:'inline-block', padding:'4px 14px', borderRadius:'20px', fontSize:'13px', fontWeight:700, background: `${verdictBg[resumeScoreResult.verdict]||'#6366f1'}20`, color: verdictBg[resumeScoreResult.verdict]||'#6366f1', border:`1px solid ${verdictBg[resumeScoreResult.verdict]||'#6366f1'}40` }}>
+                            {resumeScoreResult.verdict}
+                          </div>
+                          <p style={{ color:'var(--text-muted)', fontSize:'14px', marginTop:'10px' }}>{resumeScoreResult.summary}</p>
+                        </div>
+                        {/* Sub-scores */}
+                        <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'12px' }}>
+                          {[
+                            { label:'ATS', value:resumeScoreResult.ats_score },
+                            { label:'Keywords', value:resumeScoreResult.keyword_match_score },
+                            { label:'Experience', value:resumeScoreResult.experience_match },
+                          ].map(m=>(
+                            <div key={m.label} className="glass-panel" style={{ padding:'14px', textAlign:'center' }}>
+                              <div style={{ height:'4px', background:'rgba(255,255,255,0.08)', borderRadius:'2px', marginBottom:'10px', overflow:'hidden' }}>
+                                <div style={{ height:'100%', width:`${m.value}%`, background:`linear-gradient(90deg,${scoreColor(m.value)},#6366f1)`, borderRadius:'2px' }} />
+                              </div>
+                              <div style={{ fontSize:'22px', fontWeight:800, color:scoreColor(m.value) }}>{m.value}%</div>
+                              <div style={{ fontSize:'11px', color:'var(--text-muted)', textTransform:'uppercase' }}>{m.label}</div>
+                            </div>
+                          ))}
+                        </div>
+                        {/* Keywords */}
+                        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'14px' }}>
+                          <div className="glass-panel" style={{ padding:'16px', border:'1px solid rgba(34,197,94,0.2)' }}>
+                            <h4 style={{ color:'#22c55e', fontSize:'13px', fontWeight:700, marginBottom:'10px' }}>✓ Matching Keywords ({resumeScoreResult.matching_keywords?.length||0})</h4>
+                            <div style={{ display:'flex', flexWrap:'wrap', gap:'6px' }}>
+                              {resumeScoreResult.matching_keywords?.map((k:string)=><span key={k} style={{ padding:'3px 9px', background:'rgba(34,197,94,0.1)', border:'1px solid rgba(34,197,94,0.25)', borderRadius:'20px', fontSize:'12px', color:'#22c55e', fontWeight:600 }}>{k}</span>)}
+                            </div>
+                          </div>
+                          <div className="glass-panel" style={{ padding:'16px', border:'1px solid rgba(239,68,68,0.2)' }}>
+                            <h4 style={{ color:'#ef4444', fontSize:'13px', fontWeight:700, marginBottom:'10px' }}>✗ Missing Keywords ({resumeScoreResult.missing_keywords?.length||0})</h4>
+                            <div style={{ display:'flex', flexWrap:'wrap', gap:'6px' }}>
+                              {resumeScoreResult.missing_keywords?.map((k:string)=><span key={k} style={{ padding:'3px 9px', background:'rgba(239,68,68,0.1)', border:'1px solid rgba(239,68,68,0.25)', borderRadius:'20px', fontSize:'12px', color:'#ef4444', fontWeight:600 }}>{k}</span>)}
+                            </div>
+                          </div>
+                        </div>
+                        {/* Strengths + Improvements */}
+                        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'14px' }}>
+                          <div className="glass-panel" style={{ padding:'16px' }}>
+                            <h4 style={{ color:'#22c55e', fontSize:'13px', fontWeight:700, marginBottom:'10px' }}>💪 Strengths</h4>
+                            {resumeScoreResult.strengths?.map((s:string,i:number)=><div key={i} style={{ display:'flex', gap:'8px', marginBottom:'6px', fontSize:'12px', color:'var(--text-muted)' }}><span style={{ color:'#22c55e' }}>→</span>{s}</div>)}
+                          </div>
+                          <div className="glass-panel" style={{ padding:'16px' }}>
+                            <h4 style={{ color:'#f59e0b', fontSize:'13px', fontWeight:700, marginBottom:'10px' }}>🔧 Improvements</h4>
+                            {resumeScoreResult.improvements?.map((s:string,i:number)=><div key={i} style={{ display:'flex', gap:'8px', marginBottom:'6px', fontSize:'12px', color:'var(--text-muted)' }}><span style={{ color:'#f59e0b' }}>→</span>{s}</div>)}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* ══ SALARY INTELLIGENCE ══ */}
+                {resumeSubView === 'salary' && (
+                  <div style={{ display:'flex', flexDirection:'column', gap:'24px', maxWidth:'800px' }}>
+                    <div>
+                      <h2 style={{ color:'#fff', fontSize:'20px', fontWeight:800, marginBottom:'6px' }}>💰 Salary Intelligence</h2>
+                      <p style={{ color:'var(--text-muted)', fontSize:'14px' }}>AI-powered market salary data. Know your worth before you negotiate.</p>
+                    </div>
+                    <div className="glass-panel" style={{ padding:'22px', display:'flex', gap:'12px', flexWrap:'wrap', alignItems:'flex-end' }}>
+                      <div style={{ flex:'1 1 200px' }}>
+                        <label style={{ fontSize:'12px', color:'var(--text-muted)', fontWeight:600, display:'block', marginBottom:'5px' }}>Job Title</label>
+                        <input value={salaryJobTitle} onChange={e=>setSalaryJobTitle(e.target.value)}
+                          placeholder="e.g. Senior Software Engineer"
+                          style={{ width:'100%', padding:'9px 13px', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'8px', color:'#fff', fontSize:'13px', boxSizing:'border-box' }} />
+                      </div>
+                      <div style={{ flex:'1 1 150px' }}>
+                        <label style={{ fontSize:'12px', color:'var(--text-muted)', fontWeight:600, display:'block', marginBottom:'5px' }}>Location</label>
+                        <input value={salaryLocation} onChange={e=>setSalaryLocation(e.target.value)}
+                          placeholder="Remote / NYC / London"
+                          style={{ width:'100%', padding:'9px 13px', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'8px', color:'#fff', fontSize:'13px', boxSizing:'border-box' }} />
+                      </div>
+                      <div style={{ flex:'0 1 120px' }}>
+                        <label style={{ fontSize:'12px', color:'var(--text-muted)', fontWeight:600, display:'block', marginBottom:'5px' }}>Experience (yrs)</label>
+                        <input type="number" min={0} max={30} value={salaryExpYears} onChange={e=>setSalaryExpYears(Number(e.target.value))}
+                          style={{ width:'100%', padding:'9px 13px', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'8px', color:'#fff', fontSize:'13px', boxSizing:'border-box' }} />
+                      </div>
+                      <button onClick={handleSalaryLookup} disabled={salaryLoading}
+                        style={{ padding:'10px 22px', background:'linear-gradient(135deg,#10b981,#059669)', border:'none', borderRadius:'8px', color:'#fff', fontWeight:700, fontSize:'13px', cursor:'pointer', opacity:salaryLoading?0.7:1, flexShrink:0, height:'40px' }}>
+                        {salaryLoading ? '⏳' : '🔍 Look Up'}
+                      </button>
+                    </div>
+
+                    {salaryResult && (
+                      <div style={{ display:'flex', flexDirection:'column', gap:'16px' }}>
+                        {/* Hero */}
+                        <div className="glass-panel" style={{ padding:'24px', background:'linear-gradient(135deg,rgba(16,185,129,0.08),rgba(5,150,105,0.04))', border:'1px solid rgba(16,185,129,0.2)' }}>
+                          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', flexWrap:'wrap', gap:'16px' }}>
+                            <div>
+                              <div style={{ fontSize:'13px', color:'#10b981', fontWeight:700, marginBottom:'4px', textTransform:'uppercase', letterSpacing:'0.5px' }}>{salaryResult.experience_band} · {salaryResult.location}</div>
+                              <h2 style={{ fontSize:'22px', fontWeight:800, color:'#fff', margin:'0 0 4px' }}>{salaryResult.role}</h2>
+                              <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
+                                <span style={{ fontSize:'32px', fontWeight:900, color:'#10b981' }}>${(salaryResult.salary_range?.median||0).toLocaleString()}</span>
+                                <span style={{ color:'var(--text-muted)', fontSize:'14px' }}>median / year</span>
+                              </div>
+                            </div>
+                            <div style={{ textAlign:'center' }}>
+                              <div style={{ fontSize:'13px', color:'var(--text-muted)', marginBottom:'4px' }}>Market Trend</div>
+                              <div style={{ fontSize:'18px', fontWeight:800, color: salaryResult.market_trend==='rising'?'#22c55e':salaryResult.market_trend==='declining'?'#ef4444':'#f59e0b' }}>
+                                {salaryResult.market_trend==='rising'?'↑':salaryResult.market_trend==='declining'?'↓':'→'} {salaryResult.trend_pct > 0 ? '+' : ''}{salaryResult.trend_pct}% YoY
+                              </div>
+                              <div style={{ fontSize:'12px', color:'var(--text-muted)' }}>Demand: {salaryResult.demand_score}/100</div>
+                            </div>
+                          </div>
+                        </div>
+                        {/* Salary bands */}
+                        <div className="glass-panel" style={{ padding:'20px' }}>
+                          <h4 style={{ color:'#fff', fontSize:'14px', fontWeight:700, marginBottom:'16px' }}>Salary Range</h4>
+                          {[
+                            { label:'25th Percentile', value: salaryResult.salary_range?.p25, pct:25 },
+                            { label:'Median (50th)', value: salaryResult.salary_range?.median, pct:50 },
+                            { label:'75th Percentile', value: salaryResult.salary_range?.p75, pct:75 },
+                            { label:'Top Earners (90th)', value: salaryResult.salary_range?.p90, pct:90 },
+                          ].map(band=>(
+                            <div key={band.label} style={{ marginBottom:'12px' }}>
+                              <div style={{ display:'flex', justifyContent:'space-between', marginBottom:'4px' }}>
+                                <span style={{ fontSize:'12px', color:'var(--text-muted)' }}>{band.label}</span>
+                                <span style={{ fontSize:'13px', color:'#fff', fontWeight:700 }}>${(band.value||0).toLocaleString()}</span>
+                              </div>
+                              <div style={{ height:'6px', background:'rgba(255,255,255,0.08)', borderRadius:'3px', overflow:'hidden' }}>
+                                <div style={{ height:'100%', width:`${band.pct}%`, background:'linear-gradient(90deg,#10b981,#059669)', borderRadius:'3px' }} />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        {/* Total comp + skills premium */}
+                        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'14px' }}>
+                          <div className="glass-panel" style={{ padding:'18px' }}>
+                            <h4 style={{ color:'#fff', fontSize:'13px', fontWeight:700, marginBottom:'12px' }}>💼 Total Compensation</h4>
+                            {[
+                              { label:'Base Salary', value:`$${(salaryResult.total_compensation?.base||0).toLocaleString()}` },
+                              { label:'Annual Bonus', value:`+${salaryResult.total_compensation?.bonus_pct||0}%` },
+                              { label:'Equity (est.)', value:`$${(salaryResult.total_compensation?.equity_usd||0).toLocaleString()}/yr` },
+                            ].map(r=>(
+                              <div key={r.label} style={{ display:'flex', justifyContent:'space-between', marginBottom:'8px' }}>
+                                <span style={{ fontSize:'12px', color:'var(--text-muted)' }}>{r.label}</span>
+                                <span style={{ fontSize:'12px', color:'#10b981', fontWeight:700 }}>{r.value}</span>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="glass-panel" style={{ padding:'18px' }}>
+                            <h4 style={{ color:'#fff', fontSize:'13px', fontWeight:700, marginBottom:'12px' }}>🔥 High-Value Skills</h4>
+                            {salaryResult.hot_skills_premium?.map((s:any)=>(
+                              <div key={s.skill} style={{ display:'flex', justifyContent:'space-between', marginBottom:'8px' }}>
+                                <span style={{ fontSize:'12px', color:'var(--text-muted)' }}>{s.skill}</span>
+                                <span style={{ fontSize:'12px', color:'#f59e0b', fontWeight:700 }}>+{s.premium_pct}% premium</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        {/* Top companies */}
+                        <div className="glass-panel" style={{ padding:'16px' }}>
+                          <h4 style={{ color:'#fff', fontSize:'13px', fontWeight:700, marginBottom:'10px' }}>🏆 Top Paying Companies</h4>
+                          <div style={{ display:'flex', gap:'8px', flexWrap:'wrap' }}>
+                            {salaryResult.top_paying_companies?.map((c:string,i:number)=>(
+                              <span key={c} style={{ padding:'5px 12px', background:`rgba(16,185,129,${0.15-i*0.02})`, border:'1px solid rgba(16,185,129,0.25)', borderRadius:'20px', fontSize:'12px', color:'#10b981', fontWeight:700 }}>
+                                {i===0?'👑':i===1?'🥈':i===2?'🥉':'🏢'} {c}
+                              </span>
+                            ))}
+                          </div>
+                          {salaryResult.insight && <p style={{ fontSize:'13px', color:'var(--text-muted)', marginTop:'12px', lineHeight:'1.5', fontStyle:'italic' }}>"{salaryResult.insight}"</p>}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* ══ CAREER ANALYTICS ══ */}
+                {resumeSubView === 'analytics' && (
+                  <div style={{ display:'flex', flexDirection:'column', gap:'24px' }}>
+                    <div>
+                      <h2 style={{ color:'#fff', fontSize:'20px', fontWeight:800, marginBottom:'6px' }}>📊 Career Analytics</h2>
+                      <p style={{ color:'var(--text-muted)', fontSize:'14px' }}>Track your job search performance and profile strength.</p>
+                    </div>
+                    {/* Application funnel */}
+                    {careerAnalytics && (
+                      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))', gap:'14px' }}>
+                        {[
+                          { label:'Applications', value:careerAnalytics.total_applications, icon:'📬', color:'#6366f1' },
+                          { label:'Response Rate', value:`${careerAnalytics.response_rate}%`, icon:'📨', color:'#10b981' },
+                          { label:'Interview Rate', value:`${careerAnalytics.interview_rate}%`, icon:'🎤', color:'#f59e0b' },
+                          { label:'Offer Rate', value:`${careerAnalytics.offer_rate}%`, icon:'🎉', color:'#22c55e' },
+                          { label:'Interview→Offer', value:`${careerAnalytics.interview_to_offer}%`, icon:'🏆', color:'#8b5cf6' },
+                          { label:'Profile Score', value:profileScore ? `${profileScore.total_score}pts` : '—', icon:'⭐', color:'#f59e0b' },
+                        ].map(s=>(
+                          <div key={s.label} className="glass-panel" style={{ padding:'16px', textAlign:'center', border:`1px solid ${s.color}25` }}>
+                            <div style={{ fontSize:'22px', marginBottom:'4px' }}>{s.icon}</div>
+                            <div style={{ fontSize:'22px', fontWeight:800, color:s.color }}>{s.value}</div>
+                            <div style={{ fontSize:'11px', color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.5px' }}>{s.label}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {/* Profile completeness */}
+                    {profileScore && (
+                      <div className="glass-panel" style={{ padding:'20px' }}>
+                        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'16px' }}>
+                          <h3 style={{ color:'#fff', fontSize:'15px', fontWeight:700 }}>👤 Profile Strength</h3>
+                          <span style={{ padding:'4px 12px', borderRadius:'20px', fontSize:'12px', fontWeight:700, background:'rgba(16,185,129,0.15)', color:'#10b981', border:'1px solid rgba(16,185,129,0.3)' }}>{profileScore.rank}</span>
+                        </div>
+                        <div style={{ height:'8px', background:'rgba(255,255,255,0.08)', borderRadius:'4px', marginBottom:'16px', overflow:'hidden' }}>
+                          <div style={{ height:'100%', width:`${profileScore.total_score}%`, background:'linear-gradient(90deg,#10b981,#059669)', borderRadius:'4px', transition:'width 0.5s' }} />
+                        </div>
+                        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))', gap:'8px' }}>
+                          {profileScore.sections?.map((s:any)=>(
+                            <div key={s.name} style={{ display:'flex', alignItems:'center', gap:'10px', padding:'8px 12px', borderRadius:'8px', background:'rgba(255,255,255,0.03)' }}>
+                              <div style={{ width:'20px', height:'20px', borderRadius:'50%', background: s.done?'rgba(34,197,94,0.2)':'rgba(239,68,68,0.15)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'11px', flexShrink:0 }}>
+                                {s.done ? '✓' : '✗'}
+                              </div>
+                              <span style={{ flex:1, fontSize:'12px', color: s.done?'#fff':'var(--text-muted)' }}>{s.name}</span>
+                              <span style={{ fontSize:'11px', color: s.done?'#22c55e':'var(--text-muted)', fontWeight:700 }}>+{s.points}pts</span>
+                            </div>
+                          ))}
+                        </div>
+                        {profileScore.next_action && (
+                          <div style={{ marginTop:'14px', padding:'12px 16px', background:'rgba(99,102,241,0.08)', borderRadius:'10px', border:'1px solid rgba(99,102,241,0.2)', fontSize:'13px', color:'#a5b4fc' }}>
+                            💡 <strong>Next:</strong> {profileScore.next_action}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {/* Recommended actions */}
+                    {careerAnalytics?.recommended_actions?.length > 0 && (
+                      <div>
+                        <h3 style={{ color:'#fff', fontSize:'15px', fontWeight:700, marginBottom:'12px' }}>🚀 Recommended Actions</h3>
+                        <div style={{ display:'flex', flexDirection:'column', gap:'10px' }}>
+                          {careerAnalytics.recommended_actions.map((a:any,i:number)=>(
+                            <div key={i} className="glass-panel" style={{ padding:'14px 16px', display:'flex', alignItems:'center', gap:'14px' }}>
+                              <span style={{ fontSize:'22px', flexShrink:0 }}>{a.icon}</span>
+                              <div style={{ flex:1 }}>
+                                <div style={{ fontSize:'14px', color:'#fff', fontWeight:600 }}>{a.action}</div>
+                              </div>
+                              <span style={{ padding:'3px 10px', borderRadius:'20px', fontSize:'11px', fontWeight:700,
+                                background: a.impact==='high'?'rgba(239,68,68,0.15)':'rgba(245,158,11,0.15)',
+                                color: a.impact==='high'?'#ef4444':'#f59e0b',
+                                border:`1px solid ${a.impact==='high'?'rgba(239,68,68,0.25)':'rgba(245,158,11,0.25)'}` }}>
+                                {a.impact} impact
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* ══ GAMIFICATION / ACHIEVEMENTS ══ */}
+                {resumeSubView === 'gamification' && (
+                  <div style={{ display:'flex', flexDirection:'column', gap:'24px' }}>
+                    <div>
+                      <h2 style={{ color:'#fff', fontSize:'20px', fontWeight:800, marginBottom:'6px' }}>🏆 Achievements & Leaderboard</h2>
+                      <p style={{ color:'var(--text-muted)', fontSize:'14px' }}>Earn XP, unlock badges, climb the leaderboard.</p>
+                    </div>
+                    {/* XP Card */}
+                    {gamificationStats && (
+                      <div className="glass-panel" style={{ padding:'24px', background:'linear-gradient(135deg,rgba(245,158,11,0.08),rgba(234,179,8,0.04))', border:'1px solid rgba(245,158,11,0.2)' }}>
+                        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:'16px', marginBottom:'16px' }}>
+                          <div>
+                            <div style={{ fontSize:'12px', color:'#f59e0b', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:'4px' }}>Your Rank</div>
+                            <div style={{ fontSize:'24px', fontWeight:800, color:'#fff' }}>{gamificationStats.rank_title}</div>
+                          </div>
+                          <div style={{ textAlign:'center' }}>
+                            <div style={{ fontSize:'48px', fontWeight:900, color:'#f59e0b', lineHeight:1 }}>Lv.{gamificationStats.level}</div>
+                            <div style={{ fontSize:'12px', color:'var(--text-muted)', marginTop:'4px' }}>{gamificationStats.xp.toLocaleString()} XP total</div>
+                          </div>
+                        </div>
+                        <div>
+                          <div style={{ display:'flex', justifyContent:'space-between', marginBottom:'6px' }}>
+                            <span style={{ fontSize:'12px', color:'var(--text-muted)' }}>Progress to Level {gamificationStats.level+1}</span>
+                            <span style={{ fontSize:'12px', color:'#f59e0b', fontWeight:700 }}>{gamificationStats.xp_to_next_level} XP to go</span>
+                          </div>
+                          <div style={{ height:'10px', background:'rgba(255,255,255,0.08)', borderRadius:'5px', overflow:'hidden' }}>
+                            <div style={{ height:'100%', width:`${gamificationStats.xp_progress_pct}%`, background:'linear-gradient(90deg,#f59e0b,#f97316)', borderRadius:'5px', transition:'width 0.5s' }} />
+                          </div>
+                        </div>
+                        {/* XP breakdown */}
+                        <div style={{ display:'flex', gap:'16px', marginTop:'16px' }}>
+                          <div style={{ textAlign:'center', flex:1, background:'rgba(255,255,255,0.04)', borderRadius:'10px', padding:'10px' }}>
+                            <div style={{ fontSize:'20px', fontWeight:800, color:'#6366f1' }}>{gamificationStats.total_courses}</div>
+                            <div style={{ fontSize:'11px', color:'var(--text-muted)' }}>Courses</div>
+                          </div>
+                          <div style={{ textAlign:'center', flex:1, background:'rgba(255,255,255,0.04)', borderRadius:'10px', padding:'10px' }}>
+                            <div style={{ fontSize:'20px', fontWeight:800, color:'#22c55e' }}>{gamificationStats.total_certificates}</div>
+                            <div style={{ fontSize:'11px', color:'var(--text-muted)' }}>Certificates</div>
+                          </div>
+                          <div style={{ textAlign:'center', flex:1, background:'rgba(255,255,255,0.04)', borderRadius:'10px', padding:'10px' }}>
+                            <div style={{ fontSize:'20px', fontWeight:800, color:'#f59e0b' }}>{gamificationStats.streak_days}</div>
+                            <div style={{ fontSize:'11px', color:'var(--text-muted)' }}>Day Streak 🔥</div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    {/* Badges */}
+                    {gamificationStats?.badges?.length > 0 && (
+                      <div>
+                        <h3 style={{ color:'#fff', fontSize:'15px', fontWeight:700, marginBottom:'12px' }}>🏅 Your Badges</h3>
+                        <div style={{ display:'flex', gap:'12px', flexWrap:'wrap' }}>
+                          {gamificationStats.badges.map((b:any)=>(
+                            <div key={b.id} className="glass-panel" style={{ padding:'16px 20px', textAlign:'center', minWidth:'110px', border:'1px solid rgba(245,158,11,0.2)' }}>
+                              <div style={{ fontSize:'32px', marginBottom:'6px' }}>{b.emoji}</div>
+                              <div style={{ fontSize:'12px', fontWeight:700, color:'#fff', marginBottom:'2px' }}>{b.name}</div>
+                              <div style={{ fontSize:'10px', color:'var(--text-muted)' }}>{b.desc}</div>
+                            </div>
+                          ))}
+                          {/* Locked preview badges */}
+                          {[
+                            { emoji:'🌍', name:'Global Top 100', desc:'Reach global leaderboard' },
+                            { emoji:'🔥', name:'7-Day Streak', desc:'Learn 7 days in a row' },
+                            { emoji:'👑', name:'Legend', desc:'Reach Level 7' },
+                          ].filter(()=>gamificationStats.badges.length < 6).map(b=>(
+                            <div key={b.name} className="glass-panel" style={{ padding:'16px 20px', textAlign:'center', minWidth:'110px', opacity:0.4, filter:'grayscale(1)', position:'relative' }}>
+                              <div style={{ fontSize:'32px', marginBottom:'6px' }}>{b.emoji}</div>
+                              <div style={{ fontSize:'12px', fontWeight:700, color:'#fff', marginBottom:'2px' }}>{b.name}</div>
+                              <div style={{ fontSize:'10px', color:'var(--text-muted)' }}>{b.desc}</div>
+                              <div style={{ position:'absolute', top:'6px', right:'6px', fontSize:'10px' }}>🔒</div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {/* Leaderboard */}
+                    <div>
+                      <h3 style={{ color:'#fff', fontSize:'15px', fontWeight:700, marginBottom:'12px' }}>🌍 Global Leaderboard</h3>
+                      {leaderboard.length === 0 ? (
+                        <div className="glass-panel" style={{ padding:'32px', textAlign:'center', color:'var(--text-muted)' }}>
+                          <Trophy size={32} style={{ opacity:0.3, marginBottom:'8px' }} />
+                          <p>Start learning to appear on the leaderboard!</p>
+                          <button onClick={()=>setActiveTab('academy')} style={{ marginTop:'12px', padding:'8px 20px', background:'linear-gradient(135deg,#6366f1,#8b5cf6)', border:'none', borderRadius:'8px', color:'#fff', fontWeight:600, cursor:'pointer', fontSize:'13px' }}>
+                            Go to Academy
+                          </button>
+                        </div>
+                      ) : (
+                        <div style={{ display:'flex', flexDirection:'column', gap:'8px' }}>
+                          {leaderboard.map((u:any)=>(
+                            <div key={u.user_id} className="glass-panel" style={{ padding:'12px 16px', display:'flex', alignItems:'center', gap:'14px', background: u.is_current_user?'rgba(245,158,11,0.08)':undefined, border: u.is_current_user?'1px solid rgba(245,158,11,0.25)':undefined }}>
+                              <div style={{ width:'30px', textAlign:'center', fontSize:'16px', fontWeight:800, color: u.rank===1?'#f59e0b':u.rank===2?'#9ca3af':u.rank===3?'#d97706':'var(--text-muted)', flexShrink:0 }}>
+                                {u.rank===1?'🥇':u.rank===2?'🥈':u.rank===3?'🥉':u.rank}
+                              </div>
+                              <div style={{ flex:1 }}>
+                                <div style={{ fontSize:'14px', fontWeight:700, color:'#fff' }}>{u.name}{u.is_current_user && <span style={{ marginLeft:'6px', fontSize:'11px', color:'#f59e0b' }}>← You</span>}</div>
+                                <div style={{ fontSize:'12px', color:'var(--text-muted)' }}>Level {u.level} · {u.certificates} certificates</div>
+                              </div>
+                              <div style={{ textAlign:'right' }}>
+                                <div style={{ fontSize:'16px', fontWeight:800, color:'#f59e0b' }}>{u.xp.toLocaleString()}</div>
+                                <div style={{ fontSize:'11px', color:'var(--text-muted)' }}>XP</div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* ══ PROJECT SHOWCASE ══ */}
+                {resumeSubView === 'showcase' && (
+                  <div style={{ display:'flex', flexDirection:'column', gap:'24px' }}>
+                    <div>
+                      <h2 style={{ color:'#fff', fontSize:'20px', fontWeight:800, marginBottom:'6px' }}>🚀 Project Showcase</h2>
+                      <p style={{ color:'var(--text-muted)', fontSize:'14px' }}>Share what you've built. Let recruiters discover your work. Get upvotes from the community.</p>
+                    </div>
+                    {/* Submit form */}
+                    <div className="glass-panel" style={{ padding:'22px' }}>
+                      <h3 style={{ color:'#fff', fontSize:'15px', fontWeight:700, marginBottom:'16px', display:'flex', alignItems:'center', gap:'8px' }}>
+                        <Plus size={16} color="#10b981" /> Submit a Project
+                      </h3>
+                      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px' }}>
+                        <div style={{ gridColumn:'1/-1' }}>
+                          <label style={{ fontSize:'12px', color:'var(--text-muted)', fontWeight:600, display:'block', marginBottom:'5px' }}>Project Title</label>
+                          <input value={showcaseForm.title} onChange={e=>setShowcaseForm(p=>({...p,title:e.target.value}))}
+                            placeholder="e.g. AI-Powered Job Matcher"
+                            style={{ width:'100%', padding:'9px 13px', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'8px', color:'#fff', fontSize:'13px', boxSizing:'border-box' }} />
+                        </div>
+                        <div style={{ gridColumn:'1/-1' }}>
+                          <label style={{ fontSize:'12px', color:'var(--text-muted)', fontWeight:600, display:'block', marginBottom:'5px' }}>Description</label>
+                          <textarea value={showcaseForm.description} onChange={e=>setShowcaseForm(p=>({...p,description:e.target.value}))} rows={2}
+                            placeholder="What does it do? What problem does it solve?"
+                            style={{ width:'100%', padding:'9px 13px', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'8px', color:'#fff', fontSize:'13px', resize:'vertical', boxSizing:'border-box' }} />
+                        </div>
+                        <div>
+                          <label style={{ fontSize:'12px', color:'var(--text-muted)', fontWeight:600, display:'block', marginBottom:'5px' }}>GitHub URL</label>
+                          <input value={showcaseForm.github_url} onChange={e=>setShowcaseForm(p=>({...p,github_url:e.target.value}))}
+                            placeholder="https://github.com/user/repo"
+                            style={{ width:'100%', padding:'9px 13px', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'8px', color:'#fff', fontSize:'13px', boxSizing:'border-box' }} />
+                        </div>
+                        <div>
+                          <label style={{ fontSize:'12px', color:'var(--text-muted)', fontWeight:600, display:'block', marginBottom:'5px' }}>Live Demo URL</label>
+                          <input value={showcaseForm.demo_url} onChange={e=>setShowcaseForm(p=>({...p,demo_url:e.target.value}))}
+                            placeholder="https://your-demo.com"
+                            style={{ width:'100%', padding:'9px 13px', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'8px', color:'#fff', fontSize:'13px', boxSizing:'border-box' }} />
+                        </div>
+                        <div>
+                          <label style={{ fontSize:'12px', color:'var(--text-muted)', fontWeight:600, display:'block', marginBottom:'5px' }}>Tech Stack (comma-separated)</label>
+                          <input value={showcaseForm.tech_stack} onChange={e=>setShowcaseForm(p=>({...p,tech_stack:e.target.value}))}
+                            placeholder="React, FastAPI, PostgreSQL, Docker"
+                            style={{ width:'100%', padding:'9px 13px', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'8px', color:'#fff', fontSize:'13px', boxSizing:'border-box' }} />
+                        </div>
+                        <div>
+                          <label style={{ fontSize:'12px', color:'var(--text-muted)', fontWeight:600, display:'block', marginBottom:'5px' }}>Category</label>
+                          <select value={showcaseForm.category} onChange={e=>setShowcaseForm(p=>({...p,category:e.target.value}))}
+                            style={{ width:'100%', padding:'9px 13px', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'8px', color:'#fff', fontSize:'13px', boxSizing:'border-box' }}>
+                            {['Web Development','Mobile','AI/ML','DevOps','Data Science','Cybersecurity','Blockchain','Hardware'].map(c=><option key={c} value={c}>{c}</option>)}
+                          </select>
+                        </div>
+                      </div>
+                      <button onClick={handleSubmitShowcase} disabled={showcaseSubmitting}
+                        style={{ marginTop:'14px', padding:'10px 24px', background:'linear-gradient(135deg,#10b981,#059669)', border:'none', borderRadius:'8px', color:'#fff', fontWeight:700, fontSize:'13px', cursor:'pointer', opacity:showcaseSubmitting?0.7:1 }}>
+                        {showcaseSubmitting ? '⏳ Submitting…' : '🚀 Submit Project'}
+                      </button>
+                    </div>
+                    {/* Projects grid */}
+                    {showcaseProjects.length === 0 ? (
+                      <div style={{ textAlign:'center', padding:'48px', color:'var(--text-muted)' }}>
+                        <ExternalLink size={40} style={{ opacity:0.3, marginBottom:'12px' }} />
+                        <p style={{ fontSize:'16px', color:'rgba(255,255,255,0.5)', marginBottom:'8px' }}>No projects showcased yet</p>
+                        <p>Be the first to share your work with the ATLAS community!</p>
+                      </div>
+                    ) : (
+                      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(300px,1fr))', gap:'16px' }}>
+                        {showcaseProjects.map((p:any,i:number)=>(
+                          <div key={i} className="glass-panel" style={{ padding:'18px', transition:'transform 0.2s' }}
+                            onMouseEnter={e=>(e.currentTarget as HTMLElement).style.transform='translateY(-3px)'}
+                            onMouseLeave={e=>(e.currentTarget as HTMLElement).style.transform=''}>
+                            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'8px' }}>
+                              <span style={{ fontSize:'11px', color:'#10b981', fontWeight:700, textTransform:'uppercase', background:'rgba(16,185,129,0.1)', padding:'2px 8px', borderRadius:'20px' }}>{p.category}</span>
+                              <div style={{ display:'flex', gap:'6px' }}>
+                                {p.github_url && <a href={p.github_url} target="_blank" rel="noopener noreferrer" style={{ color:'var(--text-muted)' }}><Github size={14} /></a>}
+                                {p.demo_url && <a href={p.demo_url} target="_blank" rel="noopener noreferrer" style={{ color:'var(--text-muted)' }}><ExternalLink size={14} /></a>}
+                              </div>
+                            </div>
+                            <h3 style={{ fontSize:'15px', fontWeight:700, color:'#fff', marginBottom:'6px' }}>{p.title}</h3>
+                            <p style={{ fontSize:'12px', color:'var(--text-muted)', lineHeight:'1.5', marginBottom:'10px' }}>{p.description}</p>
+                            {p.extracted_skills?.length > 0 && (
+                              <div style={{ display:'flex', gap:'6px', flexWrap:'wrap' }}>
+                                {p.extracted_skills.slice(0,5).map((s:string)=>(
+                                  <span key={s} style={{ padding:'2px 8px', background:'rgba(16,185,129,0.1)', border:'1px solid rgba(16,185,129,0.2)', borderRadius:'10px', fontSize:'11px', color:'#10b981', fontWeight:600 }}>{s}</span>
+                                ))}
+                              </div>
+                            )}
+                            <div style={{ marginTop:'10px', fontSize:'12px', color:'var(--text-muted)' }}>by {p.author}</div>
+                          </div>
+                        ))}
                       </div>
                     )}
                   </div>

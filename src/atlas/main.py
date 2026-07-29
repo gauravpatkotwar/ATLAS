@@ -21,6 +21,7 @@ from atlas.api.v1.automations import router as automations_router
 from atlas.api.v1.integrations import router as integrations_router
 from atlas.api.v1.analytics import router as analytics_router
 from atlas.api.v1.academy import router as academy_router
+from atlas.api.v1.career import router as career_router
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -125,6 +126,9 @@ app.include_router(
 )
 app.include_router(
     academy_router, prefix=f"{settings.API_V1_STR}/academy", tags=["Academy"]
+)
+app.include_router(
+    career_router, prefix=f"{settings.API_V1_STR}/career", tags=["Career"]
 )
 
 from fastapi.staticfiles import StaticFiles
