@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     DATABASE_URL: str = Field(
         default="sqlite+aiosqlite:///./atlas.db", validation_alias="DATABASE_URL"
     )
+    GEMINI_API_KEY: str = Field(default="", validation_alias="GEMINI_API_KEY")
 
     # AI Layer
     OLLAMA_BASE_URL: str = Field(

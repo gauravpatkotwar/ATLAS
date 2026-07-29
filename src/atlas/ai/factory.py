@@ -16,6 +16,9 @@ class AIProviderFactory:
         if provider_type not in cls._ai_cache:
             if provider_type == "ollama":
                 cls._ai_cache[provider_type] = OllamaProvider()
+            elif provider_type == "gemini":
+                from atlas.ai.gemini import GeminiProvider
+                cls._ai_cache[provider_type] = GeminiProvider()
             else:
                 raise ValueError(f"Unsupported AI provider type: {provider_type}")
         return cls._ai_cache[provider_type]
@@ -26,6 +29,9 @@ class AIProviderFactory:
         if provider_type not in cls._embed_cache:
             if provider_type == "ollama":
                 cls._embed_cache[provider_type] = OllamaProvider()
+            elif provider_type == "gemini":
+                from atlas.ai.gemini import GeminiProvider
+                cls._embed_cache[provider_type] = GeminiProvider()
             else:
                 raise ValueError(
                     f"Unsupported Embedding provider type: {provider_type}"

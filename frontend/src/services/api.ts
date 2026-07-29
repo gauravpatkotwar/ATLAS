@@ -313,6 +313,28 @@ export const api = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content, is_anonymous: isAnonymous })
       });
+    },
+    // Chat channels — stored as posts with post_type='channel'
+    async listChannels(): Promise<any[]> {
+      const all = await apiRequest<any[]>('/community/posts');
+      return (all || []).filter((p: any) => p.post_type === 'channel');
+    },
+    async createChannel(name: string, description: string): Promise<any> {
+      return apiRequest<any>('/community/posts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: name, content: description, is_anonymous: false, post_type: 'channel' })
+      });
+    },
+    async getMessages(channelId: number): Promise<any[]> {
+      return apiRequest<any[]>(`/community/posts/${channelId}/comments`);
+    },
+    async sendMessage(channelId: number, text: string, isAnonymous: boolean): Promise<any> {
+      return apiRequest<any>(`/community/posts/${channelId}/comments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: text, is_anonymous: isAnonymous })
+      });
     }
   },
 
@@ -335,5 +357,168 @@ export const api = {
     async listPurchases(): Promise<any[]> {
       return apiRequest<any[]>('/marketplace/purchases');
     }
+  },
+
+  sso: {
+    async getConfig(): Promise<any> {
+      return apiRequest<any>('/sso/config');
+    },
+    async updateConfig(idpEntityId: string, idpSsoUrl: string, x509Certificate: string): Promise<any> {
+      return apiRequest<any>('/sso/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          idp_entity_id: idpEntityId,
+          idp_sso_url: idpSsoUrl,
+          x509_certificate: x509Certificate
+        })
+      });
+    },
+    async loginMock(email: string, orgName: string): Promise<any> {
+      const res = await apiRequest<any>('/sso/login-mock', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, org_name: orgName })
+      });
+      localStorage.setItem('atlas_token', res.access_token);
+      return res;
+    }
+  },
+
+  developer: {
+    async listKeys(): Promise<any[]> {
+      return apiRequest<any[]>('/developer/keys');
+    },
+    async createKey(name: string): Promise<any> {
+      return apiRequest<any>('/developer/keys', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name })
+      });
+    },
+    async deleteKey(keyId: number): Promise<any> {
+      return apiRequest<any>(`/developer/keys/${keyId}`, {
+        method: 'DELETE'
+      });
+    },
+    async listWebhooks(): Promise<any[]> {
+      return apiRequest<any[]>('/developer/webhooks');
+    },
+    async createWebhook(url: string, secretToken: string, events: string[]): Promise<any> {
+      return apiRequest<any>('/developer/webhooks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url, secret_token: secretToken, events })
+      });
+    },
+    async deleteWebhook(webhookId: number): Promise<any> {
+      return apiRequest<any>(`/developer/webhooks/${webhookId}`, {
+        method: 'DELETE'
+      });
+    }
+  },
+
+  automations: {
+    async listWorkflows(): Promise<any[]> {
+      return apiRequest<any[]>('/automations/workflows');
+    },
+    async createWorkflow(name: string, triggerEvent: string, conditions: any, actionType: string, actionPayload: any): Promise<any> {
+      return apiRequest<any>('/automations/workflows', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name,
+          trigger_event: triggerEvent,
+          conditions,
+          action_type: actionType,
+          action_payload: actionPayload
+        })
+      });
+    },
+    async deleteWorkflow(id: number): Promise<any> {
+      return apiRequest<any>(`/automations/workflows/${id}`, {
+        method: 'DELETE'
+      });
+    },
+    async toggleWorkflow(id: number): Promise<any> {
+      return apiRequest<any>(`/automations/workflows/${id}/toggle`, {
+        method: 'POST'
+      });
+    }
+  },
+
+  integrations: {
+    async list(): Promise<any[]> {
+      return apiRequest<any[]>('/integrations');
+    },
+    async toggle(providerName: string): Promise<any> {
+      return apiRequest<any>('/integrations/toggle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider_name: providerName })
+      });
+    }
+  },
+
+  analytics: {
+    async getThroughput(): Promise<any> {
+      return apiRequest<any>('/analytics/throughput');
+    },
+    async getTimeToHire(): Promise<any> {
+      return apiRequest<any>('/analytics/time-to-hire');
+    }
+  },
+
+  academy: {
+    async getStats(): Promise<any> { return apiRequest('/academy/stats'); },
+    async listCourses(params?: { category?: string; level?: string; search?: string }): Promise<any[]> {
+      const q = new URLSearchParams(params as any).toString();
+      return apiRequest(`/academy/courses${q ? '?' + q : ''}`);
+    },
+    async getCourse(id: number): Promise<any> { return apiRequest(`/academy/courses/${id}`); },
+    async createCourse(data: any): Promise<any> {
+      return apiRequest('/academy/courses', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+    },
+    async publishCourse(id: number): Promise<any> {
+      return apiRequest(`/academy/courses/${id}/publish`, { method: 'PUT' });
+    },
+    async addModule(courseId: number, data: any): Promise<any> {
+      return apiRequest(`/academy/courses/${courseId}/modules`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+    },
+    async addLesson(moduleId: number, data: any): Promise<any> {
+      return apiRequest(`/academy/modules/${moduleId}/lessons`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+    },
+    async enroll(courseId: number): Promise<any> {
+      return apiRequest(`/academy/enroll/${courseId}`, { method: 'POST' });
+    },
+    async myEnrollments(): Promise<any[]> { return apiRequest('/academy/my-enrollments'); },
+    async updateProgress(courseId: number, lessonId: number): Promise<any> {
+      return apiRequest(`/academy/progress/${courseId}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lesson_id: lessonId }) });
+    },
+    async completeCourse(courseId: number): Promise<any> {
+      return apiRequest(`/academy/complete/${courseId}`, { method: 'POST' });
+    },
+    async myCertificates(): Promise<any[]> { return apiRequest('/academy/certificates'); },
+    async addReview(courseId: number, rating: number, body?: string): Promise<any> {
+      return apiRequest(`/academy/reviews/${courseId}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rating, body }) });
+    },
+    async applyInstructor(data: any): Promise<any> {
+      return apiRequest('/academy/instructor/apply', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+    },
+    async getInstructorProfile(): Promise<any> { return apiRequest('/academy/instructor/me'); },
+    async skillGap(data: any): Promise<any> {
+      return apiRequest('/academy/skill-gap', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+    },
+    async skillGapHistory(): Promise<any[]> { return apiRequest('/academy/skill-gap/history'); },
+    async aiMentor(question: string): Promise<any> {
+      return apiRequest('/academy/ai-mentor', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ question }) });
+    },
+    async generateRoadmap(goal: string): Promise<any> {
+      return apiRequest('/academy/roadmap', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ goal }) });
+    },
+    async submitProject(courseId: number, data: any): Promise<any> {
+      return apiRequest(`/academy/projects/${courseId}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+    },
   }
 };
+

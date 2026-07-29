@@ -15,6 +15,12 @@ from atlas.api.v1.video import router as video_router
 from atlas.api.v1.meet import router as meet_router
 from atlas.api.v1.community import router as community_router
 from atlas.api.v1.marketplace import router as marketplace_router
+from atlas.api.v1.sso import router as sso_router
+from atlas.api.v1.developer import router as developer_router
+from atlas.api.v1.automations import router as automations_router
+from atlas.api.v1.integrations import router as integrations_router
+from atlas.api.v1.analytics import router as analytics_router
+from atlas.api.v1.academy import router as academy_router
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -35,6 +41,17 @@ async def lifespan(app: FastAPI):
         await conn.run_sync(Base.metadata.create_all)
         # Run column alterations after tables exist
         await conn.execute(text("ALTER TABLE posts ADD COLUMN IF NOT EXISTS post_type VARCHAR(255) DEFAULT 'discussion' NOT NULL"))
+        # Atlas Academy migrations
+        await conn.execute(text("CREATE TABLE IF NOT EXISTS academy_instructors (id SERIAL PRIMARY KEY)"))
+        await conn.execute(text("CREATE TABLE IF NOT EXISTS academy_courses (id SERIAL PRIMARY KEY)"))
+        await conn.execute(text("CREATE TABLE IF NOT EXISTS academy_modules (id SERIAL PRIMARY KEY)"))
+        await conn.execute(text("CREATE TABLE IF NOT EXISTS academy_lessons (id SERIAL PRIMARY KEY)"))
+        await conn.execute(text("CREATE TABLE IF NOT EXISTS academy_enrollments (id SERIAL PRIMARY KEY)"))
+        await conn.execute(text("CREATE TABLE IF NOT EXISTS academy_certificates (id SERIAL PRIMARY KEY)"))
+        await conn.execute(text("CREATE TABLE IF NOT EXISTS academy_reviews (id SERIAL PRIMARY KEY)"))
+        await conn.execute(text("CREATE TABLE IF NOT EXISTS academy_projects (id SERIAL PRIMARY KEY)"))
+        await conn.execute(text("CREATE TABLE IF NOT EXISTS academy_skill_gaps (id SERIAL PRIMARY KEY)"))
+        await conn.execute(text("CREATE TABLE IF NOT EXISTS academy_learning_paths (id SERIAL PRIMARY KEY)"))
     logger.info("Database tables verified.")
     yield
 
@@ -90,6 +107,24 @@ app.include_router(
 )
 app.include_router(
     marketplace_router, prefix=f"{settings.API_V1_STR}/marketplace", tags=["Marketplace"]
+)
+app.include_router(
+    sso_router, prefix=f"{settings.API_V1_STR}/sso", tags=["SSO"]
+)
+app.include_router(
+    developer_router, prefix=f"{settings.API_V1_STR}/developer", tags=["Developer"]
+)
+app.include_router(
+    automations_router, prefix=f"{settings.API_V1_STR}/automations", tags=["Automations"]
+)
+app.include_router(
+    integrations_router, prefix=f"{settings.API_V1_STR}/integrations", tags=["Integrations"]
+)
+app.include_router(
+    analytics_router, prefix=f"{settings.API_V1_STR}/analytics", tags=["Analytics"]
+)
+app.include_router(
+    academy_router, prefix=f"{settings.API_V1_STR}/academy", tags=["Academy"]
 )
 
 from fastapi.staticfiles import StaticFiles
