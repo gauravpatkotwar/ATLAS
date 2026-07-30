@@ -361,3 +361,53 @@ h1, h2, h3, h4, h5 {
 .btn-secondary.lining-search:hover     { border-color:rgba(192,192,192,0.4); }
 .btn-secondary.lining-copilot:hover    { border-color:rgba(160,160,160,0.4); }
 .btn-secondary.lining-settings:hover   { border-color:rgba(192,192,192,0.4); }
+
+/* ========== NOVA VOICE ANIMATIONS ========== */
+
+/* Thinking dots */
+.nova-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: rgba(255,255,255,0.4);
+  display: inline-block;
+  animation: nova-bounce 1.2s ease-in-out infinite;
+}
+@keyframes nova-bounce {
+  0%, 80%, 100% { transform: scale(0.6); opacity: 0.3; }
+  40%            { transform: scale(1);   opacity: 1; }
+}
+
+/* Speaking indicator dots (gold) */
+.nova-speaking-dot {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: #c9a84c; display: inline-block;
+  animation: nova-bounce 0.9s ease-in-out infinite;
+}
+
+/* Listening pulse (green dot) */
+.nova-listening-pulse {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: #22c55e; display: inline-block;
+  animation: nova-pulse 1s ease-in-out infinite;
+}
+@keyframes nova-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50%       { transform: scale(1.5); opacity: 0.5; }
+}
+
+/* Waveform bars while listening */
+.nova-wave-bar {
+  width: 3px; height: 20px; border-radius: 2px;
+  background: linear-gradient(to top, #22c55e, #4ade80);
+  animation: nova-wave 0.8s ease-in-out infinite alternate;
+  transform-origin: bottom;
+}
+@keyframes nova-wave {
+  0%   { transform: scaleY(0.2); opacity: 0.5; }
+  100% { transform: scaleY(1.4); opacity: 1; }
+}
+
+/* Nova avatar speaking ring */
+@keyframes nova-ring {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}

@@ -500,31 +500,63 @@ export default function App() {
   }, [user, activeTab]);
 
 
+  // ── Voice: isSpeaking state ref ────────────────────────────────────────────
+  const [isSpeaking, setIsSpeaking] = React.useState(false);
+  const [voiceContinuous, setVoiceContinuous] = React.useState(false);
+  const [interimTranscript, setInterimTranscript] = React.useState('');
+  const autoSendTimerRef = React.useRef<any>(null);
+
   // Voice Assistant Speech Recognition & Synthesis Initializer
   useEffect(() => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (SpeechRecognition) {
       const rec = new SpeechRecognition();
-      rec.continuous = false;
-      rec.interimResults = false;
+      rec.continuous = true;       // keep listening while user talks
+      rec.interimResults = true;   // show live transcript
       rec.lang = 'en-US';
 
-      rec.onstart = () => {
-        setIsListening(true);
-      };
+      rec.onstart = () => setIsListening(true);
 
       rec.onresult = (event: any) => {
-        const transcript = event.results[0][0].transcript;
-        setChatQuery(transcript);
+        let interim = '';
+        let final = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const t = event.results[i][0].transcript;
+          if (event.results[i].isFinal) final += t;
+          else interim += t;
+        }
+        if (final) {
+          setChatQuery(prev => (prev + ' ' + final).trim());
+          setInterimTranscript('');
+          // Auto-send after 800ms pause
+          clearTimeout(autoSendTimerRef.current);
+          autoSendTimerRef.current = setTimeout(() => {
+            rec.stop();
+          }, 800);
+        } else {
+          setInterimTranscript(interim);
+        }
       };
 
       rec.onerror = (event: any) => {
-        console.error("Speech recognition error:", event.error);
+        console.error('Speech recognition error:', event.error);
         setIsListening(false);
+        setInterimTranscript('');
       };
 
       rec.onend = () => {
         setIsListening(false);
+        setInterimTranscript('');
+        // If we have a query, auto-submit it
+        setChatQuery(prev => {
+          if (prev.trim()) {
+            setTimeout(() => {
+              const form = document.getElementById('nova-chat-form') as HTMLFormElement;
+              if (form) form.requestSubmit();
+            }, 100);
+          }
+          return prev;
+        });
       };
 
       setRecognitionInstance(rec);
@@ -533,60 +565,90 @@ export default function App() {
 
   const handleToggleListening = () => {
     if (!recognitionInstance) {
-      alert("Speech recognition is not supported in this browser. Please use Chrome, Edge, or Safari.");
+      alert('Speech recognition is not supported in this browser. Please use Chrome or Edge.');
       return;
     }
+    // Stop Nova speaking if we press mic
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
+    setIsSpeaking(false);
     if (isListening) {
       recognitionInstance.stop();
     } else {
-      try {
-        recognitionInstance.start();
-      } catch (err) {
-        console.error(err);
-      }
+      setChatQuery('');
+      try { recognitionInstance.start(); } catch (err) { console.error(err); }
     }
   };
 
-  const speakText = (text: string) => {
-    if (!voiceEnabled || !window.speechSynthesis) return;
-
-    // Stop any ongoing speech
+  const speakText = (text: string, onDone?: () => void) => {
+    if (!voiceEnabled || !window.speechSynthesis) { onDone?.(); return; }
     window.speechSynthesis.cancel();
 
-    // Clean markdown formatting out of the text
     const cleanText = text
-      .replace(/[*#_`\[\]()\-+]/g, '') // remove formatting symbols
-      .replace(/https?:\/\/[^\s]+/g, 'link') // replace URLs with "link"
+      .replace(/#{1,6}\s/g, '')       // headings
+      .replace(/\*\*(.+?)\*\*/g, '$1') // bold
+      .replace(/\*(.+?)\*/g, '$1')     // italic
+      .replace(/`[^`]+`/g, '')         // inline code
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // links
+      .replace(/https?:\/\/[^\s]+/g, 'link')
+      .replace(/[-•*]\s/g, '')
+      .replace(/\n{2,}/g, '. ')
+      .replace(/\n/g, ' ')
       .trim();
 
+    if (!cleanText) { onDone?.(); return; }
+
     const utterance = new SpeechSynthesisUtterance(cleanText);
-    utterance.rate = 1.05;
-    utterance.pitch = 1.0;
+    utterance.rate = 1.0;
+    utterance.pitch = 1.05;
+    utterance.volume = 1.0;
 
-    const voices = window.speechSynthesis.getVoices();
-    const sortedVoices = [...voices].sort((a, b) => {
-      const aName = a.name.toLowerCase();
-      const bName = b.name.toLowerCase();
-      
-      const score = (name: string) => {
-        if (name.includes('natural')) return 100;
-        if (name.includes('neural')) return 90;
-        if (name.includes('google')) return 80;
-        if (name.includes('samantha')) return 70;
-        if (name.includes('siri')) return 60;
-        if (name.includes('premium')) return 50;
-        return 0;
-      };
-      
-      return score(bName) - score(aName);
-    });
+    // Best voice picker — prefers Apple neural/natural voices on Mac
+    const pickVoice = () => {
+      const voices = window.speechSynthesis.getVoices();
+      const priority = [
+        (v: SpeechSynthesisVoice) => v.name === 'Samantha' && v.lang === 'en-US',
+        (v: SpeechSynthesisVoice) => v.name.includes('Samantha'),
+        (v: SpeechSynthesisVoice) => v.name.toLowerCase().includes('natural') && v.lang.startsWith('en'),
+        (v: SpeechSynthesisVoice) => v.name.toLowerCase().includes('neural') && v.lang.startsWith('en'),
+        (v: SpeechSynthesisVoice) => v.name.toLowerCase().includes('google') && v.lang === 'en-US',
+        (v: SpeechSynthesisVoice) => v.name.toLowerCase().includes('google') && v.lang.startsWith('en'),
+        (v: SpeechSynthesisVoice) => v.lang === 'en-US',
+        (v: SpeechSynthesisVoice) => v.lang.startsWith('en'),
+      ];
+      for (const test of priority) {
+        const found = voices.find(test);
+        if (found) return found;
+      }
+      return null;
+    };
 
-    const premiumVoice = sortedVoices.find(v => v.lang.startsWith('en'));
-    if (premiumVoice) {
-      utterance.voice = premiumVoice;
+    const voice = pickVoice();
+    if (voice) utterance.voice = voice;
+
+    utterance.onstart = () => setIsSpeaking(true);
+    utterance.onend = () => {
+      setIsSpeaking(false);
+      onDone?.();
+      // Continuous voice mode: restart mic after Nova speaks
+      if (voiceContinuous && recognitionInstance) {
+        setTimeout(() => {
+          setChatQuery('');
+          try { recognitionInstance.start(); } catch (_) {}
+        }, 400);
+      }
+    };
+    utterance.onerror = () => { setIsSpeaking(false); onDone?.(); };
+
+    // Safari/Chrome bug: voices may not load yet
+    if (window.speechSynthesis.getVoices().length === 0) {
+      window.speechSynthesis.addEventListener('voiceschanged', () => {
+        const v = pickVoice();
+        if (v) utterance.voice = v;
+        window.speechSynthesis.speak(utterance);
+      }, { once: true });
+    } else {
+      window.speechSynthesis.speak(utterance);
     }
-
-    window.speechSynthesis.speak(utterance);
   };
 
 
@@ -3458,125 +3520,222 @@ export default function App() {
         {/* TAB 4: RECRUITER COPILOT CHAT */}
         {activeTab === 'copilot' && (
           <div className="glass-panel lining-copilot animate-fade-in" style={{ padding: '24px', display: 'flex', flexDirection: 'column', minHeight: '600px', gap: '16px' }}>
-            
-            {/* Minimalist Prompt Desk Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-glass)', paddingBottom: '12px', marginBottom: '8px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <AtlasNovaLogo size={36} />
-                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                  <span style={{ fontSize: '16px', fontWeight: 700, color: '#fff', letterSpacing: '0.05em' }}>ATLAS NOVA</span>
-                  <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>AI copilot</span>
+
+            {/* Nova Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-glass)', paddingBottom: '14px', marginBottom: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                {/* Animated Nova avatar */}
+                <div style={{ position: 'relative' }}>
+                  <div style={{
+                    position: 'absolute', inset: -4, borderRadius: '50%',
+                    background: 'conic-gradient(from 0deg, #c9a84c, #e8c97a, #c9a84c)',
+                    opacity: isSpeaking ? 1 : 0,
+                    animation: isSpeaking ? 'nova-ring 1.2s linear infinite' : 'none',
+                    transition: 'opacity 0.3s'
+                  }} />
+                  <AtlasNovaLogo size={38} />
+                </div>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '17px', fontWeight: 700, color: '#fff', letterSpacing: '0.04em' }}>Nova</span>
+                    {isSpeaking && (
+                      <span style={{ fontSize: '10px', color: '#c9a84c', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <span className="nova-speaking-dot" /><span className="nova-speaking-dot" style={{ animationDelay: '0.15s' }} /><span className="nova-speaking-dot" style={{ animationDelay: '0.3s' }} />
+                        speaking
+                      </span>
+                    )}
+                    {isListening && !isSpeaking && (
+                      <span style={{ fontSize: '10px', color: '#22c55e', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <span className="nova-listening-pulse" /> listening
+                      </span>
+                    )}
+                    {!isSpeaking && !isListening && <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>AI career companion · online</span>}
+                  </div>
+                  <div style={{ fontSize: '11px', color: 'var(--text-dim)', marginTop: '1px' }}>Powered by phi4-mini · 100% local · private</div>
                 </div>
               </div>
-              <button 
-                onClick={handleClearChatHistory} 
-                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '11px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 8px', borderRadius: '4px', transition: 'var(--transition-smooth)' }}
-                onMouseOver={e => e.currentTarget.style.color = '#fff'}
-                onMouseOut={e => e.currentTarget.style.color = 'var(--text-muted)'}
-              >
-                <Trash2 size={12} /> Clear Desk
-              </button>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                {/* Continuous voice mode toggle */}
+                <button
+                  type="button"
+                  onClick={() => setVoiceContinuous(v => !v)}
+                  title={voiceContinuous ? 'Continuous voice mode ON — click to disable' : 'Enable continuous voice conversation'}
+                  style={{ background: voiceContinuous ? 'rgba(201,168,76,0.15)' : 'none', border: `1px solid ${voiceContinuous ? '#c9a84c' : 'var(--border-glass)'}`, color: voiceContinuous ? '#c9a84c' : 'var(--text-muted)', fontSize: '10px', cursor: 'pointer', padding: '4px 10px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '5px', transition: 'all 0.2s' }}
+                >
+                  🎙️ {voiceContinuous ? 'Voice ON' : 'Voice mode'}
+                </button>
+                <button
+                  onClick={handleClearChatHistory}
+                  style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '11px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 8px', borderRadius: '4px', transition: 'var(--transition-smooth)' }}
+                  onMouseOver={e => (e.currentTarget.style.color = '#fff')}
+                  onMouseOut={e => (e.currentTarget.style.color = 'var(--text-muted)')}
+                >
+                  <Trash2 size={12} /> Clear
+                </button>
+              </div>
             </div>
 
-            {/* Chat Box */}
-            <div style={{ display: 'flex', flexDirection: 'column', flex: 1, height: '100%' }}>
-              {/* Message History logs */}
-              <div style={{ flex: 1, overflowY: 'auto', padding: '16px', background: 'rgba(0,0,0,0.1)', borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '16px', minHeight: '400px', maxHeight: '450px' }}>
-                {chatHistory.length === 0 && (
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-muted)', textAlign: 'center', padding: '48px 16px', gap: '16px', flex: 1 }}>
-                    <h2 style={{ fontSize: '20px', fontWeight: 600, color: '#fff', letterSpacing: '-0.02em' }}>
-                      {selectedMode === 'for_hire' ? 'Hello. How can Ask Nova help you today?' : 'Hello. How can Atlas Work Intelligence help build your team today?'}
-                    </h2>
-                    <p style={{ color: 'var(--text-dim)', fontSize: '13px', maxWidth: '440px', lineHeight: '1.5' }}>
-                      {selectedMode === 'for_hire' ? 
-                        'Ask questions about open job specs, see what skills you are missing, or get advice on preparing for interviews within the workspace.' :
-                        'Just tell me what candidate profile you are looking for. I will draft the ideal target resume summary and find matching talent in your database.'
-                      }
-                    </p>
-                    <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.2)', fontStyle: 'italic' }}>
-                      {selectedMode === 'for_hire' ?
-                        'Example: "What are the required skills for the Python Lead job?"' :
-                        'Example: "Find me a senior React engineer who knows Docker and AWS"'
-                      }
-                    </span>
+            {/* Chat messages */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '16px', background: 'rgba(0,0,0,0.12)', borderRadius: '14px', display: 'flex', flexDirection: 'column', gap: '18px', minHeight: '400px', maxHeight: '460px' }}>
+              {chatHistory.length === 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', textAlign: 'center', padding: '40px 16px', gap: '18px' }}>
+                  <div style={{ fontSize: '42px' }}>👋</div>
+                  <h2 style={{ fontSize: '22px', fontWeight: 700, color: '#fff', letterSpacing: '-0.02em', margin: 0 }}>
+                    {selectedMode === 'for_hire' ? "Hey! I'm Nova, your career companion." : "Hey! I'm Nova, your recruiting assistant."}
+                  </h2>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '14px', maxWidth: '420px', lineHeight: '1.6', margin: 0 }}>
+                    {selectedMode === 'for_hire'
+                      ? "Tell me about the job you're chasing — I'll help you get it. Ask about skill gaps, resume tips, interview prep, or salary negotiation."
+                      : "Tell me what kind of candidate you're looking for. I'll find matches, explain why they fit, and help you craft the perfect job description."}
+                  </p>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center', marginTop: '8px' }}>
+                    {(selectedMode === 'for_hire'
+                      ? ["What skills do I need for a senior dev role?", "How do I negotiate salary?", "Review my resume", "Prep me for a system design interview"]
+                      : ["Find a senior React engineer", "What makes a good job description?", "Compare top candidates", "Suggest interview questions for a PM role"]
+                    ).map(q => (
+                      <button key={q} type="button" onClick={() => setChatQuery(q)}
+                        style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border-glass)', color: 'var(--text-muted)', fontSize: '12px', padding: '6px 12px', borderRadius: '20px', cursor: 'pointer', transition: 'all 0.2s' }}
+                        onMouseOver={e => { e.currentTarget.style.background = 'rgba(201,168,76,0.1)'; e.currentTarget.style.color = '#c9a84c'; e.currentTarget.style.borderColor = '#c9a84c'; }}
+                        onMouseOut={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.borderColor = 'var(--border-glass)'; }}
+                      >{q}</button>
+                    ))}
                   </div>
-                )}
+                  <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.2)', margin: 0 }}>💬 Type or tap 🎙️ to speak</p>
+                </div>
+              )}
 
-                {chatHistory.map((msg, idx) => (
-                  <div 
-                    key={idx} 
-                    style={{ 
-                      alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
-                      maxWidth: '80%',
-                      background: msg.role === 'user' ? 'var(--accent-gold)' : 'rgba(255,255,255,0.04)',
-                      border: msg.role === 'user' ? 'none' : '1px solid var(--border-glass)',
-                      borderRadius: '12px',
-                      padding: '12px 16px',
-                      fontSize: '13px',
-                      lineHeight: '1.5',
-                      color: '#fff',
-                      whiteSpace: 'pre-wrap'
-                    }}
-                  >
-                    <strong>{msg.role === 'user' ? 'You' : 'Nova'}</strong>
-                    <div style={{ marginTop: '4px' }}>{msg.content}</div>
+              {chatHistory.map((msg, idx) => (
+                <div key={idx} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', flexDirection: msg.role === 'user' ? 'row-reverse' : 'row' }}>
+                  {/* Avatar */}
+                  <div style={{ flexShrink: 0, width: 32, height: 32, borderRadius: '50%', background: msg.role === 'user' ? 'linear-gradient(135deg,#c9a84c,#a07838)' : 'rgba(255,255,255,0.06)', border: '1px solid var(--border-glass)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px' }}>
+                    {msg.role === 'user' ? '👤' : <AtlasNovaLogo size={16} />}
                   </div>
+                  {/* Bubble */}
+                  <div style={{
+                    maxWidth: '78%',
+                    background: msg.role === 'user' ? 'linear-gradient(135deg, rgba(201,168,76,0.25), rgba(201,168,76,0.12))' : 'rgba(255,255,255,0.04)',
+                    border: `1px solid ${msg.role === 'user' ? 'rgba(201,168,76,0.3)' : 'var(--border-glass)'}`,
+                    borderRadius: msg.role === 'user' ? '18px 4px 18px 18px' : '4px 18px 18px 18px',
+                    padding: '12px 16px',
+                    fontSize: '13.5px',
+                    lineHeight: '1.65',
+                    color: '#fff',
+                    whiteSpace: 'pre-wrap',
+                  }}>
+                    <div style={{ fontSize: '10px', color: msg.role === 'user' ? 'rgba(201,168,76,0.7)' : 'rgba(255,255,255,0.3)', marginBottom: '5px', fontWeight: 600, letterSpacing: '0.05em' }}>
+                      {msg.role === 'user' ? 'YOU' : 'NOVA'}
+                    </div>
+                    {msg.content}
+                    {/* Replay TTS button on Nova messages */}
+                    {msg.role === 'assistant' && voiceEnabled && (
+                      <button type="button" onClick={() => speakText(msg.content)}
+                        title="Read aloud"
+                        style={{ marginTop: '8px', background: 'none', border: 'none', color: 'rgba(255,255,255,0.25)', fontSize: '11px', cursor: 'pointer', padding: '0', display: 'flex', alignItems: 'center', gap: '4px' }}
+                        onMouseOver={e => (e.currentTarget.style.color = '#c9a84c')}
+                        onMouseOut={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.25)')}
+                      >🔊 replay</button>
+                    )}
+                  </div>
+                </div>
+              ))}
+
+              {/* Thinking indicator */}
+              {chatLoading && (
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                  <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(255,255,255,0.06)', border: '1px solid var(--border-glass)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <AtlasNovaLogo size={16} />
+                  </div>
+                  <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border-glass)', borderRadius: '4px 18px 18px 18px', padding: '14px 18px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span className="nova-dot" /><span className="nova-dot" style={{ animationDelay: '0.2s' }} /><span className="nova-dot" style={{ animationDelay: '0.4s' }} />
+                    <span style={{ fontSize: '12px', color: 'var(--text-muted)', marginLeft: '6px' }}>Nova is thinking...</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Live interim transcript */}
+              {isListening && interimTranscript && (
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <div style={{ background: 'rgba(201,168,76,0.08)', border: '1px dashed rgba(201,168,76,0.3)', borderRadius: '18px 4px 18px 18px', padding: '10px 16px', fontSize: '13px', color: 'rgba(255,255,255,0.5)', fontStyle: 'italic', maxWidth: '78%' }}>
+                    {interimTranscript}...
+                  </div>
+                </div>
+              )}
+
+              <div ref={chatEndRef} />
+            </div>
+
+            {/* Waveform visualizer while listening */}
+            {isListening && (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', height: '32px' }}>
+                {[...Array(12)].map((_, i) => (
+                  <div key={i} className="nova-wave-bar" style={{ animationDelay: `${i * 0.08}s` }} />
                 ))}
-                
-                {chatLoading && (
-                  <div style={{ alignSelf: 'flex-start', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-glass)', borderRadius: '12px', padding: '12px 16px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <AtlasNovaLogo size={14} />
-                    <span style={{ color: 'var(--text-muted)' }}>Nova is thinking...</span>
-                  </div>
-                )}
-                <div ref={chatEndRef} />
+                <span style={{ fontSize: '12px', color: '#22c55e', marginLeft: '10px' }}>Listening — speak now</span>
               </div>
+            )}
 
-              {/* Chat Input form */}
-              <form onSubmit={handleSendChatMessage} style={{ display: 'flex', gap: '8px', marginTop: '16px', alignItems: 'center' }}>
-                <input 
-                  type="text" 
-                  required 
-                  className="input-field lining-copilot" 
-                  placeholder={isListening ? "Listening... Speak clearly..." : "Ask a question about candidates or jobs..."} 
+            {/* Input row */}
+            <form id="nova-chat-form" onSubmit={handleSendChatMessage} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <div style={{ flex: 1, position: 'relative' }}>
+                <input
+                  type="text"
+                  className="input-field lining-copilot"
+                  placeholder={isListening ? '🎙️ Listening... speak now' : isSpeaking ? '🔊 Nova is speaking...' : 'Message Nova — or click 🎙️ to speak'}
                   value={chatQuery}
                   onChange={e => setChatQuery(e.target.value)}
-                  style={{ flex: 1 }}
+                  onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendChatMessage(e as any); } }}
+                  disabled={chatLoading}
+                  style={{ width: '100%', paddingRight: chatQuery ? '40px' : '12px' }}
                 />
-                
-                {/* Voice Input Mic Button */}
-                <button 
-                  type="button"
-                  onClick={handleToggleListening}
-                  className={isListening ? "btn-primary lining-copilot pulse-glow" : "btn-secondary lining-copilot"}
-                  style={{ padding: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                  title="Speak to Assistant"
-                >
-                  <Mic size={16} style={{ color: isListening ? '#808080' : 'inherit' }} />
-                </button>
+                {chatQuery && (
+                  <button type="button" onClick={() => setChatQuery('')}
+                    style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '16px', lineHeight: 1 }}
+                  >×</button>
+                )}
+              </div>
 
-                {/* Voice Output Speaker Toggle Button */}
-                <button 
-                  type="button"
-                  onClick={() => {
-                    const nextVal = !voiceEnabled;
-                    setVoiceEnabled(nextVal);
-                    if (!nextVal && window.speechSynthesis) {
-                      window.speechSynthesis.cancel();
-                    }
-                  }}
-                  className={voiceEnabled ? "btn-primary lining-copilot" : "btn-secondary lining-copilot"}
-                  style={{ padding: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                  title="Toggle Read Aloud"
-                >
-                  {voiceEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
-</button>
+              {/* Mic */}
+              <button type="button" onClick={handleToggleListening}
+                title={isListening ? 'Stop listening' : 'Speak to Nova'}
+                style={{
+                  padding: '10px 12px', borderRadius: '10px', border: 'none', cursor: 'pointer',
+                  background: isListening ? 'rgba(239,68,68,0.2)' : 'rgba(255,255,255,0.06)',
+                  color: isListening ? '#ef4444' : 'var(--text-muted)',
+                  display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px',
+                  transition: 'all 0.2s',
+                  boxShadow: isListening ? '0 0 12px rgba(239,68,68,0.3)' : 'none'
+                }}
+              >
+                <Mic size={15} />
+              </button>
 
-                <button type="submit" disabled={chatLoading} className="btn-primary lining-copilot" style={{ padding: '10px 16px' }}>
-                  <Send size={16} />
-                </button>
-              </form>
-            </div>
+              {/* Speaker — stop or toggle */}
+              <button type="button"
+                onClick={() => {
+                  if (isSpeaking) { window.speechSynthesis?.cancel(); setIsSpeaking(false); }
+                  else { setVoiceEnabled(v => { const n = !v; if (!n) window.speechSynthesis?.cancel(); return n; }); }
+                }}
+                title={isSpeaking ? 'Stop Nova speaking' : voiceEnabled ? 'Voice output ON — click to mute' : 'Voice output OFF — click to enable'}
+                style={{
+                  padding: '10px 12px', borderRadius: '10px', border: 'none', cursor: 'pointer',
+                  background: isSpeaking ? 'rgba(201,168,76,0.2)' : voiceEnabled ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.03)',
+                  color: isSpeaking ? '#c9a84c' : voiceEnabled ? 'var(--text-muted)' : 'rgba(255,255,255,0.2)',
+                  display: 'flex', alignItems: 'center', fontSize: '12px',
+                  transition: 'all 0.2s',
+                  boxShadow: isSpeaking ? '0 0 12px rgba(201,168,76,0.25)' : 'none'
+                }}
+              >
+                {isSpeaking ? <VolumeX size={15} /> : voiceEnabled ? <Volume2 size={15} /> : <VolumeX size={15} />}
+              </button>
+
+              {/* Send */}
+              <button type="submit" disabled={chatLoading || !chatQuery.trim()}
+                className="btn-primary lining-copilot"
+                style={{ padding: '10px 18px', display: 'flex', alignItems: 'center', gap: '6px', opacity: (!chatQuery.trim() || chatLoading) ? 0.5 : 1 }}
+              >
+                <Send size={15} />
+              </button>
+            </form>
           </div>
         )}
         {/* TAB 5: WORKSPACE SETTINGS & SAAS SUBSCRIPTION */}
