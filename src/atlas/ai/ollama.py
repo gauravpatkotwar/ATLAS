@@ -7,14 +7,22 @@ from atlas.ai.base import AIProvider, EmbeddingProvider
 
 logger = logging.getLogger(__name__)
 
+ATLAS_SYSTEM_PROMPT = (
+    "You are Nova, ATLAS's intelligent AI assistant — part of the world's most advanced "
+    "AI-powered talent ecosystem. You help recruiters find top candidates, help job seekers "
+    "identify skill gaps and career paths, generate resumes, analyze salaries, and provide "
+    "personalised career coaching. You are warm, professional, encouraging, and always give "
+    "specific, actionable advice. Never say you cannot help — always try your best."
+)
+
 
 class OllamaProvider(AIProvider, EmbeddingProvider):
     """Implementation of AI and Embedding Providers using Ollama HTTP endpoints."""
 
     def __init__(self, base_url: Optional[str] = None):
         self.base_url = base_url or settings.OLLAMA_BASE_URL
-        # Singleton client is configured; timeout accommodates larger model processing times
-        self.client = httpx.AsyncClient(base_url=self.base_url, timeout=60.0)
+        # Generous timeout for larger phi4-mini model first-token latency
+        self.client = httpx.AsyncClient(base_url=self.base_url, timeout=120.0)
 
     async def _post(self, path: str, json_data: dict) -> dict:
         try:
@@ -24,6 +32,27 @@ class OllamaProvider(AIProvider, EmbeddingProvider):
         except Exception as e:
             logger.error(f"Ollama API request failed on {path}: {e}")
             raise RuntimeError(f"Ollama provider connection error: {e}")
+
+    # ── Generic single-turn generation ───────────────────────────────────────
+
+    async def generate(self, prompt: str) -> str:
+        """Generic single-turn text generation using the chat model."""
+        payload = {
+            "model": settings.MODEL_RECRUITER_CHAT,
+            "messages": [
+                {"role": "system", "content": ATLAS_SYSTEM_PROMPT},
+                {"role": "user", "content": prompt},
+            ],
+            "stream": False,
+        }
+        try:
+            res = await self._post("/api/chat", payload)
+            return res.get("message", {}).get("content", "").strip()
+        except Exception as e:
+            logger.error(f"Ollama generate failed: {e}")
+            return "Nova AI is warming up — please try again in a moment."
+
+    # ── Resume parsing ────────────────────────────────────────────────────────
 
     async def extract_candidate_data(self, resume_text: str) -> Dict[str, Any]:
         prompt = (
@@ -42,7 +71,8 @@ class OllamaProvider(AIProvider, EmbeddingProvider):
             "- portfolio (string, or null)\n"
             "- summary (string, or null)\n"
             "\n"
-            f"Resume Text:\n{resume_text}"
+            f"Resume Text:\n{resume_text}\n\n"
+            "Return ONLY valid JSON, no explanation."
         )
         payload = {
             "model": settings.MODEL_RESUME_EXTRACTION,
@@ -74,7 +104,9 @@ class OllamaProvider(AIProvider, EmbeddingProvider):
 
     async def generate_summary(self, resume_text: str) -> str:
         prompt = (
-            "Summarize the following resume text in 2-3 professional sentences focusing on the candidate's core experience and skills.\n"
+            "Summarize the following resume in 2-3 professional sentences, "
+            "highlighting the candidate's core expertise, key achievements, and years of experience. "
+            "Be specific and compelling — this will be shown to recruiters.\n\n"
             f"Resume Text:\n{resume_text}"
         )
         payload = {
@@ -89,13 +121,10 @@ class OllamaProvider(AIProvider, EmbeddingProvider):
             logger.warning(f"Ollama summary generation failed: {e}")
             return "Resume text extraction completed. Summary unavailable."
 
+    # ── Copilot chat ──────────────────────────────────────────────────────────
+
     async def chat_copilot(self, query: str, history: List[Dict[str, str]]) -> str:
-        messages = [
-            {
-                "role": "system",
-                "content": "You are ATLAS Recruiter Copilot, a helpful enterprise recruiting AI assistant. You help recruiters search candidates, compare them, and analyze roles. Be professional, direct, and detailed in your answers.",
-            }
-        ]
+        messages = [{"role": "system", "content": ATLAS_SYSTEM_PROMPT}]
         for msg in history:
             messages.append({"role": msg["role"], "content": msg["content"]})
         messages.append({"role": "user", "content": query})
@@ -104,22 +133,29 @@ class OllamaProvider(AIProvider, EmbeddingProvider):
             "model": settings.MODEL_RECRUITER_CHAT,
             "messages": messages,
             "stream": False,
+            "options": {
+                "temperature": 0.7,
+                "top_p": 0.9,
+            },
         }
         try:
             res = await self._post("/api/chat", payload)
             return res.get("message", {}).get("content", "").strip()
         except Exception as e:
             logger.error(f"Ollama Copilot Chat failed: {e}")
-            return "ATLAS Recruiter Copilot is currently offline. Please check your Ollama service."
+            return "Nova is currently offline. Please check your Ollama service is running."
+
+    # ── Recommendation explanation ────────────────────────────────────────────
 
     async def explain_recommendation(
         self, candidate_data: Dict[str, Any], job_data: Dict[str, Any]
     ) -> str:
         prompt = (
-            "Explain why the candidate fits or does not fit the job description.\n"
+            "As an expert recruiter, explain in 3-4 clear paragraphs why this candidate "
+            "is a good or poor fit for the job. Cover: skills match, experience relevance, "
+            "salary alignment, and overall suitability. Be specific and cite actual details.\n\n"
             f"Candidate profile: {json.dumps(candidate_data)}\n"
-            f"Job requirement: {json.dumps(job_data)}\n"
-            "Focus on experience, salary, skills overlap, and general suitability."
+            f"Job requirement: {json.dumps(job_data)}"
         )
         payload = {
             "model": settings.MODEL_RECOMMENDATION_EXPLANATION,
@@ -133,8 +169,9 @@ class OllamaProvider(AIProvider, EmbeddingProvider):
             logger.warning(f"Ollama recommendation explanation failed: {e}")
             return "Unable to generate matching explanation at this time."
 
+    # ── Embeddings ────────────────────────────────────────────────────────────
+
     async def generate_embedding(self, text: str) -> List[float]:
-        # standard Ollama embeddings format
         payload = {"model": settings.MODEL_EMBEDDINGS, "prompt": text}
         try:
             res = await self._post("/api/embeddings", payload)

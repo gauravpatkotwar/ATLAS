@@ -48,6 +48,8 @@ services:
       - SECRET_KEY=DOCKER_SECURE_JWT_KEY_GENERATED_FOR_PRODUCTION_SESSION_DEPLOYMENT
       - FAISS_INDEX_PATH=/app/vector/vector_index.faiss
       - UPLOAD_DIR=/app/uploads
+      - AI_PROVIDER=${AI_PROVIDER:-gemini}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
     volumes:
       - backend_uploads:/app/uploads
       - backend_vector:/app/vector

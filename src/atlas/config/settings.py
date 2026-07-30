@@ -26,18 +26,18 @@ class Settings(BaseSettings):
     )
     AI_PROVIDER: str = Field(default="ollama", validation_alias="AI_PROVIDER")
 
-    # Models mapping
+    # Models mapping (phi4-mini:3.8b — Microsoft's smart compact model)
     MODEL_RESUME_EXTRACTION: str = Field(
-        default="qwen2.5:1.5b", validation_alias="MODEL_RESUME_EXTRACTION"
+        default="phi4-mini:3.8b", validation_alias="MODEL_RESUME_EXTRACTION"
     )
     MODEL_RECRUITER_CHAT: str = Field(
-        default="qwen2.5:1.5b", validation_alias="MODEL_RECRUITER_CHAT"
+        default="phi4-mini:3.8b", validation_alias="MODEL_RECRUITER_CHAT"
     )
     MODEL_RECOMMENDATION_EXPLANATION: str = Field(
-        default="qwen2.5:1.5b", validation_alias="MODEL_RECOMMENDATION_EXPLANATION"
+        default="phi4-mini:3.8b", validation_alias="MODEL_RECOMMENDATION_EXPLANATION"
     )
     MODEL_RESUME_SUMMARY: str = Field(
-        default="qwen2.5:1.5b", validation_alias="MODEL_RESUME_SUMMARY"
+        default="phi4-mini:3.8b", validation_alias="MODEL_RESUME_SUMMARY"
     )
     MODEL_EMBEDDINGS: str = Field(
         default="nomic-embed-text", validation_alias="MODEL_EMBEDDINGS"

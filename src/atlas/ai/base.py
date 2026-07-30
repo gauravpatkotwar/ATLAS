@@ -27,6 +27,12 @@ class AIProvider(ABC):
         """Explain why a candidate is suitable for a specific job and details on fit."""
         pass
 
+    async def generate(self, prompt: str) -> str:
+        """Generic single-turn text generation. Defaults to _post_generate if available, else chat_copilot."""
+        if hasattr(self, '_post_generate'):
+            return await self._post_generate(prompt)  # type: ignore
+        return await self.chat_copilot(prompt, [])
+
 
 class EmbeddingProvider(ABC):
     """Abstract interface for Generating Text Embeddings."""
