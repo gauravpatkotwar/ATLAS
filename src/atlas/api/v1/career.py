@@ -11,7 +11,10 @@ import json, re
 from atlas.database.session import get_db
 from atlas.database.models import User, Job
 from atlas.api.v1.auth import get_current_user
-from atlas.ai.factory import get_ai_client
+from atlas.ai.factory import AIProviderFactory
+
+def get_ai_client():
+    return AIProviderFactory.get_ai_provider()
 
 router = APIRouter()
 
