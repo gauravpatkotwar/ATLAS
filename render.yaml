@@ -1,0 +1,30 @@
+# Render Infrastructure as Code Blueprint
+# https://render.com/docs/blueprint-spec
+
+services:
+  # ── Backend Web Service ───────────────────────────────────────────────────
+  - type: web
+    name: atlas-backend
+    env: docker
+    dockerfilePath: docker/Dockerfile.backend
+    context: .
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: AI_PROVIDER
+        value: gemini
+      - key: GEMINI_API_KEY
+        sync: false # Prompts for your key during setup
+      - key: DATABASE_URL
+        fromDatabase:
+          name: atlas-db
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+
+databases:
+  # ── PostgreSQL Managed Database ─────────────────────────────────────────────
+  - name: atlas-db
+    plan: free
+    databaseName: atlas
+    user: postgres
