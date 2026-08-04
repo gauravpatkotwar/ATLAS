@@ -2815,16 +2815,6 @@ export default function App() {
                 </div>
               </div>
             )}
-                          <p style={{ fontSize: '11px', color: '#84cc16', background: 'rgba(132, 204, 22, 0.03)', padding: '8px', borderLeft: '2px solid #84cc16' }}>
-                            {item.feedback}
-                          </p>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         )}
 
