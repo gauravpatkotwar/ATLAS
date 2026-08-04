@@ -563,3 +563,119 @@ def _get_rank_title(level: int) -> str:
         4: "💎 Expert", 5: "🚀 Master", 6: "👑 Legend", 7: "🌟 Grandmaster"
     }
     return titles.get(min(level, 7), "🌟 Grandmaster")
+
+
+# ─── AI Mock Interviewer ──────────────────────────────────────────────────────
+
+class InterviewStartRequest(BaseModel):
+    job_title: str
+    skills: Optional[str] = "General Software Engineering"
+
+class InterviewGradeRequest(BaseModel):
+    job_title: str
+    current_round: int = 1
+    question: str
+    answer: str
+
+@router.post("/interview/start")
+async def start_mock_interview(
+    req: InterviewStartRequest,
+    current_user: User = Depends(get_current_user)
+):
+    """Generates the first question and interview structure for a mock interview."""
+    ai = get_ai_client()
+    prompt = (
+        f"You are a Senior Hiring Manager conducting a technical & behavioral mock interview for the role: '{req.job_title}'. "
+        f"Target skills: {req.skills}.\n"
+        "Generate Question 1 (out of 5). Make it a realistic, engaging scenario or technical question. "
+        "Return ONLY a JSON object with keys:\n"
+        "- question: string (the question text)\n"
+        "- category: string (e.g., 'System Architecture', 'Behavioral', 'Problem Solving')\n"
+        "- hint: string (a helpful 1-sentence tip on how to answer)\n"
+    )
+    try:
+        raw_res = await ai.generate(prompt)
+        match = re.search(r'\{.*\}', raw_res, re.DOTALL)
+        if match:
+            data = json.loads(match.group(0))
+            return {
+                "round": 1,
+                "total_rounds": 5,
+                "question": data.get("question", f"Tell me about your experience related to {req.job_title}."),
+                "category": data.get("category", "General"),
+                "hint": data.get("hint", "Focus on clear examples using the STAR method.")
+            }
+    except Exception as e:
+        pass
+    
+    return {
+        "round": 1,
+        "total_rounds": 5,
+        "question": f"Walk me through a challenging project you built as a {req.job_title}. What architecture decisions did you make?",
+        "category": "Architecture & Experience",
+        "hint": "Mention tools, trade-offs, and metrics."
+    }
+
+@router.post("/interview/grade-round")
+async def grade_interview_round(
+    req: InterviewGradeRequest,
+    current_user: User = Depends(get_current_user)
+):
+    """Grades a candidate's answer, provides feedback + model answer, and gives next question (or final report)."""
+    ai = get_ai_client()
+    is_final = req.current_round >= 5
+    
+    prompt = (
+        f"You are a Senior Tech Interviewer evaluating a candidate's answer for role '{req.job_title}'.\n"
+        f"Question: {req.question}\n"
+        f"Candidate Answer: {req.answer}\n\n"
+        "Analyze the answer thoroughly. Return ONLY a JSON object with keys:\n"
+        "- score: float between 1.0 and 10.0\n"
+        "- feedback: string (2-3 sentences of constructive feedback)\n"
+        "- model_answer: string (a gold-standard 2-3 sentence answer showcasing best practices)\n"
+        "- next_question: string (Question for round " + str(req.current_round + 1) + " or null if finished)\n"
+        "- next_category: string\n"
+        "- next_hint: string\n"
+    )
+    
+    score = 8.5
+    feedback = "Solid answer! You highlighted key technical concepts clearly."
+    model_answer = "A strong answer combines specific technical trade-offs with measurable business impact."
+    next_q = f"How do you approach debugging high-concurrency issues in production as a {req.job_title}?"
+    next_cat = "Problem Solving"
+    next_hint = "Mention logging, thread safety, and monitoring tools."
+    
+    try:
+        raw_res = await ai.generate(prompt)
+        match = re.search(r'\{.*\}', raw_res, re.DOTALL)
+        if match:
+            data = json.loads(match.group(0))
+            score = float(data.get("score", 8.0))
+            feedback = data.get("feedback", feedback)
+            model_answer = data.get("model_answer", model_answer)
+            if not is_final:
+                next_q = data.get("next_question", next_q)
+                next_cat = data.get("next_category", next_cat)
+                next_hint = data.get("next_hint", next_hint)
+    except Exception:
+        pass
+
+    # Award +150 XP if final round completed
+    xp_gained = 150 if is_final else 30
+    if hasattr(current_user, "xp"):
+        current_user.xp = (current_user.xp or 0) + xp_gained
+
+    return {
+        "score": round(score, 1),
+        "feedback": feedback,
+        "model_answer": model_answer,
+        "is_final": is_final,
+        "xp_gained": xp_gained,
+        "next_round": {
+            "round": req.current_round + 1,
+            "total_rounds": 5,
+            "question": next_q,
+            "category": next_cat,
+            "hint": next_hint
+        } if not is_final else None
+    }

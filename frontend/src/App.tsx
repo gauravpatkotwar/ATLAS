@@ -201,8 +201,12 @@ export default function App() {
   const [prepJob, setPrepJob] = useState<any | null>(null);
   const [prepQuestion, setPrepQuestion] = useState<string>('');
   const [prepAnswer, setPrepAnswer] = useState<string>('');
-  const [prepHistory, setPrepHistory] = useState<Array<{ question: string, answer: string, feedback: string, score: string }>>([]);
+  const [prepHistory, setPrepHistory] = useState<Array<{ question: string, answer: string, feedback: string, score: string, modelAnswer?: string, category?: string }>>([]);
   const [prepLoading, setPrepLoading] = useState<boolean>(false);
+  const [prepRound, setPrepRound] = useState<number>(1);
+  const [prepCategory, setPrepCategory] = useState<string>('System Architecture');
+  const [prepHint, setPrepHint] = useState<string>('');
+  const [prepFinished, setPrepFinished] = useState<boolean>(false);
 
   // File Upload state
   const [uploading, setUploading] = useState(false);
@@ -828,14 +832,21 @@ export default function App() {
     setPrepHistory([]);
     setPrepQuestion('');
     setPrepAnswer('');
+    setPrepRound(1);
+    setPrepFinished(false);
     setPrepLoading(true);
     try {
-      const q = "Generate the first technical mock interview question for the job opening: " + job.title + ". Focus on these required skills: " + job.required_skills + ". Please output ONLY the technical question and nothing else. Begin your response with 'QUESTION: '";
-      const res = await api.copilot.chat(q);
-      const cleanedQuestion = res.reply.replace(/QUESTION:\s*/i, '').trim();
-      setPrepQuestion(cleanedQuestion || "Describe your experience working with " + job.required_skills.split(',')[0] + ".");
+      const data = await api.career.startInterview({ job_title: job.title, skills: job.required_skills });
+      setPrepQuestion(data.question);
+      setPrepCategory(data.category || 'General');
+      setPrepHint(data.hint || '');
+      setPrepRound(data.round || 1);
+      // Auto-read question aloud if voice enabled
+      if (voiceEnabled) speakText(data.question);
     } catch (err) {
-      setPrepQuestion("Describe your experience building systems with " + job.required_skills + ".");
+      setPrepQuestion("Walk me through a key project you built as a " + job.title + ". What design decisions did you make?");
+      setPrepCategory("System Design");
+      setPrepHint("Focus on trade-offs, architecture, and measurable impact.");
     } finally {
       setPrepLoading(false);
     }
@@ -847,35 +858,44 @@ export default function App() {
 
     const currentQ = prepQuestion;
     const currentAns = prepAnswer;
+    const currentCat = prepCategory;
 
     setPrepLoading(true);
     try {
-      const prompt = "You are an expert interviewer. Review my answer: '" + currentAns + "' to the technical question: '" + currentQ + "' for the job role: " + prepJob.title + ". Provide constructive feedback on accuracy, followed by a score rating from 0 to 10 in the format 'SCORE: [X]/10', and then output the next question in the format 'QUESTION: [next technical question here]'";
-      const res = await api.copilot.chat(prompt);
-      const reply = res.reply;
+      const data = await api.career.gradeInterviewRound({
+        job_title: prepJob.title,
+        current_round: prepRound,
+        question: currentQ,
+        answer: currentAns
+      });
 
-      // Extract Score
-      const scoreMatch = reply.match(/SCORE:\s*([^\n\r]+)/i);
-      const score = scoreMatch ? scoreMatch[1].trim() : "Completed";
+      const newHistoryItem = {
+        question: currentQ,
+        answer: currentAns,
+        feedback: data.feedback,
+        score: `${data.score} / 10`,
+        modelAnswer: data.model_answer,
+        category: currentCat
+      };
 
-      // Extract Next Question
-      const questionMatch = reply.match(/QUESTION:\s*([\s\S]+)/i);
-      const nextQuestion = questionMatch ? questionMatch[1].trim() : "Thank you for completing the interview mock session!";
+      setPrepHistory(prev => [newHistoryItem, ...prev]);
 
-      // Extract Feedback
-      let feedback = reply;
-      if (scoreMatch) feedback = feedback.replace(scoreMatch[0], '');
-      if (questionMatch) feedback = feedback.replace(questionMatch[0], '');
-      feedback = feedback.replace(/SCORE:|QUESTION:/gi, '').trim();
-
-      setPrepHistory(prev => [
-        { question: currentQ, answer: currentAns, feedback: feedback || "Good response.", score: score },
-        ...prev
-      ]);
-      setPrepQuestion(nextQuestion);
-      setPrepAnswer('');
+      if (data.is_final || !data.next_round) {
+        setPrepFinished(true);
+        setPrepQuestion("Congratulations! You completed all 5 interview rounds.");
+        if (voiceEnabled) speakText("Congratulations! You completed all 5 rounds of your mock interview session. Check your detailed feedback below!");
+        // Refresh gamification stats to show updated XP
+        api.career.getGamificationStats().then(setGamificationStats).catch(() => {});
+      } else {
+        setPrepRound(data.next_round.round);
+        setPrepQuestion(data.next_round.question);
+        setPrepCategory(data.next_round.category);
+        setPrepHint(data.next_round.hint);
+        setPrepAnswer('');
+        if (voiceEnabled) speakText(data.next_round.question);
+      }
     } catch (err) {
-      alert("Prep assistant connection timeout. Please try again.");
+      alert("Prep assistant connection error. Please try submitting again.");
     } finally {
       setPrepLoading(false);
     }
@@ -2640,43 +2660,105 @@ export default function App() {
               </div>
             ) : (
               // Active Prep Area
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 350px', gap: '24px', alignItems: 'start' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: '24px', alignItems: 'start' }}>
                 {/* Interview Interface */}
                 <div className="glass-panel lining-copilot" style={{ padding: '32px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                  <div style={{ borderBottom: '1px solid var(--border-glass)', paddingBottom: '16px' }}>
-                    <span style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--accent-orange)', fontWeight: 600 }}>Active Role</span>
-                    <h3 style={{ fontSize: '18px', color: '#fff', marginTop: '4px' }}>{prepJob.title} Mock Interview</h3>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-glass)', paddingBottom: '16px' }}>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--accent-orange)', fontWeight: 600 }}>
+                          Round {prepRound} of 5
+                        </span>
+                        {prepCategory && (
+                          <span style={{ fontSize: '11px', background: 'rgba(201,168,76,0.15)', border: '1px solid rgba(201,168,76,0.3)', color: '#c9a84c', padding: '2px 8px', borderRadius: '12px' }}>
+                            {prepCategory}
+                          </span>
+                        )}
+                      </div>
+                      <h3 style={{ fontSize: '18px', color: '#fff', marginTop: '4px' }}>{prepJob.title} Mock Interview</h3>
+                    </div>
+
+                    {/* Voice Read Aloud Question Button */}
+                    <button
+                      type="button"
+                      onClick={() => speakText(prepQuestion)}
+                      className="btn-secondary"
+                      style={{ padding: '6px 12px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                      title="Read Question Aloud"
+                    >
+                      <Volume2 size={14} /> Read Question
+                    </button>
                   </div>
 
                   {prepLoading ? (
                     <div style={{ padding: '48px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                      <div className="pulse-glow" style={{ fontSize: '14px' }}>Atlas AI is reviewing response and drafting next question...</div>
+                      <div className="pulse-glow" style={{ fontSize: '14px' }}>Atlas AI is reviewing your answer & generating next question...</div>
+                    </div>
+                  ) : prepFinished ? (
+                    <div style={{ padding: '32px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', background: 'rgba(201,168,76,0.05)', border: '1px solid rgba(201,168,76,0.2)', borderRadius: '12px' }}>
+                      <div style={{ fontSize: '48px' }}>🏆</div>
+                      <h3 style={{ fontSize: '20px', color: '#fff', fontWeight: 700 }}>Mock Interview Completed!</h3>
+                      <p style={{ color: 'var(--text-muted)', fontSize: '13px', maxWidth: '440px', lineHeight: '1.6' }}>
+                        Awesome job! You answered all 5 interview rounds for <strong>{prepJob.title}</strong>. Review your performance breakdown and gold-standard model answers on the right.
+                      </p>
+                      <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginTop: '8px' }}>
+                        <span style={{ fontSize: '14px', color: '#c9a84c', fontWeight: 700, background: 'rgba(201,168,76,0.15)', padding: '6px 16px', borderRadius: '20px', border: '1px solid #c9a84c' }}>
+                          +150 XP Earned! 🌟
+                        </span>
+                        <button onClick={() => handleStartPrep(prepJob)} className="btn-primary lining-jobs" style={{ padding: '8px 20px' }}>
+                          Retake Interview
+                        </button>
+                      </div>
                     </div>
                   ) : (
                     <>
-                      <div style={{ background: 'rgba(255,255,255,0.01)', padding: '20px', borderRadius: '4px', borderLeft: '3px solid var(--accent-orange)' }}>
-                        <span style={{ fontSize: '10px', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Question</span>
-                        <p style={{ fontSize: '15px', color: '#fff', marginTop: '6px', lineHeight: '1.5' }}>{prepQuestion}</p>
+                      <div style={{ background: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '8px', borderLeft: '3px solid var(--accent-orange)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <span style={{ fontSize: '10px', textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.05em' }}>Question {prepRound}</span>
+                        <p style={{ fontSize: '15px', color: '#fff', lineHeight: '1.6', margin: 0 }}>{prepQuestion}</p>
+                        {prepHint && (
+                          <div style={{ fontSize: '12px', color: 'rgba(201,168,76,0.8)', background: 'rgba(201,168,76,0.06)', padding: '8px 12px', borderRadius: '6px', marginTop: '6px' }}>
+                            💡 <strong>Tip:</strong> {prepHint}
+                          </div>
+                        )}
                       </div>
 
                       <form onSubmit={handleSubmitPrepAnswer} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                        <label style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Your Answer</label>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <label style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Your Answer</label>
+                          {/* Mic Answer Button */}
+                          <button
+                            type="button"
+                            onClick={handleToggleListening}
+                            className={isListening ? "btn-primary pulse-glow" : "btn-secondary"}
+                            style={{ padding: '4px 12px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '5px' }}
+                          >
+                            <Mic size={13} /> {isListening ? 'Listening...' : 'Dictate Answer'}
+                          </button>
+                        </div>
+
                         <textarea 
                           required
                           rows={6}
                           className="input-field"
-                          placeholder="Type your technical response here. Try to explain the concepts and list details..."
+                          placeholder={isListening ? "🎙️ Listening to your response... speak clearly..." : "Type or speak your technical response here. Explain concepts, design decisions, and measurable outcomes..."}
                           value={prepAnswer}
                           onChange={e => setPrepAnswer(e.target.value)}
-                          style={{ resize: 'vertical', minHeight: '120px', background: 'rgba(255,255,255,0.01)' }}
+                          style={{ resize: 'vertical', minHeight: '130px', background: 'rgba(255,255,255,0.01)', fontSize: '14px', lineHeight: '1.6' }}
                         />
-                        <button 
-                          type="submit"
-                          className="btn-primary lining-copilot"
-                          style={{ alignSelf: 'flex-end', marginTop: '8px' }}
-                        >
-                          Submit Answer
-                        </button>
+
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
+                          <span style={{ fontSize: '11px', color: 'var(--text-dim)' }}>
+                            {prepAnswer.split(/\s+/).filter(Boolean).length} words
+                          </span>
+                          <button 
+                            type="submit"
+                            disabled={!prepAnswer.trim() || prepLoading}
+                            className="btn-primary lining-copilot"
+                            style={{ padding: '10px 24px' }}
+                          >
+                            Submit Answer & Next →
+                          </button>
+                        </div>
                       </form>
                     </>
                   )}
@@ -2688,8 +2770,8 @@ export default function App() {
                     <h4 style={{ fontSize: '13px', color: '#fff', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '16px' }}>Prep Progress</h4>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
-                        <span style={{ color: 'var(--text-muted)' }}>Questions Answered</span>
-                        <span style={{ color: '#fff', fontWeight: 600 }}>{prepHistory.length}</span>
+                        <span style={{ color: 'var(--text-muted)' }}>Rounds Answered</span>
+                        <span style={{ color: '#fff', fontWeight: 600 }}>{prepHistory.length} / 5</span>
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
                         <span style={{ color: 'var(--text-muted)' }}>Average Rating</span>
@@ -2703,21 +2785,36 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', maxHeight: '420px', overflowY: 'auto' }}>
-                    <h4 style={{ fontSize: '13px', color: '#fff', textTransform: 'uppercase', letterSpacing: '0.05em' }}>History Log</h4>
+                  <div className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', maxHeight: '480px', overflowY: 'auto' }}>
+                    <h4 style={{ fontSize: '13px', color: '#fff', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Round Feedback & Gold Answers</h4>
                     {prepHistory.length === 0 ? (
-                      <p style={{ color: 'var(--text-dim)', fontSize: '12px', textAlign: 'center', padding: '16px 0' }}>No responses graded yet.</p>
+                      <p style={{ color: 'var(--text-dim)', fontSize: '12px', textAlign: 'center', padding: '16px 0' }}>No rounds evaluated yet. Submit your first response to see AI feedback!</p>
                     ) : (
                       prepHistory.map((item, idx) => (
                         <div key={idx} style={{ borderBottom: idx < prepHistory.length - 1 ? '1px solid var(--border-glass)' : 'none', paddingBottom: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Round {prepHistory.length - idx}</span>
-                            <span style={{ fontSize: '11px', color: 'var(--accent-orange)', background: 'rgba(128, 128, 128, 0.05)', padding: '2px 8px', borderRadius: '12px', fontWeight: 600 }}>
+                            <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600 }}>Round {prepHistory.length - idx}</span>
+                            <span style={{ fontSize: '11px', color: '#c9a84c', background: 'rgba(201,168,76,0.1)', border: '1px solid rgba(201,168,76,0.2)', padding: '2px 8px', borderRadius: '12px', fontWeight: 600 }}>
                               {item.score}
                             </span>
                           </div>
-                          <p style={{ fontSize: '12px', color: 'var(--text-muted)', fontStyle: 'italic' }}>Q: {item.question}</p>
-                          <p style={{ fontSize: '12px', color: '#fff' }}>A: {item.answer}</p>
+                          <p style={{ fontSize: '12px', color: 'var(--text-muted)', fontStyle: 'italic', margin: 0 }}>Q: {item.question}</p>
+                          <p style={{ fontSize: '12px', color: '#fff', margin: 0 }}>A: {item.answer}</p>
+                          <div style={{ background: 'rgba(255,255,255,0.02)', padding: '8px 12px', borderRadius: '6px', fontSize: '11.5px', color: 'var(--text-muted)', borderLeft: '2px solid #22c55e' }}>
+                            📝 <strong>Feedback:</strong> {item.feedback}
+                          </div>
+                          {item.modelAnswer && (
+                            <div style={{ background: 'rgba(201,168,76,0.04)', padding: '8px 12px', borderRadius: '6px', fontSize: '11.5px', color: '#c9a84c', borderLeft: '2px solid #c9a84c' }}>
+                              🌟 <strong>Gold Answer:</strong> {item.modelAnswer}
+                            </div>
+                          )}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
                           <p style={{ fontSize: '11px', color: '#84cc16', background: 'rgba(132, 204, 22, 0.03)', padding: '8px', borderLeft: '2px solid #84cc16' }}>
                             {item.feedback}
                           </p>

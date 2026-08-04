@@ -553,6 +553,12 @@ export const api = {
     async listShowcaseProjects(): Promise<any> {
       return apiRequest('/career/showcase/projects');
     },
+    async startInterview(data: { job_title: string; skills?: string }): Promise<any> {
+      return apiRequest('/career/interview/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+    },
+    async gradeInterviewRound(data: { job_title: string; current_round: number; question: string; answer: string }): Promise<any> {
+      return apiRequest('/career/interview/grade-round', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+    },
   }
 };
 
