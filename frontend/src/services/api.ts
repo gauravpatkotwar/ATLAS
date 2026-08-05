@@ -617,6 +617,16 @@ export const api = {
     async seed(): Promise<any> {
       return apiRequest('/tv/seed');
     },
+  },
+
+  ats: {
+    async score(data: { job_description: string; resume_text: string }): Promise<any> {
+      return apiRequest('/ats/score', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+    },
   }
 };
 

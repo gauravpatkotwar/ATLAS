@@ -25,6 +25,7 @@ from atlas.api.v1.career import router as career_router
 from atlas.api.v1.tv import router as tv_router
 from atlas.database import tv_models  # registers TV models with Base metadata  # noqa: F401
 from atlas.api.v1.tv import seed_tv_videos
+from atlas.api.v1.ats_score import router as ats_router
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -140,6 +141,9 @@ app.include_router(
 )
 app.include_router(
     tv_router, prefix=f"{settings.API_V1_STR}/tv", tags=["Atlas TV"]
+)
+app.include_router(
+    ats_router, prefix=f"{settings.API_V1_STR}/ats", tags=["ATS Scoring"]
 )
 
 from fastapi.staticfiles import StaticFiles

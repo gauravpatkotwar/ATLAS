@@ -267,7 +267,7 @@ async def get_channels():
     return {"channels": CHANNELS}
 
 
-@router.get("/feed", response_model=List[VideoOut])
+@router.get("/feed")
 async def get_feed(
     channel: str = Query(default="all"),
     page: int = Query(default=1, ge=1),
@@ -277,11 +277,21 @@ async def get_feed(
     page_size = 20
     offset = (page - 1) * page_size
     q = select(TvVideo)
+    count_q = select(func.count(TvVideo.id))
     if channel != "all":
         q = q.where(TvVideo.channel == channel)
+        count_q = count_q.where(TvVideo.channel == channel)
     q = q.order_by(TvVideo.id.desc()).offset(offset).limit(page_size)
     result = await db.execute(q)
-    return result.scalars().all()
+    total_result = await db.execute(count_q)
+    total = total_result.scalar() or 0
+    videos = result.scalars().all()
+    return {
+        "videos": [VideoOut.model_validate(v) for v in videos],
+        "total": total,
+        "page": page,
+        "pages": max(1, (total + page_size - 1) // page_size),
+    }
 
 
 @router.get("/live", response_model=List[VideoOut])

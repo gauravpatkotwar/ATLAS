@@ -216,6 +216,13 @@ export default function App() {
  const [loadingRecommendations, setLoadingRecommendations] = useState(false);
  const [recExplanation, setRecExplanation] = useState<{ candidate: string, text: string } | null>(null);
 
+ // ATS AI Scoring state
+ const [atsJdInput, setAtsJdInput] = useState('');
+ const [atsResumeInput, setAtsResumeInput] = useState('');
+ const [atsResult, setAtsResult] = useState<any>(null);
+ const [atsLoading, setAtsLoading] = useState(false);
+ const [atsError, setAtsError] = useState('');
+
  // Interview Prep state
  const [prepJob, setPrepJob] = useState<any | null>(null);
  const [prepQuestion, setPrepQuestion] = useState<string>('');
@@ -3470,6 +3477,78 @@ export default function App() {
  )}
  </div>
  )}
+
+ {/* ATS AI SCORER */}
+ <div className="glass-panel animate-fade-in" style={{ padding: '24px', marginTop: '24px', border: '1px solid rgba(99,102,241,0.25)' }}>
+ <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '18px' }}>
+ <Sparkles size={18} color="#6366f1" />
+ <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#fff', margin: 0 }}>ATS AI Scorer</h3>
+ <span style={{ fontSize: '11px', color: 'var(--text-muted)', background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.3)', padding: '2px 8px', borderRadius: '10px' }}>Gemini-powered</span>
+ </div>
+ <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '14px' }}>
+ <div>
+ <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '6px' }}>Job Description</label>
+ <textarea value={atsJdInput} onChange={e => setAtsJdInput(e.target.value)} placeholder="Paste the full job description here..." style={{ width: '100%', minHeight: '130px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '10px', fontSize: '12px', color: '#fff', outline: 'none', resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5, boxSizing: 'border-box' }} />
+ </div>
+ <div>
+ <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '6px' }}>Candidate Resume</label>
+ <textarea value={atsResumeInput} onChange={e => setAtsResumeInput(e.target.value)} placeholder="Paste the candidate resume text here..." style={{ width: '100%', minHeight: '130px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '10px', fontSize: '12px', color: '#fff', outline: 'none', resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5, boxSizing: 'border-box' }} />
+ </div>
+ </div>
+ <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>
+ <button onClick={async () => { if (!atsJdInput.trim() || !atsResumeInput.trim()) { setAtsError('Please fill both fields.'); return; } setAtsLoading(true); setAtsError(''); setAtsResult(null); try { const r = await api.ats.score({ job_description: atsJdInput, resume_text: atsResumeInput }); setAtsResult(r); } catch(e: any) { setAtsError(e.message || 'Scoring failed.'); } setAtsLoading(false); }} disabled={atsLoading} style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', border: 'none', color: '#fff', padding: '10px 20px', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: atsLoading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px', opacity: atsLoading ? 0.7 : 1 }}>
+ <Sparkles size={14} />{atsLoading ? 'Analyzing...' : 'Score Candidate'}
+ </button>
+ {selectedCandidate && (
+ <button onClick={() => { const skills = selectedCandidate.skills?.join(', ') || ''; const exp = selectedCandidate.experience?.map((e: any) => `${e.role || ''} at ${e.company || ''}`).join('\n') || ''; setAtsResumeInput(`Name: ${selectedCandidate.name}\nTitle: ${selectedCandidate.current_title || ''}\nSkills: ${skills}\nExperience:\n${exp}\nSummary: ${selectedCandidate.summary || ''}`); }} style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', color: 'var(--text-muted)', padding: '10px 14px', borderRadius: '8px', fontSize: '12px', cursor: 'pointer' }}>
+ Auto-fill from {selectedCandidate.name?.split(' ')[0]}
+ </button>
+ )}
+ {atsError && <span style={{ fontSize: '12px', color: '#ef4444' }}>{atsError}</span>}
+ </div>
+ {atsResult && (() => {
+ const score = atsResult.scoring?.match_score || 0;
+ const tier = atsResult.scoring?.tier || 'Low Fit';
+ const tierColor = score >= 85 ? '#22c55e' : score >= 70 ? '#3b82f6' : score >= 50 ? '#f59e0b' : '#ef4444';
+ return (
+ <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+ <div style={{ display: 'flex', alignItems: 'center', gap: '20px', background: `${tierColor}11`, border: `1px solid ${tierColor}44`, borderRadius: '12px', padding: '16px 20px', flexWrap: 'wrap' }}>
+ <div style={{ textAlign: 'center', flexShrink: 0 }}>
+ <div style={{ fontSize: '42px', fontWeight: 800, color: tierColor, lineHeight: 1 }}>{score}</div>
+ <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>/ 100</div>
+ </div>
+ <div style={{ flex: 1, minWidth: '180px' }}>
+ <div style={{ fontSize: '16px', fontWeight: 700, color: tierColor, marginBottom: '4px' }}>{tier}</div>
+ <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.75)', lineHeight: 1.5 }}>{atsResult.scoring?.justification}</div>
+ </div>
+ <span style={{ fontSize: '11px', color: atsResult.knockout_status === 'passed' ? '#22c55e' : '#ef4444', background: atsResult.knockout_status === 'passed' ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)', border: `1px solid ${atsResult.knockout_status === 'passed' ? '#22c55e44' : '#ef444444'}`, padding: '4px 12px', borderRadius: '20px', fontWeight: 700, flexShrink: 0 }}>
+ {atsResult.knockout_status === 'passed' ? 'Passed Knockout' : 'Failed Knockout'}
+ </span>
+ </div>
+ {atsResult.parsed_profile?.name && (
+ <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
+ {[{l:'Name',v:atsResult.parsed_profile.name},{l:'Title',v:atsResult.parsed_profile.current_title},{l:'Experience',v:`${atsResult.parsed_profile.total_exp_years} yrs`}].map(item => item.v && (
+ <div key={item.l} style={{ fontSize: '12px' }}><span style={{ color: 'var(--text-muted)' }}>{item.l}: </span><span style={{ color: '#fff', fontWeight: 600 }}>{item.v}</span></div>
+ ))}
+ </div>
+ )}
+ <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '12px' }}>
+ {[{label:'Matched',key:'matched',color:'#22c55e'},{label:'Missing',key:'missing',color:'#ef4444'},{label:'Bonus',key:'bonus',color:'#f59e0b'}].map(s => (
+ <div key={s.key} style={{ background:`${s.color}08`, border:`1px solid ${s.color}22`, borderRadius:'8px', padding:'12px' }}>
+ <p style={{ fontSize:'11px', color:s.color, fontWeight:700, margin:'0 0 8px', textTransform:'uppercase', letterSpacing:'0.5px' }}>{s.label}</p>
+ <div style={{ display:'flex', flexWrap:'wrap', gap:'4px' }}>
+ {(atsResult.skills_analysis?.[s.key]||[]).slice(0,8).map((sk: string) => (
+ <span key={sk} style={{ fontSize:'11px', color:'#fff', background:`${s.color}15`, border:`1px solid ${s.color}30`, padding:'2px 7px', borderRadius:'8px' }}>{sk}</span>
+ ))}
+ {(atsResult.skills_analysis?.[s.key]||[]).length===0 && <span style={{ fontSize:'11px', color:'var(--text-muted)' }}>None</span>}
+ </div>
+ </div>
+ ))}
+ </div>
+ </div>
+ );
+ })()}
+ </div>
 
  {/* TAB 2: JOBS BOARD & RECOMMENDATIONS */}
  {activeTab === 'jobs' && (
