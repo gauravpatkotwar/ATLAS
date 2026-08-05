@@ -1519,7 +1519,10 @@ export default function App() {
  const handleCreateMeetRoom = async () => {
  try {
  const res = await api.meet.createRoom();
- setActiveMeetRoom(res.room_code);
+ const code = res.room_code;
+ setActiveMeetRoom(code);
+ // Auto-join immediately — no second "Join Meet Room" click needed
+ await handleJoinMeetRoom(code);
  } catch (e: any) {
  alert("Failed to create meeting room: " + e.message);
  }
