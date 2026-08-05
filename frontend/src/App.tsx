@@ -3,7 +3,7 @@ import {
  Users, Briefcase, Search, MessageSquare, UploadCloud, 
  Trash2, MapPin, DollarSign, LogOut, 
  AlertCircle, Sparkles, Send, Plus, X, Award, HelpCircle, Settings, CreditCard, CheckCircle,
- Mic, Volume2, VolumeX, Phone, PhoneOff, Video, VideoOff, MicOff, TrendingUp, Shield, Key, Activity, Share2, ShoppingBag, GraduationCap, BookOpen, Star, CheckCircle2, Lock, PlayCircle, Trophy, Zap, Target, FileText, Github, ExternalLink, Copy
+ Mic, Volume2, VolumeX, Phone, PhoneOff, Video, VideoOff, MicOff, TrendingUp, Shield, Key, Activity, Share2, ShoppingBag, GraduationCap, BookOpen, Star, CheckCircle2, Lock, PlayCircle, Trophy, Zap, Target, FileText, Github, ExternalLink, Copy, Tv, Radio, Bookmark, BookmarkCheck, ChevronRight, ChevronLeft, BarChart2, AlignLeft, HelpCircle as Quiz
 } from 'lucide-react';
 import { api } from './services/api';
 
@@ -103,7 +103,7 @@ export default function App() {
  const [authError, setAuthError] = useState('');
 
  // App navigation
- const [activeTab, setActiveTab] = useState<'candidates' | 'jobs' | 'search' | 'copilot' | 'settings' | 'my_profile' | 'jobs_board' | 'interview_prep' | 'community' | 'marketplace' | 'analytics' | 'academy' | 'resume_builder'>('copilot');
+ const [activeTab, setActiveTab] = useState<'candidates' | 'jobs' | 'search' | 'copilot' | 'settings' | 'my_profile' | 'jobs_board' | 'interview_prep' | 'community' | 'marketplace' | 'analytics' | 'academy' | 'resume_builder' | 'atlas_tv'>('copilot');
  const [settingsSubPage, setSettingsSubPage] = useState<'appearance' | 'sso' | 'developer' | 'automations' | 'integrations'>('appearance');
 
  // ATLAS ACADEMY STATE 
@@ -128,6 +128,25 @@ export default function App() {
  const [academyCourseForm, setAcademyCourseForm] = useState({ title: '', description: '', short_description: '', category: 'Programming', level: 'beginner', skills_taught: '', tags: '', is_free: true, price: 0 });
  const [academySkillGapJobTitle, setAcademySkillGapJobTitle] = useState('');
  const [academySkillGapJobSkills, setAcademySkillGapJobSkills] = useState('');
+ // 
+
+ // ATLAS TV STATE
+ const [tvChannel, setTvChannel] = useState<string>('all');
+ const [tvVideos, setTvVideos] = useState<any[]>([]);
+ const [tvCurrentVideo, setTvCurrentVideo] = useState<any>(null);
+ const [tvSidebarTab, setTvSidebarTab] = useState<'summary' | 'skills' | 'jobs' | 'quiz' | 'notes' | 'ask'>('summary');
+ const [tvSummary, setTvSummary] = useState<any>(null);
+ const [tvSummaryLoading, setTvSummaryLoading] = useState(false);
+ const [tvQuiz, setTvQuiz] = useState<any[]>([]);
+ const [tvQuizLoading, setTvQuizLoading] = useState(false);
+ const [tvQuizAnswers, setTvQuizAnswers] = useState<Record<number,string>>({});
+ const [tvNotes, setTvNotes] = useState<Record<number,string>>({});
+ const [tvBookmarks, setTvBookmarks] = useState<number[]>([]);
+ const [tvSearchQuery, setTvSearchQuery] = useState('');
+ const [tvLive, setTvLive] = useState<any[]>([]);
+ const [tvAskInput, setTvAskInput] = useState('');
+ const [tvAskMessages, setTvAskMessages] = useState<{role:string;content:string}[]>([]);
+ const [tvAskLoading, setTvAskLoading] = useState(false);
  // 
 
  // RESUME BUILDER STATE 
@@ -2536,6 +2555,15 @@ export default function App() {
  </button>
 
  <button 
+ onClick={async () => { setActiveTab('atlas_tv'); try { const feed = await api.tv.feed('all'); setTvVideos(feed?.videos || []); if (!tvCurrentVideo && feed?.videos?.length) setTvCurrentVideo(feed.videos[0]); const live = await api.tv.live(); setTvLive(live || []); const bm = await api.tv.bookmarks(); setTvBookmarks((bm||[]).map((b:any) => b.video_id)); } catch(e) { try { await api.tv.seed(); const feed = await api.tv.feed('all'); setTvVideos(feed?.videos || []); if (feed?.videos?.length) setTvCurrentVideo(feed.videos[0]); } catch {} } }}
+ className={activeTab === 'atlas_tv' ? 'btn-primary' : 'btn-secondary'} 
+ style={{ width: '40px', height: '40px', borderRadius: '50%', padding: 0, justifyContent: 'center', background: activeTab === 'atlas_tv' ? 'linear-gradient(135deg, #e11d48, #be123c)' : undefined }}
+ title="Atlas TV"
+ >
+ <Tv size={18} />
+ </button>
+
+ <button 
  onClick={() => setActiveTab('resume_builder')}
  className={activeTab === 'resume_builder' ? 'btn-primary' : 'btn-secondary'} 
  style={{ width: '40px', height: '40px', borderRadius: '50%', padding: 0, justifyContent: 'center', background: activeTab === 'resume_builder' ? 'linear-gradient(135deg, #10b981, #059669)' : undefined }}
@@ -4741,6 +4769,387 @@ export default function App() {
  </div>
  </div>
  )}
+ </div>
+ );
+ })()}
+
+ {/* TAB: ATLAS TV */}
+ {activeTab === 'atlas_tv' && (() => {
+ const TV_CHANNELS = [
+ { id: 'all', label: 'All', color: '#e11d48' },
+ { id: 'tech', label: 'Tech', color: '#3b82f6' },
+ { id: 'ai', label: 'AI', color: '#8b5cf6' },
+ { id: 'startups', label: 'Startups', color: '#f59e0b' },
+ { id: 'careers', label: 'Careers', color: '#10b981' },
+ { id: 'cloud', label: 'Cloud', color: '#06b6d4' },
+ { id: 'devops', label: 'DevOps', color: '#f97316' },
+ { id: 'data_science', label: 'Data Science', color: '#a855f7' },
+ { id: 'cybersecurity', label: 'Cyber', color: '#ef4444' },
+ { id: 'marketing', label: 'Marketing', color: '#ec4899' },
+ { id: 'design', label: 'Design', color: '#14b8a6' },
+ { id: 'finance', label: 'Finance', color: '#84cc16' },
+ { id: 'sponsored', label: 'Sponsored', color: '#6366f1' },
+ ];
+
+ const switchChannel = async (ch: string) => {
+ setTvChannel(ch);
+ setTvSummary(null);
+ setTvQuiz([]);
+ try {
+ const feed = await api.tv.feed(ch);
+ setTvVideos(feed?.videos || []);
+ if (feed?.videos?.length) { setTvCurrentVideo(feed.videos[0]); setTvSidebarTab('summary'); }
+ } catch {}
+ };
+
+ const selectVideo = async (v: any) => {
+ setTvCurrentVideo(v);
+ setTvSummary(null);
+ setTvQuiz([]);
+ setTvSidebarTab('summary');
+ try { await api.tv.watchVideo(v.id); } catch {}
+ };
+
+ const loadSummary = async () => {
+ if (!tvCurrentVideo || tvSummaryLoading) return;
+ setTvSummaryLoading(true);
+ try { const r = await api.tv.aiSummary(tvCurrentVideo.id); setTvSummary(r); } catch {}
+ setTvSummaryLoading(false);
+ };
+
+ const loadQuiz = async () => {
+ if (!tvCurrentVideo || tvQuizLoading) return;
+ setTvQuizLoading(true);
+ try { const r = await api.tv.aiQuiz(tvCurrentVideo.id); setTvQuiz(r?.questions || []); } catch {}
+ setTvQuizLoading(false);
+ };
+
+ const toggleBookmark = async (vid: number) => {
+ if (tvBookmarks.includes(vid)) {
+ await api.tv.removeBookmark(vid);
+ setTvBookmarks(b => b.filter(x => x !== vid));
+ } else {
+ await api.tv.addBookmark(vid);
+ setTvBookmarks(b => [...b, vid]);
+ }
+ };
+
+ const askAboutVideo = async () => {
+ if (!tvAskInput.trim() || !tvCurrentVideo) return;
+ const msg = tvAskInput;
+ setTvAskInput('');
+ setTvAskMessages(m => [...m, { role: 'user', content: msg }]);
+ setTvAskLoading(true);
+ try {
+ const r = await api.copilot?.chat?.([
+ { role: 'system', content: `You are an expert on this video: "${tvCurrentVideo.title}" by ${tvCurrentVideo.company || 'unknown'}. Topics: ${tvCurrentVideo.tags || ''}. Answer concisely.` },
+ ...tvAskMessages,
+ { role: 'user', content: msg }
+ ]) ?? { reply: 'Ask Nova is not available right now.' };
+ setTvAskMessages(m => [...m, { role: 'assistant', content: r.reply || r.message || 'No response.' }]);
+ } catch { setTvAskMessages(m => [...m, { role: 'assistant', content: 'Could not get a response. Try again.' }]); }
+ setTvAskLoading(false);
+ };
+
+ const upNextVideos = tvVideos.filter(v => v.id !== tvCurrentVideo?.id).slice(0, 6);
+ const channelColor = TV_CHANNELS.find(c => c.id === tvChannel)?.color || '#e11d48';
+
+ return (
+ <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 60px)', overflow: 'hidden', background: 'linear-gradient(180deg, #0a0a0f 0%, #0f0f1a 100%)' }}>
+
+ {/* Header */}
+ <div style={{ padding: '16px 24px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+ <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+ <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+ <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#e11d48', boxShadow: '0 0 10px #e11d48', animation: 'pulse 2s infinite' }} />
+ <Tv size={20} color="#e11d48" />
+ <span style={{ fontSize: '18px', fontWeight: 800, color: '#fff', letterSpacing: '-0.3px' }}>Atlas TV</span>
+ <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontStyle: 'italic' }}>Watch. Learn. Discover. Get Hired.</span>
+ </div>
+ {tvLive.length > 0 && (
+ <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '20px', padding: '4px 10px' }}>
+ <Radio size={12} color="#ef4444" />
+ <span style={{ fontSize: '11px', color: '#ef4444', fontWeight: 700 }}>{tvLive.length} LIVE</span>
+ </div>
+ )}
+ </div>
+ {/* Search */}
+ <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+ <input
+ value={tvSearchQuery}
+ onChange={e => setTvSearchQuery(e.target.value)}
+ onKeyDown={async e => { if (e.key === 'Enter' && tvSearchQuery.trim()) { try { const r = await api.tv.search(tvSearchQuery); setTvVideos(r?.videos || []); if (r?.videos?.length) setTvCurrentVideo(r.videos[0]); } catch {} } }}
+ placeholder="Search videos..."
+ style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '20px', padding: '6px 14px', fontSize: '13px', color: '#fff', width: '200px', outline: 'none' }}
+ />
+ </div>
+ </div>
+
+ {/* Channel Bar */}
+ <div style={{ display: 'flex', gap: '8px', padding: '10px 24px', borderBottom: '1px solid rgba(255,255,255,0.06)', overflowX: 'auto', flexShrink: 0, scrollbarWidth: 'none' }}>
+ {TV_CHANNELS.map(ch => (
+ <button
+ key={ch.id}
+ onClick={() => switchChannel(ch.id)}
+ style={{
+ padding: '5px 14px', borderRadius: '20px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0, transition: 'all 0.2s',
+ background: tvChannel === ch.id ? ch.color : 'rgba(255,255,255,0.06)',
+ color: tvChannel === ch.id ? '#fff' : 'var(--text-muted)',
+ border: `1px solid ${tvChannel === ch.id ? ch.color : 'transparent'}`,
+ boxShadow: tvChannel === ch.id ? `0 0 12px ${ch.color}55` : 'none',
+ }}
+ >{ch.label}</button>
+ ))}
+ </div>
+
+ {/* Main Content */}
+ <div style={{ display: 'flex', flex: 1, overflow: 'hidden', gap: 0 }}>
+
+ {/* Video Player Area */}
+ <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
+ {tvCurrentVideo ? (
+ <>
+ {/* YouTube Player */}
+ <div style={{ position: 'relative', width: '100%', paddingTop: '56.25%', background: '#000', flexShrink: 0 }}>
+ <iframe
+ key={tvCurrentVideo.youtube_id}
+ src={`https://www.youtube.com/embed/${tvCurrentVideo.youtube_id}?autoplay=1&rel=0&modestbranding=1`}
+ style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
+ allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+ allowFullScreen
+ />
+ {tvCurrentVideo.is_sponsored && (
+ <div style={{ position: 'absolute', top: '10px', right: '10px', background: '#f59e0b', color: '#000', fontSize: '10px', fontWeight: 800, padding: '3px 8px', borderRadius: '4px' }}>SPONSORED</div>
+ )}
+ {tvCurrentVideo.is_live && (
+ <div style={{ position: 'absolute', top: '10px', left: '10px', background: '#ef4444', color: '#fff', fontSize: '10px', fontWeight: 800, padding: '3px 8px', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+ <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#fff' }} />LIVE
+ </div>
+ )}
+ </div>
+
+ {/* Video Info */}
+ <div style={{ padding: '14px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexShrink: 0 }}>
+ <div style={{ flex: 1, minWidth: 0 }}>
+ <h2 style={{ fontSize: '16px', fontWeight: 700, color: '#fff', margin: '0 0 4px', lineHeight: 1.3 }}>{tvCurrentVideo.title}</h2>
+ <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+ {tvCurrentVideo.company && <span style={{ fontSize: '12px', color: channelColor, fontWeight: 600 }}>{tvCurrentVideo.company}</span>}
+ {tvCurrentVideo.viewer_count > 0 && <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{tvCurrentVideo.viewer_count.toLocaleString()} views</span>}
+ {tvCurrentVideo.tags && tvCurrentVideo.tags.split(',').slice(0,3).map((t:string) => (
+ <span key={t} style={{ fontSize: '11px', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.06)', padding: '2px 8px', borderRadius: '10px' }}>{t.trim()}</span>
+ ))}
+ </div>
+ </div>
+ <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+ <button
+ onClick={() => toggleBookmark(tvCurrentVideo.id)}
+ style={{ background: 'none', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '6px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', color: tvBookmarks.includes(tvCurrentVideo.id) ? '#f59e0b' : 'var(--text-muted)', fontSize: '12px' }}
+ >
+ {tvBookmarks.includes(tvCurrentVideo.id) ? <BookmarkCheck size={14} /> : <Bookmark size={14} />}
+ {tvBookmarks.includes(tvCurrentVideo.id) ? 'Saved' : 'Save'}
+ </button>
+ <a
+ href={`https://www.youtube.com/watch?v=${tvCurrentVideo.youtube_id}`}
+ target="_blank"
+ rel="noopener noreferrer"
+ style={{ background: 'none', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '6px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-muted)', fontSize: '12px', textDecoration: 'none' }}
+ >
+ <ExternalLink size={14} /> YouTube
+ </a>
+ </div>
+ </div>
+
+ {/* Up Next (horizontal on small) */}
+ <div style={{ flex: 1, overflowY: 'auto', padding: '12px 20px' }}>
+ <p style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, margin: '0 0 10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Up Next</p>
+ <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+ {upNextVideos.map(v => (
+ <div
+ key={v.id}
+ onClick={() => selectVideo(v)}
+ style={{ display: 'flex', gap: '10px', cursor: 'pointer', padding: '8px', borderRadius: '10px', transition: 'background 0.2s' }}
+ onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
+ onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+ >
+ <div style={{ width: '80px', height: '48px', background: '#1a1a2e', borderRadius: '6px', overflow: 'hidden', flexShrink: 0, position: 'relative' }}>
+ <img src={`https://img.youtube.com/vi/${v.youtube_id}/mqdefault.jpg`} alt={v.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+ <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.3)' }}>
+ <PlayCircle size={16} color="rgba(255,255,255,0.8)" />
+ </div>
+ </div>
+ <div style={{ flex: 1, minWidth: 0 }}>
+ <p style={{ fontSize: '12px', color: '#fff', fontWeight: 600, margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.title}</p>
+ <p style={{ fontSize: '11px', color: 'var(--text-muted)', margin: 0 }}>{v.company || v.channel}</p>
+ </div>
+ </div>
+ ))}
+ </div>
+ </div>
+ </>
+ ) : (
+ <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '16px' }}>
+ <Tv size={48} color="var(--text-muted)" />
+ <p style={{ color: 'var(--text-muted)', fontSize: '14px' }}>Select a channel to start watching</p>
+ </div>
+ )}
+ </div>
+
+ {/* AI Sidebar */}
+ <div style={{ width: '300px', flexShrink: 0, borderLeft: '1px solid rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+ {/* Tabs */}
+ <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.06)', flexShrink: 0, overflowX: 'auto', scrollbarWidth: 'none' }}>
+ {[
+ { id: 'summary', icon: <AlignLeft size={12} />, label: 'Summary' },
+ { id: 'quiz', icon: <Trophy size={12} />, label: 'Quiz' },
+ { id: 'notes', icon: <FileText size={12} />, label: 'Notes' },
+ { id: 'ask', icon: <Sparkles size={12} />, label: 'Ask' },
+ ].map(tab => (
+ <button
+ key={tab.id}
+ onClick={() => { setTvSidebarTab(tab.id as any); if (tab.id === 'summary' && !tvSummary && tvCurrentVideo) loadSummary(); if (tab.id === 'quiz' && tvQuiz.length === 0 && tvCurrentVideo) loadQuiz(); }}
+ style={{ flex: 1, padding: '10px 4px', fontSize: '11px', fontWeight: 600, cursor: 'pointer', border: 'none', background: 'none', color: tvSidebarTab === tab.id ? '#fff' : 'var(--text-muted)', borderBottom: `2px solid ${tvSidebarTab === tab.id ? channelColor : 'transparent'}`, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', transition: 'all 0.2s', whiteSpace: 'nowrap' }}
+ >
+ {tab.icon}{tab.label}
+ </button>
+ ))}
+ </div>
+
+ {/* Tab Content */}
+ <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
+
+ {/* Summary Tab */}
+ {tvSidebarTab === 'summary' && (
+ <div>
+ {!tvCurrentVideo ? (
+ <p style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Select a video to see its AI summary.</p>
+ ) : tvSummaryLoading ? (
+ <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+ {[1,2,3].map(i => <div key={i} style={{ height: '14px', background: 'rgba(255,255,255,0.08)', borderRadius: '4px', animation: 'pulse 1.5s infinite' }} />)}
+ <p style={{ color: 'var(--text-muted)', fontSize: '12px', marginTop: '8px' }}>Generating AI summary...</p>
+ </div>
+ ) : tvSummary ? (
+ <>
+ <p style={{ fontSize: '11px', color: channelColor, fontWeight: 700, margin: '0 0 10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Key Takeaways</p>
+ {(tvSummary.summary || []).map((pt: string, i: number) => (
+ <div key={i} style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
+ <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: channelColor, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 800, color: '#fff', flexShrink: 0 }}>{i+1}</div>
+ <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.85)', margin: 0, lineHeight: 1.5 }}>{pt}</p>
+ </div>
+ ))}
+ {tvSummary.skills?.length > 0 && (
+ <>
+ <p style={{ fontSize: '11px', color: channelColor, fontWeight: 700, margin: '14px 0 8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Skills Covered</p>
+ <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+ {tvSummary.skills.map((s: string) => (
+ <span key={s} style={{ fontSize: '11px', color: '#fff', background: `${channelColor}22`, border: `1px solid ${channelColor}44`, padding: '3px 8px', borderRadius: '10px' }}>{s}</span>
+ ))}
+ </div>
+ </>
+ )}
+ </>
+ ) : (
+ <div style={{ textAlign: 'center', paddingTop: '20px' }}>
+ <Sparkles size={32} color={channelColor} style={{ marginBottom: '10px' }} />
+ <p style={{ color: 'var(--text-muted)', fontSize: '12px', marginBottom: '12px' }}>Get an AI-generated summary of this video</p>
+ <button onClick={loadSummary} style={{ background: channelColor, border: 'none', color: '#fff', padding: '8px 16px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>Generate Summary</button>
+ </div>
+ )}
+ </div>
+ )}
+
+ {/* Quiz Tab */}
+ {tvSidebarTab === 'quiz' && (
+ <div>
+ {tvQuizLoading ? (
+ <p style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Generating quiz questions...</p>
+ ) : tvQuiz.length > 0 ? (
+ <>
+ <p style={{ fontSize: '11px', color: channelColor, fontWeight: 700, margin: '0 0 14px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Quick Quiz (+15 XP)</p>
+ {tvQuiz.map((q: any, qi: number) => (
+ <div key={qi} style={{ marginBottom: '18px' }}>
+ <p style={{ fontSize: '12px', color: '#fff', fontWeight: 600, margin: '0 0 8px', lineHeight: 1.4 }}>{qi+1}. {q.question}</p>
+ {(q.options || []).map((opt: string, oi: number) => {
+ const isSelected = tvQuizAnswers[qi] === opt;
+ const isCorrect = q.correct_answer === opt;
+ const hasAnswered = !!tvQuizAnswers[qi];
+ return (
+ <button
+ key={oi}
+ onClick={() => !hasAnswered && setTvQuizAnswers(a => ({...a, [qi]: opt}))}
+ style={{
+ width: '100%', textAlign: 'left', padding: '7px 10px', marginBottom: '4px', borderRadius: '6px', fontSize: '11px', cursor: hasAnswered ? 'default' : 'pointer', border: '1px solid',
+ background: hasAnswered && isCorrect ? 'rgba(34,197,94,0.15)' : hasAnswered && isSelected && !isCorrect ? 'rgba(239,68,68,0.15)' : isSelected ? `${channelColor}22` : 'rgba(255,255,255,0.04)',
+ borderColor: hasAnswered && isCorrect ? '#22c55e' : hasAnswered && isSelected && !isCorrect ? '#ef4444' : isSelected ? channelColor : 'rgba(255,255,255,0.08)',
+ color: '#fff',
+ }}
+ >{opt}</button>
+ );
+ })}
+ {tvQuizAnswers[qi] && (
+ <p style={{ fontSize: '11px', color: tvQuizAnswers[qi] === q.correct_answer ? '#22c55e' : '#ef4444', margin: '4px 0 0' }}>
+ {tvQuizAnswers[qi] === q.correct_answer ? 'Correct!' : `Correct: ${q.correct_answer}`}
+ </p>
+ )}
+ </div>
+ ))}
+ </>
+ ) : (
+ <div style={{ textAlign: 'center', paddingTop: '20px' }}>
+ <Trophy size={32} color={channelColor} style={{ marginBottom: '10px' }} />
+ <p style={{ color: 'var(--text-muted)', fontSize: '12px', marginBottom: '12px' }}>Test your knowledge from this video</p>
+ <button onClick={loadQuiz} style={{ background: channelColor, border: 'none', color: '#fff', padding: '8px 16px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>Start Quiz</button>
+ </div>
+ )}
+ </div>
+ )}
+
+ {/* Notes Tab */}
+ {tvSidebarTab === 'notes' && (
+ <div>
+ <p style={{ fontSize: '11px', color: channelColor, fontWeight: 700, margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>My Notes</p>
+ <textarea
+ value={tvCurrentVideo ? (tvNotes[tvCurrentVideo.id] || '') : ''}
+ onChange={e => tvCurrentVideo && setTvNotes(n => ({...n, [tvCurrentVideo.id]: e.target.value}))}
+ placeholder="Take notes while you watch..."
+ style={{ width: '100%', minHeight: '240px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '10px', fontSize: '12px', color: '#fff', outline: 'none', resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.6 }}
+ />
+ <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '6px' }}>Notes are saved locally per video.</p>
+ </div>
+ )}
+
+ {/* Ask Tab */}
+ {tvSidebarTab === 'ask' && (
+ <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: '10px' }}>
+ <p style={{ fontSize: '11px', color: channelColor, fontWeight: 700, margin: 0, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Ask About This Video</p>
+ <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', minHeight: '150px' }}>
+ {tvAskMessages.length === 0 && (
+ <p style={{ color: 'var(--text-muted)', fontSize: '12px' }}>Ask any question about the topics covered in this video.</p>
+ )}
+ {tvAskMessages.map((m, i) => (
+ <div key={i} style={{ background: m.role === 'user' ? `${channelColor}22` : 'rgba(255,255,255,0.05)', padding: '8px 10px', borderRadius: '8px', fontSize: '12px', color: '#fff', lineHeight: 1.5 }}>
+ <span style={{ fontSize: '10px', color: m.role === 'user' ? channelColor : 'var(--text-muted)', fontWeight: 700, display: 'block', marginBottom: '3px' }}>{m.role === 'user' ? 'You' : 'Atlas AI'}</span>
+ {m.content}
+ </div>
+ ))}
+ {tvAskLoading && <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Thinking...</p>}
+ </div>
+ <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+ <input
+ value={tvAskInput}
+ onChange={e => setTvAskInput(e.target.value)}
+ onKeyDown={e => e.key === 'Enter' && askAboutVideo()}
+ placeholder="Ask a question..."
+ style={{ flex: 1, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '7px 10px', fontSize: '12px', color: '#fff', outline: 'none' }}
+ />
+ <button onClick={askAboutVideo} style={{ background: channelColor, border: 'none', borderRadius: '8px', padding: '7px 10px', cursor: 'pointer', color: '#fff', display: 'flex', alignItems: 'center' }}>
+ <Send size={13} />
+ </button>
+ </div>
+ </div>
+ )}
+ </div>
+ </div>
+ </div>
  </div>
  );
  })()}

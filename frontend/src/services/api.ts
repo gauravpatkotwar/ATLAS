@@ -578,6 +578,45 @@ export const api = {
     async gradeInterviewRound(data: { job_title: string; current_round: number; question: string; answer: string }): Promise<any> {
       return apiRequest('/career/interview/grade-round', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
     },
+  },
+
+  tv: {
+    async channels(): Promise<any> {
+      return apiRequest('/tv/channels');
+    },
+    async feed(channel: string = 'all', page: number = 1): Promise<any> {
+      return apiRequest(`/tv/feed?channel=${channel}&page=${page}`);
+    },
+    async video(id: number): Promise<any> {
+      return apiRequest(`/tv/videos/${id}`);
+    },
+    async watchVideo(id: number): Promise<any> {
+      return apiRequest(`/tv/videos/${id}/watch`, { method: 'POST' });
+    },
+    async live(): Promise<any> {
+      return apiRequest('/tv/live');
+    },
+    async search(q: string): Promise<any> {
+      return apiRequest(`/tv/search?q=${encodeURIComponent(q)}`);
+    },
+    async bookmarks(): Promise<any> {
+      return apiRequest('/tv/bookmarks');
+    },
+    async addBookmark(videoId: number): Promise<any> {
+      return apiRequest(`/tv/bookmarks/${videoId}`, { method: 'POST' });
+    },
+    async removeBookmark(videoId: number): Promise<any> {
+      return apiRequest(`/tv/bookmarks/${videoId}`, { method: 'DELETE' });
+    },
+    async aiSummary(videoId: number): Promise<any> {
+      return apiRequest(`/tv/ai/summary/${videoId}`, { method: 'POST' });
+    },
+    async aiQuiz(videoId: number): Promise<any> {
+      return apiRequest(`/tv/ai/quiz/${videoId}`, { method: 'POST' });
+    },
+    async seed(): Promise<any> {
+      return apiRequest('/tv/seed');
+    },
   }
 };
 

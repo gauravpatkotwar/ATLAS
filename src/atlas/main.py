@@ -22,6 +22,9 @@ from atlas.api.v1.integrations import router as integrations_router
 from atlas.api.v1.analytics import router as analytics_router
 from atlas.api.v1.academy import router as academy_router
 from atlas.api.v1.career import router as career_router
+from atlas.api.v1.tv import router as tv_router
+from atlas.database import tv_models  # registers TV models with Base metadata  # noqa: F401
+from atlas.api.v1.tv import seed_tv_videos
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -55,6 +58,10 @@ async def lifespan(app: FastAPI):
         await conn.execute(text("CREATE TABLE IF NOT EXISTS academy_skill_gaps (id SERIAL PRIMARY KEY)"))
         await conn.execute(text("CREATE TABLE IF NOT EXISTS academy_learning_paths (id SERIAL PRIMARY KEY)"))
     logger.info("Database tables verified.")
+    # Seed Atlas TV videos if library is empty
+    from atlas.database.session import SessionLocal
+    async with SessionLocal() as seed_db:
+        await seed_tv_videos(seed_db)
     yield
 
     # Shutdown actions: Close provider HTTP sessions
@@ -130,6 +137,9 @@ app.include_router(
 )
 app.include_router(
     career_router, prefix=f"{settings.API_V1_STR}/career", tags=["Career"]
+)
+app.include_router(
+    tv_router, prefix=f"{settings.API_V1_STR}/tv", tags=["Atlas TV"]
 )
 
 from fastapi.staticfiles import StaticFiles
