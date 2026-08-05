@@ -4795,7 +4795,6 @@ export default function App() {
  { id: 'marketing', label: 'Marketing', color: '#ec4899' },
  { id: 'design', label: 'Design', color: '#14b8a6' },
  { id: 'finance', label: 'Finance', color: '#84cc16' },
- { id: 'sponsored', label: 'Sponsored', color: '#6366f1' },
  ];
 
  const switchChannel = async (ch: string) => {
@@ -4925,9 +4924,7 @@ export default function App() {
  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
  allowFullScreen
  />
- {tvCurrentVideo.is_sponsored && (
- <div style={{ position: 'absolute', top: '10px', right: '10px', background: '#f59e0b', color: '#000', fontSize: '10px', fontWeight: 800, padding: '3px 8px', borderRadius: '4px' }}>SPONSORED</div>
- )}
+
  {tvCurrentVideo.is_live && (
  <div style={{ position: 'absolute', top: '10px', left: '10px', background: '#ef4444', color: '#fff', fontSize: '10px', fontWeight: 800, padding: '3px 8px', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
  <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#fff' }} />LIVE
