@@ -47,6 +47,28 @@ class CandidateUpdate(BaseModel):
     recruiter_rating: Optional[float] = None
 
 
+class CandidateQuestionnaire(BaseModel):
+    name: str
+    email: EmailStr
+    phone: Optional[str] = None
+    location: Optional[str] = None
+    qualification: str  # e.g., "B.Tech in Computer Science"
+    skills: List[str]  # e.g., ["Python", "React", "SQL", "Docker"]
+    experience_years: float = 0.0
+    work_highlights: Optional[str] = None
+    projects: Optional[str] = None
+    desired_role: Optional[str] = None
+
+
+class IntakeChatMessage(BaseModel):
+    role: str
+    content: str
+
+
+class IntakeChatPayload(BaseModel):
+    messages: List[IntakeChatMessage]
+
+
 # --- Route Endpoints ---
 
 

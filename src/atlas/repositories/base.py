@@ -33,15 +33,21 @@ class BaseRepository(Generic[ModelType]):
         result = await self.db.execute(query)
         return list(result.scalars().all())
 
-    async def create(self, obj_in: ModelType) -> ModelType:
+    async def create(self, obj_in: Any) -> ModelType:
         """Saves a record, auto-assigning tenant context if specified."""
-        if self.tenant_id is not None and hasattr(obj_in, "tenant_id"):
-            setattr(obj_in, "tenant_id", self.tenant_id)
+        if isinstance(obj_in, dict):
+            if self.tenant_id is not None and "tenant_id" not in obj_in:
+                obj_in["tenant_id"] = self.tenant_id
+            db_obj = self.model(**obj_in)
+        else:
+            if self.tenant_id is not None and hasattr(obj_in, "tenant_id"):
+                setattr(obj_in, "tenant_id", self.tenant_id)
+            db_obj = obj_in
 
-        self.db.add(obj_in)
+        self.db.add(db_obj)
         await self.db.commit()
-        await self.db.refresh(obj_in)
-        return obj_in
+        await self.db.refresh(db_obj)
+        return db_obj
 
     async def update(self, db_obj: ModelType, obj_in: dict) -> ModelType:
         """Modifies a record, raising a PermissionError upon cross-tenant writes."""

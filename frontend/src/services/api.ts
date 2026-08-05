@@ -116,6 +116,25 @@ export const api = {
         body: formData
       });
     },
+
+    async createQuestionnaire(data: {
+      name: string;
+      email: string;
+      phone?: string;
+      location?: string;
+      qualification: string;
+      skills: string[];
+      experience_years?: number;
+      work_highlights?: string;
+      projects?: string;
+      desired_role?: string;
+    }): Promise<any> {
+      return apiRequest('/candidates/questionnaire', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+    },
     
     async update(id: number, payload: any): Promise<any> {
       return apiRequest(`/candidates/${id}`, {

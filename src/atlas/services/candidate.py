@@ -117,6 +117,37 @@ class CandidateService:
                 "Please upgrade your workspace tier."
             )
 
+    async def create_structured_candidate(
+        self,
+        name: str,
+        email: str,
+        phone: Optional[str] = None,
+        location: Optional[str] = None,
+        skills: Optional[List[str]] = None,
+        education: Optional[List[dict]] = None,
+        experience: Optional[List[dict]] = None,
+        summary: Optional[str] = None,
+    ) -> Candidate:
+        """Creates a candidate record directly in PostgreSQL without raw file storage."""
+        await self.verify_upload_quota()
+
+        candidate = await self.repo.create({
+            "name": name,
+            "email": email,
+            "phone": phone,
+            "location": location,
+            "skills": skills or [],
+            "education": education or [],
+            "experience": experience or [],
+            "summary": summary or "",
+            "resume_path": None,  # No PDF/DOCX file saved!
+            "ai_score": 8.5,
+        })
+
+        # Generate FAISS vector search embedding from SQL text
+        await self.reindex_candidate(candidate)
+        return candidate
+
     async def upload_and_parse_resume(
         self, filename: str, file_content: bytes, current_user_id: Optional[int] = None
     ) -> WorkflowContext:

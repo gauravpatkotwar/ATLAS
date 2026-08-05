@@ -49,6 +49,13 @@ class Settings(BaseSettings):
         default="vector_index.faiss", validation_alias="FAISS_INDEX_PATH"
     )
 
+    # SMTP Automated Email Delivery
+    SMTP_SERVER: str = Field(default="smtp.gmail.com", validation_alias="SMTP_SERVER")
+    SMTP_PORT: int = Field(default=587, validation_alias="SMTP_PORT")
+    SMTP_USER: str = Field(default="", validation_alias="SMTP_USER")
+    SMTP_PASSWORD: str = Field(default="", validation_alias="SMTP_PASSWORD")
+    EMAILS_ENABLED: bool = Field(default=True, validation_alias="EMAILS_ENABLED")
+
     model_config = SettingsConfigDict(
         env_file=".env", env_file_encoding="utf-8", extra="ignore"
     )

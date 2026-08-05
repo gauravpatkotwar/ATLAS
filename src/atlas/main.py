@@ -33,13 +33,14 @@ async def lifespan(app: FastAPI):
     logger.info("Initializing database tables...")
     from sqlalchemy import text
     async with engine.begin() as conn:
+        # Create all tables first if they don't exist
+        await conn.run_sync(Base.metadata.create_all)
         # Dynamic schema migration patches
         await conn.execute(text("ALTER TABLE tenants ADD COLUMN IF NOT EXISTS billing_customer_id VARCHAR(255) NULL"))
         await conn.execute(text("ALTER TABLE tenants ADD COLUMN IF NOT EXISTS billing_subscription_id VARCHAR(255) NULL"))
         await conn.execute(text("ALTER TABLE tenants ADD COLUMN IF NOT EXISTS billing_provider VARCHAR(255) NULL"))
         await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS video_path VARCHAR(255) NULL"))
         await conn.execute(text("ALTER TABLE candidates ADD COLUMN IF NOT EXISTS video_path VARCHAR(255) NULL"))
-        await conn.run_sync(Base.metadata.create_all)
         # Run column alterations after tables exist
         await conn.execute(text("ALTER TABLE posts ADD COLUMN IF NOT EXISTS post_type VARCHAR(255) DEFAULT 'discussion' NOT NULL"))
         # Atlas Academy migrations
