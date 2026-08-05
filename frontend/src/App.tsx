@@ -2123,28 +2123,6 @@ export default function App() {
  gridStyle.gridTemplateRows = '1fr 1fr';
  }
 
- if (!meetIsJoined) {
- return (
- <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, padding: '32px' }}>
- <div className="glass-panel" style={{ width: '100%', maxWidth: '480px', padding: '32px', textAlign: 'center' }}>
- <h3 style={{ fontSize: '20px', color: '#fff', marginBottom: '16px' }}>Join Meeting Room</h3>
- <p style={{ color: 'var(--text-muted)', fontSize: '13px', marginBottom: '24px' }}>
- You are about to enter room code: <strong style={{ color: '#fff', fontFamily: 'monospace' }}>{activeMeetRoom}</strong>
- </p>
- 
- <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
- <button onClick={handleLeaveMeetRoom} className="btn-secondary" style={{ padding: '10px 20px', fontSize: '13px' }}>
- Cancel
- </button>
- <button onClick={() => handleJoinMeetRoom(activeMeetRoom!)} className="btn-primary lining-settings" style={{ padding: '10px 20px', fontSize: '13px' }}>
- Join Meet Room
- </button>
- </div>
- </div>
- </div>
- );
- }
-
  const publicMeetUrl = `${window.location.origin}${window.location.pathname}?meet=${activeMeetRoom}`;
 
  return (
