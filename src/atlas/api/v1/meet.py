@@ -1,6 +1,6 @@
 import logging
-import uuid
 import random
+import time
 from typing import Dict, Any, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
@@ -12,10 +12,9 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 # In-memory store for meeting rooms
-# room_code -> { "participants": { id: name }, "queues": { id: [signals] }, "last_activity": float }
+# room_code -> { "participants": { id: {"name": str, "last_seen": float} }, "queues": { id: [signals] } }
 MEETINGS: Dict[str, Dict[str, Any]] = {}
 
-# --- Pydantic Schemas ---
 class JoinRequest(BaseModel):
     participant_id: str
     name: str
@@ -26,10 +25,26 @@ class SignalRequest(BaseModel):
     type: str
     data: Any
 
+
+def _norm_code(code: str) -> str:
+    return code.lower().strip()
+
+
+def _clean_stale_participants(room: Dict[str, Any]):
+    now = time.time()
+    stale_ids = []
+    for pid, pdata in list(room["participants"].items()):
+        last_seen = pdata.get("last_seen", now) if isinstance(pdata, dict) else now
+        if now - last_seen > 25:  # 25 seconds inactive
+            stale_ids.append(pid)
+    for pid in stale_ids:
+        room["participants"].pop(pid, None)
+        room["queues"].pop(pid, None)
+
+
 @router.post("/create")
 def create_room(current_user: User = Depends(get_current_user)):
     """Generates a random unique room code for a video meeting."""
-    # Generate standard format abc-defg-hij
     parts = [
         "".join(random.choices("abcdefghijklmnopqrstuvwxyz", k=3)),
         "".join(random.choices("abcdefghijklmnopqrstuvwxyz", k=4)),
@@ -41,57 +56,59 @@ def create_room(current_user: User = Depends(get_current_user)):
         "participants": {},
         "queues": {},
     }
-    logger.info(f"Created meeting room: {room_code} (Tenant ID: {current_user.tenant_id})")
+    logger.info(f"Created meeting room: {room_code}")
     return {"room_code": room_code}
 
 
 @router.post("/join/{room_code}")
 def join_room(room_code: str, payload: JoinRequest):
     """Enters a participant into a meeting room and returns other members."""
-    if room_code not in MEETINGS:
-        # Auto-create room for guest link joins
-        MEETINGS[room_code] = {
+    code = _norm_code(room_code)
+    if code not in MEETINGS:
+        MEETINGS[code] = {
             "participants": {},
             "queues": {},
         }
 
-    room = MEETINGS[room_code]
+    room = MEETINGS[code]
+    _clean_stale_participants(room)
+
     p_id = payload.participant_id
     p_name = payload.name
 
-    # Add to room
-    room["participants"][p_id] = p_name
+    # Add/Update participant with timestamp
+    room["participants"][p_id] = {"name": p_name, "last_seen": time.time()}
     if p_id not in room["queues"]:
         room["queues"][p_id] = []
 
     # Find other active members
     others = [
-        {"id": k, "name": v}
+        {"id": k, "name": v["name"] if isinstance(v, dict) else v}
         for k, v in room["participants"].items()
         if k != p_id
     ]
 
-    logger.info(f"User {p_name} ({p_id}) joined room {room_code}")
+    logger.info(f"User {p_name} ({p_id}) joined room {code}. Active others: {len(others)}")
     return {"status": "success", "other_participants": others}
 
 
 @router.post("/signal/{room_code}")
 def send_signal(room_code: str, payload: SignalRequest):
     """Forwards SDP offers/answers and ICE candidates to a specific peer."""
-    if room_code not in MEETINGS:
+    code = _norm_code(room_code)
+    if code not in MEETINGS:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Meeting room not found."
         )
 
-    room = MEETINGS[room_code]
+    room = MEETINGS[code]
     target = payload.target_id
 
     if target not in room["queues"]:
-        # Target hasn't joined or initialized queue yet
-        return {"status": "queued_fail", "reason": "Target not present"}
+        room["queues"][target] = []
 
-    # Append to target signal queue
+    # Append signal to target queue
     room["queues"][target].append({
         "sender_id": payload.sender_id,
         "type": payload.type,
@@ -104,25 +121,31 @@ def send_signal(room_code: str, payload: SignalRequest):
 @router.get("/poll/{room_code}/{participant_id}")
 def poll_room(room_code: str, participant_id: str):
     """Fetches any pending signaling payloads and active participant list."""
-    if room_code not in MEETINGS:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Meeting room not found."
-        )
+    code = _norm_code(room_code)
+    if code not in MEETINGS:
+        # Auto-create if lost
+        MEETINGS[code] = {"participants": {}, "queues": {}}
 
-    room = MEETINGS[room_code]
+    room = MEETINGS[code]
+    _clean_stale_participants(room)
+
+    # Keepalive update
+    if participant_id in room["participants"]:
+        if isinstance(room["participants"][participant_id], dict):
+            room["participants"][participant_id]["last_seen"] = time.time()
+        else:
+            room["participants"][participant_id] = {"name": str(room["participants"][participant_id]), "last_seen": time.time()}
     
-    # Keepalive/auto-register queue if needed
     if participant_id not in room["queues"]:
         room["queues"][participant_id] = []
-    
-    # Retrieve and clear signals
+
+    # Retrieve & clear queued signals
     signals = list(room["queues"][participant_id])
     room["queues"][participant_id].clear()
 
-    # Get latest participant list
+    # Get list of all active participants
     participants = [
-        {"id": k, "name": v}
+        {"id": k, "name": v["name"] if isinstance(v, dict) else v}
         for k, v in room["participants"].items()
     ]
 
@@ -135,16 +158,14 @@ def poll_room(room_code: str, participant_id: str):
 @router.post("/leave/{room_code}/{participant_id}")
 def leave_room(room_code: str, participant_id: str):
     """Removes a participant and cleans up their message queue."""
-    if room_code in MEETINGS:
-        room = MEETINGS[room_code]
-        if participant_id in room["participants"]:
-            del room["participants"][participant_id]
-        if participant_id in room["queues"]:
-            del room["queues"][participant_id]
+    code = _norm_code(room_code)
+    if code in MEETINGS:
+        room = MEETINGS[code]
+        room["participants"].pop(participant_id, None)
+        room["queues"].pop(participant_id, None)
         
-        # Clean up empty rooms
         if not room["participants"]:
-            del MEETINGS[room_code]
-            logger.info(f"Cleaned up empty room: {room_code}")
+            del MEETINGS[code]
+            logger.info(f"Cleaned up empty room: {code}")
             
     return {"status": "success"}

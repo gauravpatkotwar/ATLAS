@@ -1,5 +1,6 @@
 import datetime
 import logging
+import secrets
 from typing import Optional, Dict, Any
 import bcrypt
 import jwt
@@ -79,6 +80,7 @@ class AuthService:
         role: str = "recruiter",
         org_name: Optional[str] = None,
         invite_code: Optional[str] = None,
+        recovery_email: Optional[str] = None,
     ) -> User:
         """Registers a user globally and binds them to a new or existing Tenant organization."""
         existing = await self.repo.get_by_email(email)
@@ -119,7 +121,62 @@ class AuthService:
             hashed_password=hashed_password,
             role=role,
             is_active=True,
+            recovery_email=recovery_email or None,
         )
 
         # User repo links user to db
         return await self.repo.create(new_user)
+
+    async def generate_password_reset_token(self, email: str) -> Optional[str]:
+        """
+        Generates a secure one-time reset token for the given email.
+        Returns the token string (to be shown or emailed), or None if email not found.
+        """
+        user = await self.repo.get_by_email(email)
+        if not user:
+            # Also check recovery emails
+            result = await self.db.execute(
+                select(User).where(User.recovery_email == email)
+            )
+            user = result.scalars().first()
+
+        if not user:
+            return None
+
+        token = secrets.token_urlsafe(32)
+        user.reset_password_token = token
+        user.reset_token_expires = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=1)
+        self.db.add(user)
+        await self.db.commit()
+        logger.info(f"Password reset token generated for {user.email}")
+        return token
+
+    async def reset_password_with_token(self, token: str, new_password: str) -> bool:
+        """
+        Validates the reset token and applies the new password.
+        Returns True on success, False if token is invalid or expired.
+        """
+        result = await self.db.execute(
+            select(User).where(User.reset_password_token == token)
+        )
+        user = result.scalars().first()
+
+        if not user:
+            return False
+
+        now = datetime.datetime.now(datetime.timezone.utc)
+        expires = user.reset_token_expires
+        if expires:
+            # Make expires timezone-aware if it isn't
+            if expires.tzinfo is None:
+                expires = expires.replace(tzinfo=datetime.timezone.utc)
+            if now > expires:
+                return False
+
+        user.hashed_password = self.hash_password(new_password)
+        user.reset_password_token = None
+        user.reset_token_expires = None
+        self.db.add(user)
+        await self.db.commit()
+        logger.info(f"Password successfully reset for user {user.email}")
+        return True

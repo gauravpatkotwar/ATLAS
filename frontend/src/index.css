@@ -362,12 +362,12 @@ h1, h2, h3, h4, h5 {
 .btn-secondary.lining-copilot:hover    { border-color:rgba(160,160,160,0.4); }
 .btn-secondary.lining-settings:hover   { border-color:rgba(192,192,192,0.4); }
 
-/* ========== NOVA VOICE ANIMATIONS ========== */
+/* ========== NOVA VOICE ANIMATIONS (MONOCHROME 3-COLOR SYSTEM) ========== */
 
 /* Thinking dots */
 .nova-dot {
   width: 7px; height: 7px; border-radius: 50%;
-  background: rgba(255,255,255,0.4);
+  background: #ffffff;
   display: inline-block;
   animation: nova-bounce 1.2s ease-in-out infinite;
 }
@@ -376,28 +376,29 @@ h1, h2, h3, h4, h5 {
   40%            { transform: scale(1);   opacity: 1; }
 }
 
-/* Speaking indicator dots (gold) */
+/* Speaking indicator dots (Liquid Silver) */
 .nova-speaking-dot {
   width: 5px; height: 5px; border-radius: 50%;
-  background: #c9a84c; display: inline-block;
+  background: #cbd5e1; display: inline-block;
   animation: nova-bounce 0.9s ease-in-out infinite;
 }
 
-/* Listening pulse (green dot) */
+/* Listening pulse (Pure White dot) */
 .nova-listening-pulse {
   width: 7px; height: 7px; border-radius: 50%;
-  background: #22c55e; display: inline-block;
+  background: #ffffff; display: inline-block;
   animation: nova-pulse 1s ease-in-out infinite;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
 }
 @keyframes nova-pulse {
   0%, 100% { transform: scale(1); opacity: 1; }
   50%       { transform: scale(1.5); opacity: 0.5; }
 }
 
-/* Waveform bars while listening */
+/* Waveform bars while listening (Silver to White) */
 .nova-wave-bar {
   width: 3px; height: 20px; border-radius: 2px;
-  background: linear-gradient(to top, #22c55e, #4ade80);
+  background: linear-gradient(to top, #94a3b8, #ffffff);
   animation: nova-wave 0.8s ease-in-out infinite alternate;
   transform-origin: bottom;
 }
@@ -411,3 +412,18 @@ h1, h2, h3, h4, h5 {
   from { transform: rotate(0deg); }
   to   { transform: rotate(360deg); }
 }
+
+/* ========== INCOMING CALL TOAST ========== */
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(110%) scale(0.96); }
+  to   { opacity: 1; transform: translateX(0)   scale(1); }
+}
+.animate-slide-in-right {
+  animation: slideInRight 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes callRingPulse {
+  0%, 100% { opacity: 1;   transform: scale(1);    }
+  50%       { opacity: 0.5; transform: scale(1.15); }
+}
+

@@ -3,7 +3,8 @@ import {
  Users, Briefcase, Search, MessageSquare, UploadCloud, 
  Trash2, MapPin, DollarSign, LogOut, 
  AlertCircle, Sparkles, Send, Plus, X, Award, HelpCircle, Settings, CreditCard, CheckCircle,
- Mic, Volume2, VolumeX, Phone, PhoneOff, Video, VideoOff, MicOff, TrendingUp, Shield, Key, Activity, Share2, ShoppingBag, GraduationCap, BookOpen, Star, CheckCircle2, Lock, PlayCircle, Trophy, Zap, Target, FileText, Github, ExternalLink, Copy, Tv, Radio, Bookmark, BookmarkCheck, ChevronRight, ChevronLeft, BarChart2, AlignLeft, HelpCircle as Quiz
+ Mic, Volume2, VolumeX, Phone, PhoneOff, Video, VideoOff, MicOff, TrendingUp, Shield, Key, Activity, Share2, ShoppingBag, GraduationCap, BookOpen, Star, CheckCircle2, Lock, PlayCircle, Trophy, Zap, Target, FileText, Github, ExternalLink, Copy, Tv, Radio, Bookmark, BookmarkCheck, AlignLeft,
+  Loader2, Smartphone, UserPlus, Inbox, Clock, Bot, BarChart3, Monitor, MonitorOff
 } from 'lucide-react';
 import { api } from './services/api';
 
@@ -57,6 +58,187 @@ const AtlasNovaLogo = ({ size = 24, style = {}, className = '' }: { size?: numbe
  </svg>
 );
 
+// Native Hardware Audio Stream Helper with Echo Cancellation & Noise Suppression
+const getNoiseCancelledStream = async (video = true): Promise<MediaStream> => {
+  const audioConstraints: any = {
+    echoCancellation: true,
+    noiseSuppression: true,
+    autoGainControl: true,
+    channelCount: 1,
+    sampleRate: 48000,
+    // WebRTC Acoustic Echo Cancellation (AEC), Noise Suppression (ANS), HPF & Typing Filters
+    googEchoCancellation: true,
+    googAutoGainControl: true,
+    googNoiseSuppression: true,
+    googHighpassFilter: true,
+    googTypingNoiseDetection: true,
+    googAudioMirroring: false,
+  };
+
+  const constraints = {
+    video: video ? { width: { ideal: 1280 }, height: { ideal: 720 } } : false,
+    audio: audioConstraints
+  };
+
+  let rawStream: MediaStream;
+  try {
+    rawStream = await navigator.mediaDevices.getUserMedia(constraints);
+  } catch (err) {
+    if (video) {
+      console.warn("Camera request failed/unavailable, falling back to audio-only stream:", err);
+      rawStream = await navigator.mediaDevices.getUserMedia({
+        video: false,
+        audio: audioConstraints
+      });
+    } else {
+      throw err;
+    }
+  }
+
+  // Guarantee all hardware audio tracks are active, unmuted & filtered
+  rawStream.getAudioTracks().forEach(t => { 
+    t.enabled = true;
+    try {
+      t.applyConstraints({
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+      } as any).catch(() => {});
+    } catch {}
+  });
+
+  return rawStream;
+};
+
+
+// Real-Time WebAudio Voice Activity Detector (VAD) & Human Speech Streaming Gate
+const attachVoiceActivityFilter = (stream: MediaStream): MediaStream => {
+  const audioTrack = stream.getAudioTracks()[0];
+  if (!audioTrack) return stream;
+
+  try {
+    const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    if (audioCtx.state === 'suspended') {
+      audioCtx.resume().catch(() => {});
+    }
+
+    const source = audioCtx.createMediaStreamSource(stream);
+
+    // 1. Human Vocal Spectrum Isolator (300Hz - 3400Hz)
+    const bandpass = audioCtx.createBiquadFilter();
+    bandpass.type = 'bandpass';
+    bandpass.frequency.value = 1100;
+    bandpass.Q.value = 0.75;
+
+    // 2. Dynamic Speech Stream Gate
+    const gateGain = audioCtx.createGain();
+    gateGain.gain.value = 1.0;
+
+    // 3. Real-time Spectral Analyser
+    const analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 512;
+    analyser.smoothingTimeConstant = 0.3;
+
+    source.connect(bandpass);
+    bandpass.connect(gateGain);
+
+    const destination = audioCtx.createMediaStreamDestination();
+    gateGain.connect(destination);
+    source.connect(analyser);
+
+    const bufferLength = analyser.frequencyBinCount;
+    const dataArray = new Uint8Array(bufferLength);
+
+    let hangoverActive = false;
+    let hangoverTimeout: any = null;
+
+    const checkVoiceActivity = () => {
+      if (audioTrack.readyState !== 'live') return;
+      analyser.getByteFrequencyData(dataArray);
+
+      const sampleRate = audioCtx.sampleRate || 48000;
+      const startBin = Math.floor((300 / (sampleRate / 2)) * bufferLength);
+      const endBin = Math.floor((3200 / (sampleRate / 2)) * bufferLength);
+      let voiceEnergy = 0;
+      let count = 0;
+
+      for (let i = startBin; i <= endBin; i++) {
+        voiceEnergy += dataArray[i];
+        count++;
+      }
+      const avgVoiceEnergy = count > 0 ? voiceEnergy / count : 0;
+
+      // Threshold > 16 indicates active human vocal cords
+      if (avgVoiceEnergy > 16) {
+        gateGain.gain.setTargetAtTime(1.0, audioCtx.currentTime, 0.01);
+        hangoverActive = true;
+        if (hangoverTimeout) clearTimeout(hangoverTimeout);
+        hangoverTimeout = setTimeout(() => {
+          hangoverActive = false;
+        }, 450);
+      } else if (!hangoverActive) {
+        gateGain.gain.setTargetAtTime(0.0, audioCtx.currentTime, 0.04);
+      }
+
+      requestAnimationFrame(checkVoiceActivity);
+    };
+
+    checkVoiceActivity();
+
+    const outputTrack = destination.stream.getAudioTracks()[0];
+    if (!outputTrack) return stream;
+
+    const outStream = new MediaStream();
+    outStream.addTrack(outputTrack);
+    stream.getVideoTracks().forEach(vt => outStream.addTrack(vt));
+
+    return outStream;
+  } catch (e) {
+    console.warn("VAD filter fallback to raw stream:", e);
+    return stream;
+  }
+};
+
+
+// WebRTC Stream Pass-Through
+const processRemoteAudioStream = (stream: MediaStream): MediaStream => {
+  return stream;
+};
+
+
+
+
+// Global WebRTC Multi-Region STUN & TURN Relay Pool (Bypasses Strict Firewalls, Symmetric NAT & Mobile CGNAT)
+const GLOBAL_ICE_SERVERS: RTCConfiguration = {
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun2.l.google.com:19302' },
+    { urls: 'stun:stun3.l.google.com:19302' },
+    { urls: 'stun:stun4.l.google.com:19302' },
+    { urls: 'stun:stun.services.mozilla.com' },
+    { urls: 'stun:global.stun.twilio.com:3478' },
+    {
+      urls: 'turn:openrelay.metered.ca:80',
+      username: 'openrelay',
+      credential: 'openrelay'
+    },
+    {
+      urls: 'turn:openrelay.metered.ca:443',
+      username: 'openrelay',
+      credential: 'openrelay'
+    },
+    {
+      urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+      username: 'openrelay',
+      credential: 'openrelay'
+    }
+  ],
+  iceCandidatePoolSize: 10,
+  bundlePolicy: 'max-bundle',
+  rtcpMuxPolicy: 'require'
+};
+
 export default function App() {
  // Entrance Preloader state
  const [showEntrance, setShowEntrance] = useState(true);
@@ -101,9 +283,24 @@ export default function App() {
  const [password, setPassword] = useState('');
  const [isRegister, setIsRegister] = useState(false);
  const [authError, setAuthError] = useState('');
+ const [orgName, setOrgName] = useState('');
+ const [recoveryEmail, setRecoveryEmail] = useState('');
+ // Forgot Password flow states
+ const [showForgotPassword, setShowForgotPassword] = useState(false);
+ const [forgotEmail, setForgotEmail] = useState('');
+ const [forgotLoading, setForgotLoading] = useState(false);
+ const [resetToken, setResetToken] = useState('');
+ const [showResetForm, setShowResetForm] = useState(false);
+ const [resetTokenInput, setResetTokenInput] = useState('');
+ const [newPassword, setNewPassword] = useState('');
+ const [confirmPassword, setConfirmPassword] = useState('');
+ const [resetLoading, setResetLoading] = useState(false);
+ const [resetSuccess, setResetSuccess] = useState(false);
+ const [forgotMessage, setForgotMessage] = useState('');
 
  // App navigation
- const [activeTab, setActiveTab] = useState<'candidates' | 'jobs' | 'search' | 'copilot' | 'settings' | 'my_profile' | 'jobs_board' | 'interview_prep' | 'community' | 'marketplace' | 'analytics' | 'academy' | 'resume_builder' | 'atlas_tv' | 'advertise'>('copilot');
+ const [activeTab, setActiveTab] = useState<'candidates' | 'jobs' | 'search' | 'copilot' | 'settings' | 'my_profile' | 'jobs_board' | 'interview_prep' | 'community' | 'marketplace' | 'analytics' | 'academy' | 'resume_builder' | 'atlas_tv' | 'advertise' | 'contacts'>('copilot');
+
  const [settingsSubPage, setSettingsSubPage] = useState<'appearance' | 'sso' | 'developer' | 'automations' | 'integrations'>('appearance');
 
  // ATLAS ACADEMY STATE 
@@ -162,6 +359,19 @@ export default function App() {
  const [advAdminStats, setAdvAdminStats] = useState<any>(null);
  const [advAdminView, setAdvAdminView] = useState(false);
 
+ // ATLAS CONTACTS + MESSAGING + VIDEO CALL STATE
+ const [myAtlasInfo, setMyAtlasInfo] = useState<any>(null);
+ const [contactBook, setContactBook] = useState<any[]>([]);
+ const [contactsView, setContactsView] = useState<'diary' | 'add' | 'chat' | 'saved_me'>('diary');
+ const [contactAddInput, setContactAddInput] = useState('');
+ const [contactLookupResult, setContactLookupResult] = useState<any>(null);
+ const [contactLookupLoading, setContactLookupLoading] = useState(false);
+ const [contactNickname, setContactNickname] = useState('');
+ const [activeChat, setActiveChat] = useState<any>(null);
+ const [directMessages, setDirectMessages] = useState<any[]>([]);
+ const [directChatInput, setDirectChatInput] = useState('');
+ const [contactsUnreadCount, setContactsUnreadCount] = useState(0);
+
 
  // RESUME BUILDER STATE 
  const [resumeSubView, setResumeSubView] = useState<'builder' | 'score' | 'salary' | 'analytics' | 'showcase' | 'gamification'>('builder');
@@ -188,7 +398,6 @@ export default function App() {
  // 
 
  // SaaS Tenant state
- const [orgName, setOrgName] = useState('');
  const [inviteCode, setInviteCode] = useState('');
  const [isJoinOrg, setIsJoinOrg] = useState(false);
  const [isSSOLogin, setIsSSOLogin] = useState(false);
@@ -292,6 +501,8 @@ export default function App() {
  const [incomingCall, setIncomingCall] = useState<any | null>(null); // Incoming call details from poll
  const localVideoRef = useRef<HTMLVideoElement>(null);
  const remoteVideoRef = useRef<HTMLVideoElement>(null);
+ const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
+ const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
 
  // Billing state
  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
@@ -356,6 +567,42 @@ export default function App() {
  const [newProductCategory, setNewProductCategory] = useState('software'); // 'software' or 'service'
  const [newProductDownloadUrl, setNewProductDownloadUrl] = useState('');
 
+ // ── Resume / Profile Form state ──────────────────────────────────────
+ const [profileEditMode, setProfileEditMode] = useState(false);
+ const [profileSaving, setProfileSaving] = useState(false);
+ const [profileFormError, setProfileFormError] = useState('');
+ const [profileFormSuccess, setProfileFormSuccess] = useState('');
+ const [resumeForm, setResumeForm] = useState<any>({
+ // Step 0 – role type selector
+ profession_type: '', // tech | design | marketing | finance | healthcare | legal | education | operations | other
+ // Personal
+ name: '', phone: '', location: '', desired_role: '', qualification: '',
+ // Skills
+ skills: [], skillInput: '',
+ // Experience
+ experience: [], experience_years: 0,
+ // Education
+ education: [],
+ // Summary
+ summary: '', work_highlights: '',
+ // Tech-specific
+ github_url: '', portfolio_url: '', tech_stack: '', open_source: '',
+ // Design-specific
+ design_tools: [], design_specialization: '',
+ // Marketing-specific
+ marketing_channels: [], crm_tools: '', campaign_metrics: '',
+ // Finance-specific
+ finance_certs: '', finance_sector: '', financial_tools: '',
+ // Healthcare-specific
+ license_number: '', medical_specialization: '', clinical_years: 0,
+ // Legal-specific
+ bar_registration: '', legal_areas: [],
+ // Education-specific
+ teaching_subjects: '', teaching_level: '', curriculum_exp: '',
+ // Operations-specific
+ ops_tools: '', supply_chain_exp: '', logistics_exp: '',
+ });
+
 
  const [accentColor, setAccentColor] = useState<'default' | 'cyan' | 'mint'>(() => (localStorage.getItem('atlas_accent') as any) || 'default');
  const [densityMode, setDensityMode] = useState<'relaxed' | 'compact'>(() => (localStorage.getItem('atlas_density') as any) || 'relaxed');
@@ -404,6 +651,8 @@ export default function App() {
  const meetPeerConnectionsRef = useRef<Record<string, RTCPeerConnection>>({}); // useRef avoids re-render on every ICE tick
  const [meetMicMuted, setMeetMicMuted] = useState(false);
  const [meetVideoDisabled, setMeetVideoDisabled] = useState(false);
+ const [isScreenSharing, setIsScreenSharing] = useState(false);
+ const screenStreamRef = useRef<MediaStream | null>(null);
  const meetLocalVideoRef = useRef<HTMLVideoElement | null>(null); // stable ref — srcObject set once via effect
  const meetRemoteVideoRefs = useRef<Record<string, HTMLVideoElement | null>>({});
 
@@ -504,23 +753,24 @@ export default function App() {
  }, [token]);
 
  // Load profile when token changes
- useEffect(() => {
- if (token) {
- api.auth.me()
- .then(res => {
- setUser(res);
- const role = res.role || 'recruiter';
- if (role === 'candidate') {
- setSelectedMode('for_hire');
- localStorage.setItem('atlas_mode', 'for_hire');
- } else {
- setSelectedMode('hire');
- localStorage.setItem('atlas_mode', 'hire');
- }
- })
- .catch(() => handleLogout());
- }
- }, [token]);
+  useEffect(() => {
+    if (token) {
+      api.auth.me()
+        .then(res => {
+          setUser(res);
+          const role = res.role || 'recruiter';
+          if (role === 'candidate') {
+            setSelectedMode('for_hire');
+            localStorage.setItem('atlas_mode', 'for_hire');
+          } else {
+            setSelectedMode('hire');
+            localStorage.setItem('atlas_mode', 'hire');
+          }
+          api.contacts.me().then(me => setMyAtlasInfo(me)).catch(() => {});
+        })
+        .catch(() => handleLogout());
+    }
+  }, [token]);
 
  // Load lists when logged in
  useEffect(() => {
@@ -798,47 +1048,182 @@ export default function App() {
  };
 
 
- // Poll for incoming calls (For Candidates / Employees)
- useEffect(() => {
- let interval: any = null;
- if (user && selectedMode === 'for_hire' && myCandidateProfile?.id && !activeCall) {
- interval = setInterval(async () => {
- try {
- const statusRes = await api.candidates.getCallStatus(myCandidateProfile.id);
- if (statusRes && statusRes.status === 'ringing') {
- setIncomingCall({
- candidateId: myCandidateProfile.id,
- callerName: statusRes.caller_name || 'Employer'
- });
- } else {
- setIncomingCall(null);
- }
- } catch (e) {
- console.error("Failed to poll call status:", e);
- }
- }, 4000);
- }
- return () => {
- if (interval) clearInterval(interval);
- };
- }, [user, selectedMode, myCandidateProfile, activeCall]);
+ // Poll for incoming calls (Atlas 1:1 Contact Calls + Candidate Calls)
+  useEffect(() => {
+    let interval: any = null;
+    if (user && !activeCall && !incomingCall) {
+      interval = setInterval(async () => {
+        try {
+          // 1. Poll Atlas 1:1 Contact calls
+          const res = await api.contacts.checkIncoming();
+          if (res?.incoming_call) {
+            setIncomingCall(res.incoming_call);
+            return;
+          }
+          // 2. Poll candidate profile calls if present
+          if (selectedMode === 'for_hire' && myCandidateProfile?.id) {
+            const statusRes = await api.candidates.getCallStatus(myCandidateProfile.id);
+            if (statusRes && statusRes.status === 'ringing') {
+              setIncomingCall({
+                candidateId: myCandidateProfile.id,
+                callerName: statusRes.caller_name || 'Employer'
+              });
+            }
+          }
+        } catch (e) {}
+      }, 2500);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [user, activeCall, incomingCall, selectedMode, myCandidateProfile]);
 
- // Bind video streams to elements
- useEffect(() => {
- if (localStream && localVideoRef.current) {
- localVideoRef.current.srcObject = localStream;
- }
- }, [localStream, activeCall]);
+  // Poll Direct Chat Messages live every 2.0s when chat view is active
+  useEffect(() => {
+    if (activeTab !== 'contacts' || contactsView !== 'chat' || !activeChat?.atlas_no) return;
 
- useEffect(() => {
- if (localStream && remoteVideoRef.current && activeCall?.status === 'connected') {
- remoteVideoRef.current.srcObject = localStream;
- }
- }, [localStream, activeCall]);
+    const pollMessages = async () => {
+      try {
+        const res = await api.contacts.conversation(activeChat.atlas_no);
+        if (res && Array.isArray(res.messages)) {
+          setDirectMessages(res.messages);
+        }
+      } catch (e) {
+        console.error("Error polling chat messages:", e);
+      }
+    };
+
+    pollMessages();
+    const interval = setInterval(pollMessages, 2000);
+    return () => clearInterval(interval);
+  }, [activeTab, contactsView, activeChat]);
+
+  // Bind local video stream
+  useEffect(() => {
+    if (localStream && localVideoRef.current) {
+      localVideoRef.current.srcObject = localStream;
+      localVideoRef.current.play().catch(() => {});
+    }
+  }, [localStream, activeCall]);
+
+  // Bind remote WebRTC video & audio stream
+  useEffect(() => {
+    if (remoteStream && remoteVideoRef.current) {
+      const cur = remoteVideoRef.current.srcObject as MediaStream | null;
+      if (!cur || cur.id !== remoteStream.id) {
+        remoteVideoRef.current.srcObject = remoteStream;
+        remoteVideoRef.current.muted = false;
+        remoteVideoRef.current.volume = 1.0;
+        remoteVideoRef.current.play().catch(() => {});
+      }
+    }
+  }, [remoteStream]);
+
+
+  // WebRTC 1:1 Call Signal Exchange Loop & Full-Duplex Track Sync
+  useEffect(() => {
+    if (!activeCall || !activeCall.call_id) return;
+    const callId = activeCall.call_id;
+    let lastAfterId = 0;
+
+    let pc = peerConnectionRef.current;
+    if (!pc) {
+      pc = new RTCPeerConnection(GLOBAL_ICE_SERVERS);
+      peerConnectionRef.current = pc;
+
+      pc.onicecandidate = (event) => {
+        if (event.candidate) {
+          api.contacts.sendSignal(callId, 'candidate', event.candidate).catch(() => {});
+        }
+      };
+
+      pc.ontrack = (event) => {
+        const stream = event.streams[0] || new MediaStream([event.track]);
+        stream.getAudioTracks().forEach(t => { t.enabled = true; });
+        stream.getVideoTracks().forEach(t => { t.enabled = true; });
+        setRemoteStream(stream);
+      };
+
+
+    }
+
+    // Always attach localStream tracks to PC BEFORE creating offer or answer
+    if (pc && localStream) {
+      const senders = pc.getSenders();
+      localStream.getTracks().forEach((track) => {
+        const existing = senders.find((s) => s.track && s.track.kind === track.kind);
+        if (!existing) {
+          try { pc!.addTrack(track, localStream); } catch (e) {}
+        }
+      });
+    }
+
+    // Caller generates SDP Offer ONLY AFTER localStream tracks are attached
+    if (pc && activeCall.role === 'caller' && activeCall.status === 'pending' && !(window as any)[`_offerSent_${callId}`]) {
+      (window as any)[`_offerSent_${callId}`] = true;
+      pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true }).then(async (offer) => {
+        await pc!.setLocalDescription(offer);
+        await api.contacts.sendSignal(callId, 'offer', offer);
+      }).catch(err => console.error("Error creating WebRTC offer:", err));
+    }
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await api.contacts.getSignals(callId, lastAfterId);
+        if (res.call_status === 'ended' || res.call_status === 'declined') {
+          handleEndCall();
+          return;
+        }
+
+        if (res.call_status === 'active') {
+          setActiveCall((prev: any) => {
+            if (prev && prev.status !== 'active') return { ...prev, status: 'active' };
+            return prev;
+          });
+        }
+
+        for (const sig of res.signals) {
+          if (sig.id > lastAfterId) lastAfterId = sig.id;
+          const targetPc = peerConnectionRef.current;
+          if (!targetPc) continue;
+
+          const parsedData = typeof sig.data === 'string' ? JSON.parse(sig.data) : sig.data;
+
+          if (sig.type === 'offer') {
+            if (localStream) {
+              const senders = targetPc.getSenders();
+              localStream.getTracks().forEach((track) => {
+                const existing = senders.find((s) => s.track && s.track.kind === track.kind);
+                if (!existing) {
+                  try { targetPc.addTrack(track, localStream); } catch (e) {}
+                }
+              });
+            }
+            await targetPc.setRemoteDescription(new RTCSessionDescription(parsedData));
+            const answer = await targetPc.createAnswer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
+            await targetPc.setLocalDescription(answer);
+            await api.contacts.sendSignal(callId, 'answer', answer);
+          } else if (sig.type === 'answer') {
+            await targetPc.setRemoteDescription(new RTCSessionDescription(parsedData));
+          } else if (sig.type === 'candidate') {
+            try {
+              await targetPc.addIceCandidate(new RTCIceCandidate(parsedData));
+            } catch {}
+          }
+        }
+      } catch (e) {
+        console.error("1:1 Call signaling error:", e);
+      }
+    }, 1000);
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, [activeCall, localStream]);
 
  const handleInitiateCall = async (candidate: any) => {
  try {
- const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+ const stream = await getNoiseCancelledStream(true);
  setLocalStream(stream);
  setMicMuted(false);
  setVideoDisabled(false);
@@ -870,65 +1255,105 @@ export default function App() {
  }
  };
 
- const handleAcceptCall = async () => {
- if (!incomingCall) return;
- try {
- const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
- setLocalStream(stream);
- setMicMuted(false);
- setVideoDisabled(false);
+  const handleAcceptCall = async () => {
+    if (!incomingCall) return;
+    try {
+      let stream: MediaStream | null = null;
+      try {
+        stream = await getNoiseCancelledStream(true);
+      } catch (e1) {
+        stream = await getNoiseCancelledStream(false);
+      }
+      setLocalStream(stream);
+      setMicMuted(false);
+      setVideoDisabled(false);
 
- await api.candidates.respondCall(incomingCall.candidateId, 'accepted', 'sdp_mock_answer');
- setActiveCall({
- candidateId: incomingCall.candidateId,
- status: 'connected',
- role: 'receiver',
- peerName: incomingCall.callerName
- });
- setIncomingCall(null);
+      if (incomingCall.call_id) {
+        // Atlas 1:1 Contact call
+        await api.contacts.acceptCall(incomingCall.call_id);
+        setActiveCall({
+          call_id: incomingCall.call_id,
+          room_id: incomingCall.room_id,
+          status: 'active',
+          role: 'receiver',
+          peerName: incomingCall.from_name || 'Atlas Contact'
+        });
+      } else if (incomingCall.candidateId) {
+        // Candidate profile call
+        await api.candidates.respondCall(incomingCall.candidateId, 'accepted', 'sdp_mock_answer');
+        setActiveCall({
+          candidateId: incomingCall.candidateId,
+          status: 'connected',
+          role: 'receiver',
+          peerName: incomingCall.callerName
+        });
+      }
+      setIncomingCall(null);
+    } catch (err: any) {
+      alert("Failed to accept call: " + (err.detail || err.message || JSON.stringify(err)));
+    }
+  };
 
- const pollEnded = setInterval(async () => {
- try {
- const statusRes = await api.candidates.getCallStatus(incomingCall.candidateId);
- if (statusRes.status === 'ended' || statusRes.status === 'idle') {
- handleEndCall(incomingCall.candidateId);
- }
- } catch (e) {
- console.error(e);
- }
- }, 3000);
- (window as any)._activeCallPoll = pollEnded;
- } catch (err: any) {
- alert("Failed to access camera/microphone: " + err.message);
- }
- };
+  const handleRejectCall = async () => {
+    if (!incomingCall) return;
+    try {
+      if (incomingCall.call_id) {
+        await api.contacts.declineCall(incomingCall.call_id);
+      } else if (incomingCall.candidateId) {
+        await api.candidates.respondCall(incomingCall.candidateId, 'rejected');
+      }
+      setIncomingCall(null);
+    } catch (e) {
+      console.error(e);
+      setIncomingCall(null);
+    }
+  };
 
- const handleRejectCall = async () => {
- if (!incomingCall) return;
- try {
- await api.candidates.respondCall(incomingCall.candidateId, 'rejected');
- setIncomingCall(null);
- } catch (e) {
- console.error(e);
- }
- };
-
- const handleEndCall = async (candidateId: number) => {
- if (localStream) {
- localStream.getTracks().forEach(track => track.stop());
- setLocalStream(null);
- }
- try {
- await api.candidates.respondCall(candidateId, 'ended');
- } catch (e) {
- console.error(e);
- }
- setActiveCall(null);
- setIncomingCall(null);
- if ((window as any)._activeCallPoll) {
- clearInterval((window as any)._activeCallPoll);
- }
- };
+  const handleEndCall = async (candidateId?: number) => {
+    if (activeCall?.call_id) {
+      try { await api.contacts.endCall(activeCall.call_id); } catch {}
+    }
+    if (candidateId) {
+      try { await api.candidates.respondCall(candidateId, 'ended'); } catch {}
+    }
+    if (peerConnectionRef.current) {
+      try {
+        peerConnectionRef.current.getSenders().forEach(sender => {
+          if (sender.track) {
+            sender.track.stop();
+            sender.track.enabled = false;
+          }
+        });
+      } catch {}
+      peerConnectionRef.current.close();
+      peerConnectionRef.current = null;
+    }
+    if (localStream) {
+      localStream.getTracks().forEach(track => {
+        track.stop();
+        track.enabled = false;
+      });
+    }
+    if (remoteStream) {
+      remoteStream.getTracks().forEach(track => {
+        track.stop();
+        track.enabled = false;
+      });
+    }
+    if (localVideoRef.current) {
+      localVideoRef.current.srcObject = null;
+    }
+    if (remoteVideoRef.current) {
+      remoteVideoRef.current.srcObject = null;
+    }
+    setLocalStream(null);
+    setRemoteStream(null);
+    setActiveCall(null);
+    setIncomingCall(null);
+    if ((window as any)._activeCallPoll) {
+      clearInterval((window as any)._activeCallPoll);
+    }
+  };
 
  const handleToggleMic = () => {
  if (localStream) {
@@ -1242,7 +1667,7 @@ export default function App() {
  try {
  setRecordedVideoUrl(null);
  setRecordedBlob(null);
- const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+ const stream = await getNoiseCancelledStream(true);
  recorderStreamRef.current = stream;
  // Don't assign srcObject here — the <video> element isn't mounted yet.
  // The useEffect above handles it once cameraActive becomes true.
@@ -1568,27 +1993,30 @@ export default function App() {
  }
  };
 
- const handleJoinMeetRoom = async (roomCode: string) => {
- if (!roomCode.trim()) return;
- try {
- const myId = 'user_' + Math.random().toString(36).substring(2, 11);
- (window as any)._meetMyId = myId;
- 
- const userEmail = user?.email || 'Guest Participant';
- const res = await api.meet.joinRoom(roomCode, myId, userEmail);
- if (res.status !== 'success') {
- alert("Failed to join meeting space.");
- return;
- }
+ const handleJoinMeetRoom = async (rawCode: string) => {
+    const roomCode = rawCode.trim().toLowerCase();
+    if (!roomCode) return;
+    try {
+      setActiveMeetRoom(roomCode);
+      const myId = 'user_' + Math.random().toString(36).substring(2, 11);
+      (window as any)._meetMyId = myId;
+      
+      const userEmail = user?.email || 'Guest Candidate';
+      const res = await api.meet.joinRoom(roomCode, myId, userEmail);
+      if (res.status !== 'success') {
+        alert("Failed to join meeting space.");
+        setActiveMeetRoom(null);
+        return;
+      }
 
  // Try acquiring media stream with progressive fallback
  let stream: MediaStream | null = null;
  try {
- stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+ stream = await getNoiseCancelledStream(true);
  } catch (err1) {
  console.warn("Video/Audio access failed, trying audio-only:", err1);
  try {
- stream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
+ stream = await getNoiseCancelledStream(false);
  } catch (err2) {
  console.warn("Audio access failed, creating view-only stream:", err2);
  stream = new MediaStream();
@@ -1604,9 +2032,7 @@ export default function App() {
  for (const other of (res.other_participants || [])) {
  const peerId = other.id;
  try {
- const pc = new RTCPeerConnection({
- iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
- });
+ const pc = new RTCPeerConnection(GLOBAL_ICE_SERVERS);
 
  if (stream) {
  stream.getTracks().forEach(track => pc.addTrack(track, stream!));
@@ -1619,9 +2045,15 @@ export default function App() {
  };
 
  pc.ontrack = (event) => {
- const remoteStream = event.streams[0] || new MediaStream([event.track]);
- setMeetRemoteStreams(prev => ({ ...prev, [peerId]: remoteStream }));
- };
+  const remoteStream = event.streams[0] || new MediaStream([event.track]);
+  remoteStream.getAudioTracks().forEach(t => { t.enabled = true; });
+  remoteStream.getVideoTracks().forEach(t => { t.enabled = true; });
+  setMeetRemoteStreams(prev => {
+  const existing = prev[peerId];
+  if (existing && existing.id === remoteStream.id) return prev;
+  return { ...prev, [peerId]: remoteStream };
+  });
+  };
 
  const offer = await pc.createOffer();
  await pc.setLocalDescription(offer);
@@ -1642,9 +2074,7 @@ export default function App() {
  const sender = sig.sender_id;
  
  if (sig.type === 'offer') {
- const pc = new RTCPeerConnection({
- iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
- });
+ const pc = new RTCPeerConnection(GLOBAL_ICE_SERVERS);
  
  if (stream) {
  stream.getTracks().forEach(track => pc.addTrack(track, stream!));
@@ -1657,9 +2087,15 @@ export default function App() {
  };
 
  pc.ontrack = (event) => {
- const remoteStream = event.streams[0] || new MediaStream([event.track]);
- setMeetRemoteStreams(prev => ({ ...prev, [sender]: remoteStream }));
- };
+  const remoteStream = event.streams[0] || new MediaStream([event.track]);
+  remoteStream.getAudioTracks().forEach(t => { t.enabled = true; });
+  remoteStream.getVideoTracks().forEach(t => { t.enabled = true; });
+  setMeetRemoteStreams(prev => {
+  const existing = prev[sender];
+  if (existing && existing.id === remoteStream.id) return prev;
+  return { ...prev, [sender]: remoteStream };
+  });
+  };
 
  await pc.setRemoteDescription(new RTCSessionDescription(sig.data));
  const answer = await pc.createAnswer();
@@ -1749,18 +2185,113 @@ export default function App() {
  };
 
  const handleMeetToggleVideo = () => {
- if (meetLocalStream) {
- const videoTrack = meetLocalStream.getVideoTracks()[0];
- if (videoTrack) {
- videoTrack.enabled = !videoTrack.enabled;
- setMeetVideoDisabled(!videoTrack.enabled);
+    if (meetLocalStream) {
+      const videoTrack = meetLocalStream.getVideoTracks()[0];
+      if (videoTrack) {
+        videoTrack.enabled = !videoTrack.enabled;
+        setMeetVideoDisabled(!videoTrack.enabled);
+      }
+    }
+  };
+
+  const handleMeetToggleScreenShare = async () => {
+    if (isScreenSharing) {
+      if (screenStreamRef.current) {
+        screenStreamRef.current.getTracks().forEach(t => t.stop());
+        screenStreamRef.current = null;
+      }
+      setIsScreenSharing(false);
+      try {
+        const cameraStream = await getNoiseCancelledStream(true);
+        setMeetLocalStream(cameraStream);
+        const newVideoTrack = cameraStream.getVideoTracks()[0];
+        if (newVideoTrack) {
+          Object.values(meetPeerConnectionsRef.current).forEach(pc => {
+            const sender = pc.getSenders().find(s => s.track?.kind === 'video');
+            if (sender) sender.replaceTrack(newVideoTrack);
+          });
+        }
+      } catch (err) {
+        console.warn("Failed to revert to camera stream:", err);
+      }
+    } else {
+      try {
+        const screenStream = await navigator.mediaDevices.getDisplayMedia({
+          video: { cursor: "always" } as any,
+          audio: false
+        });
+        screenStreamRef.current = screenStream;
+        const screenTrack = screenStream.getVideoTracks()[0];
+        screenTrack.onended = () => {
+          handleMeetToggleScreenShare();
+        };
+
+        if (meetLocalStream) {
+          const audioTrack = meetLocalStream.getAudioTracks()[0];
+          const compositeStream = new MediaStream();
+          if (audioTrack) compositeStream.addTrack(audioTrack);
+          compositeStream.addTrack(screenTrack);
+          setMeetLocalStream(compositeStream);
+        } else {
+          setMeetLocalStream(screenStream);
+        }
+
+        Object.values(meetPeerConnectionsRef.current).forEach(pc => {
+          const sender = pc.getSenders().find(s => s.track?.kind === 'video');
+          if (sender) {
+            sender.replaceTrack(screenTrack);
+          } else {
+            pc.addTrack(screenTrack, screenStream);
+          }
+        });
+
+        setIsScreenSharing(true);
+      } catch (err: any) {
+        if (err.name !== 'NotAllowedError') {
+          alert("Screen share failed: " + (err.message || err));
+        }
+      }
+    }
+  };
+
+ // Client-side disposable email domains (quick check before API call)
+ const DISPOSABLE_DOMAINS_CLIENT = new Set([
+ 'mailinator.com','trashmail.com','trashmail.net','guerrillamail.com',
+ 'guerrillamail.net','guerrillamail.org','yopmail.com','yopmail.fr',
+ '10minutemail.com','10minutemail.net','temp-mail.org','temp-mail.io',
+ 'throwam.com','fakeinbox.com','maildrop.cc','dispostable.com',
+ 'discard.email','sharklasers.com','spam4.me','mailnesia.com',
+ 'tempr.email','tempe-mail.com','tempmailo.com','dropmail.me',
+ 'emailondeck.com','getairmail.com','getnada.com','mohmal.com',
+ 'armyspy.com','cuvox.de','dayrep.com','einrot.com','rhyta.com',
+ 'superrito.com','teleworm.us','spamgourmet.com','trasz.com',
+ ]);
+
+ const validateEmailClient = (emailAddr: string): string => {
+ const trimmed = emailAddr.trim().toLowerCase();
+ const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+ if (!emailRegex.test(trimmed)) return 'Please enter a valid email address.';
+ const domain = trimmed.split('@')[1];
+ if (DISPOSABLE_DOMAINS_CLIENT.has(domain)) {
+ return 'Temporary/disposable email addresses are not allowed. Please use a real email.';
  }
- }
+ return '';
  };
 
  const handleLogin = async (e: React.FormEvent) => {
  e.preventDefault();
  setAuthError('');
+
+ // Client-side email validation on registration
+ if (isRegister) {
+ const emailErr = validateEmailClient(email);
+ if (emailErr) { setAuthError(emailErr); return; }
+ if (recoveryEmail.trim()) {
+ const recErr = validateEmailClient(recoveryEmail);
+ if (recErr) { setAuthError(`Recovery email: ${recErr}`); return; }
+ }
+ }
+
  try {
  if (isRegister) {
  const computedOrgName = orgName.trim() || `${email.split('@')[0]}'s Workspace`;
@@ -1771,7 +2302,8 @@ export default function App() {
  password,
  computedRole,
  computedOrgName,
- inviteCode.trim() || undefined
+ inviteCode.trim() || undefined,
+ recoveryEmail.trim() || undefined
  );
  
  // Auto log in immediately after registration!
@@ -1782,7 +2314,51 @@ export default function App() {
  setToken(localStorage.getItem('atlas_token'));
  }
  } catch (err: any) {
- setAuthError(err.message || 'Authentication transaction failed');
+ // Surface clean backend validation messages
+ const msg = err.message || 'Authentication failed. Please try again.';
+ setAuthError(msg);
+ }
+ };
+
+ const handleForgotPassword = async (e: React.FormEvent) => {
+ e.preventDefault();
+ setForgotLoading(true);
+ setForgotMessage('');
+ try {
+ const res = await api.auth.forgotPassword(forgotEmail);
+ setForgotMessage(res.message);
+ if (res.reset_token) {
+ setResetToken(res.reset_token);
+ }
+ setShowResetForm(true);
+ } catch (err: any) {
+ setForgotMessage(err.message || 'Something went wrong. Please try again.');
+ } finally {
+ setForgotLoading(false);
+ }
+ };
+
+ const handleResetPassword = async (e: React.FormEvent) => {
+ e.preventDefault();
+ if (newPassword !== confirmPassword) {
+ setForgotMessage('Passwords do not match.');
+ return;
+ }
+ if (newPassword.length < 6) {
+ setForgotMessage('Password must be at least 6 characters.');
+ return;
+ }
+ setResetLoading(true);
+ setForgotMessage('');
+ try {
+ const tokenToUse = resetTokenInput.trim() || resetToken;
+ await api.auth.resetPassword(tokenToUse, newPassword);
+ setResetSuccess(true);
+ setForgotMessage('Password reset successfully! You can now sign in.');
+ } catch (err: any) {
+ setForgotMessage(err.message || 'Invalid or expired token. Please try again.');
+ } finally {
+ setResetLoading(false);
  }
  };
 
@@ -1889,6 +2465,88 @@ export default function App() {
  setUploading(false);
  if (fileInputRef.current) fileInputRef.current.value = '';
  }
+ };
+
+ // ── Save Resume Form ─────────────────────────────────────────────────
+ const handleSaveResumeForm = async () => {
+ if (!resumeForm.name.trim()) { setProfileFormError('Full name is required.'); return; }
+ if (!resumeForm.qualification) { setProfileFormError('Please select your highest qualification.'); return; }
+ if (resumeForm.skills.length === 0) { setProfileFormError('Please add at least one skill.'); return; }
+ setProfileSaving(true); setProfileFormError(''); setProfileFormSuccess('');
+ try {
+ // Serialize experience & education into text blobs for AI indexing
+ const workText = resumeForm.experience.map((e: any) =>
+ `${e.role} at ${e.company} (${e.duration}): ${e.description}`).join(' | ');
+ const eduText = resumeForm.education.map((e: any) =>
+ `${e.degree} – ${e.institution} (${e.year})`).join(' | ');
+ // Build role-specific extras into work_highlights
+ let extras = resumeForm.work_highlights || '';
+ if (resumeForm.profession_type === 'tech' && resumeForm.github_url) extras += ` GitHub: ${resumeForm.github_url}`;
+ if (resumeForm.profession_type === 'tech' && resumeForm.tech_stack) extras += ` Stack: ${resumeForm.tech_stack}`;
+ if (resumeForm.profession_type === 'design' && resumeForm.portfolio_url) extras += ` Portfolio: ${resumeForm.portfolio_url}`;
+ if (resumeForm.profession_type === 'design') extras += ` Tools: ${resumeForm.design_tools.join(', ')}`;
+ if (resumeForm.profession_type === 'finance' && resumeForm.finance_certs) extras += ` Certs: ${resumeForm.finance_certs}`;
+ if (resumeForm.profession_type === 'healthcare' && resumeForm.license_number) extras += ` License: ${resumeForm.license_number}`;
+ if (resumeForm.profession_type === 'legal' && resumeForm.bar_registration) extras += ` Bar: ${resumeForm.bar_registration}`;
+ const payload = {
+ name: resumeForm.name.trim(),
+ email: user?.email || '',
+ phone: resumeForm.phone.trim(),
+ location: resumeForm.location.trim(),
+ qualification: resumeForm.qualification,
+ skills: resumeForm.skills,
+ experience_years: resumeForm.experience_years,
+ desired_role: resumeForm.desired_role.trim(),
+ work_highlights: (workText + ' ' + extras).trim(),
+ projects: eduText,
+ };
+ if (myCandidateProfile) {
+ await api.candidates.update(myCandidateProfile.id, {
+ ...payload,
+ summary: resumeForm.summary,
+ experience: resumeForm.experience,
+ education: resumeForm.education,
+ });
+ } else {
+ const created = await api.candidates.createQuestionnaire(payload);
+ if (created?.id) {
+ await api.candidates.update(created.id, {
+ summary: resumeForm.summary,
+ experience: resumeForm.experience,
+ education: resumeForm.education,
+ });
+ }
+ }
+ await loadCandidates();
+ setProfileFormSuccess('Profile saved successfully! Our AI is now indexing your data.');
+ setProfileEditMode(false);
+ } catch (err: any) {
+ setProfileFormError(err.message || 'Failed to save profile. Please try again.');
+ } finally {
+ setProfileSaving(false);
+ }
+ };
+
+ // ── Pre-fill form when entering edit mode ─────────────────────────────
+ const enterEditMode = () => {
+ if (myCandidateProfile) {
+ setResumeForm((f: any) => ({
+ ...f,
+ name: myCandidateProfile.name || '',
+ phone: myCandidateProfile.phone || '',
+ location: myCandidateProfile.location || '',
+ desired_role: myCandidateProfile.desired_role || '',
+ qualification: myCandidateProfile.qualification || '',
+ skills: myCandidateProfile.skills || [],
+ experience: myCandidateProfile.experience || [],
+ education: myCandidateProfile.education || [],
+ summary: myCandidateProfile.summary || '',
+ work_highlights: myCandidateProfile.work_highlights || '',
+ experience_years: myCandidateProfile.experience_years || 0,
+ skillInput: '',
+ }));
+ }
+ setProfileEditMode(true);
  };
 
  // Delete Candidate
@@ -2031,7 +2689,7 @@ export default function App() {
  {publicJob.location && <span> {publicJob.location}</span>}
  {publicJob.salary && <span> {publicJob.salary}</span>}
  {publicJob.employment_type && <span> {publicJob.employment_type}</span>}
- {publicJob.experience_years !== undefined && <span>⏳ Exp: {publicJob.experience_years} years</span>}
+ {publicJob.experience_years !== undefined && <span><Clock size={13} style={{ verticalAlign: 'middle', marginRight: '4px' }} /> Exp: {publicJob.experience_years} years</span>}
  </div>
 
  <div style={{ borderTop: '1px solid var(--border-glass)', paddingTop: '24px' }}>
@@ -2175,10 +2833,13 @@ export default function App() {
  <video
  ref={el => {
  meetLocalVideoRef.current = el;
- if (el && meetLocalStream && el.srcObject !== meetLocalStream) {
- el.srcObject = meetLocalStream;
- el.play().catch(() => {});
- }
+ if (el && meetLocalStream) {
+    const cur = el.srcObject as MediaStream | null;
+    if (!cur || cur.id !== meetLocalStream.id) {
+      el.srcObject = meetLocalStream;
+      el.play().catch(() => {});
+    }
+  }
  }}
  autoPlay
  playsInline
@@ -2199,11 +2860,16 @@ export default function App() {
  <video
  ref={el => {
  if (el && meetRemoteVideoRefs.current[p.id] !== el) {
- meetRemoteVideoRefs.current[p.id] = el;
- el.srcObject = remoteStream;
- } else if (el && el.srcObject !== remoteStream) {
- // stream changed (e.g. reconnect) — update once
- el.srcObject = remoteStream;
+   meetRemoteVideoRefs.current[p.id] = el;
+ }
+ if (el && remoteStream) {
+   const cur = el.srcObject as MediaStream | null;
+   if (!cur || cur.id !== remoteStream.id) {
+     el.srcObject = remoteStream;
+     el.muted = false;
+     el.volume = 1.0;
+     el.play().catch(() => {});
+   }
  }
  }}
  autoPlay
@@ -2237,8 +2903,18 @@ export default function App() {
  onClick={handleMeetToggleVideo} 
  className={meetVideoDisabled ? "btn-secondary" : "btn-primary"} 
  style={{ width: '48px', height: '48px', padding: 0, borderRadius: '50%', justifyContent: 'center', color: meetVideoDisabled ? '#808080' : 'inherit' }}
+ title={meetVideoDisabled ? "Enable Video" : "Disable Video"}
  >
  {meetVideoDisabled ? <VideoOff size={18} /> : <Video size={18} />}
+ </button>
+
+ <button 
+ onClick={handleMeetToggleScreenShare} 
+ className={isScreenSharing ? "btn-primary" : "btn-secondary"} 
+ style={{ width: '48px', height: '48px', padding: 0, borderRadius: '50%', justifyContent: 'center', color: isScreenSharing ? '#fff' : 'inherit' }}
+ title={isScreenSharing ? "Stop Screen Share" : "Share Screen"}
+ >
+ <Monitor size={18} />
  </button>
 
  <button 
@@ -2381,13 +3057,14 @@ export default function App() {
  />
  <button
  onClick={() => {
- if (!meetChoiceInputCode.trim()) {
+ const code = meetChoiceInputCode.trim();
+ if (!code) {
  alert("Please enter a valid room code.");
  return;
  }
- setActiveMeetRoom(meetChoiceInputCode.trim());
  setShowMeetChoiceModal(false);
  setMeetChoiceInputCode('');
+ handleJoinMeetRoom(code);
  }}
  className="btn-secondary"
  style={{ padding: '10px 16px', fontSize: '13px', borderRadius: '10px', flexShrink: 0 }}
@@ -2458,7 +3135,14 @@ export default function App() {
  </div>
 
  <div>
- <label style={{ display: 'block', color: 'rgba(255,255,255,0.65)', fontSize: '12px', fontWeight: 500, marginBottom: '6px' }}>Password</label>
+ <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+ <label style={{ color: 'rgba(255,255,255,0.65)', fontSize: '12px', fontWeight: 500 }}>Password</label>
+ {!isRegister && (
+ <button type="button" onClick={() => { setShowForgotPassword(true); setForgotEmail(email); setForgotMessage(''); setShowResetForm(false); setResetSuccess(false); setResetToken(''); setResetTokenInput(''); setNewPassword(''); setConfirmPassword(''); }} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.45)', cursor: 'pointer', fontSize: '11px', fontFamily: 'var(--font-body)', textDecoration: 'underline' }}>
+ Forgot Password?
+ </button>
+ )}
+ </div>
  <input type="password" required className="input-field" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" />
  </div>
 
@@ -2469,17 +3153,117 @@ export default function App() {
  </div>
  )}
 
+ {isRegister && (
+ <div>
+ <label style={{ display: 'block', marginBottom: '6px' }}>
+ <span style={{ color: 'rgba(255,255,255,0.65)', fontSize: '12px', fontWeight: 500 }}>Recovery Email </span>
+ <span style={{ color: 'rgba(255,255,255,0.30)', fontSize: '11px' }}>(optional — for password recovery)</span>
+ </label>
+ <input type="email" className="input-field" value={recoveryEmail} onChange={e => setRecoveryEmail(e.target.value)} placeholder="backup@email.com" />
+ </div>
+ )}
+
  <button type="submit" className="btn-primary" style={{ justifyContent: 'center', width: '100%', marginTop: '6px', padding: '13px', fontSize: '15px', borderRadius: '14px' }}>
  {isRegister ? 'Create Account' : 'Sign In to ATLAS'}
  </button>
  </form>
  <div style={{ textAlign: 'center', marginTop: '18px' }}>
- <button type="button" onClick={() => { setIsRegister(!isRegister); setAuthError(''); }} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.55)', cursor: 'pointer', fontSize: '13px', fontFamily: 'var(--font-body)' }}>
+ <button type="button" onClick={() => { setIsRegister(!isRegister); setAuthError(''); setRecoveryEmail(''); }} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.55)', cursor: 'pointer', fontSize: '13px', fontFamily: 'var(--font-body)' }}>
  {isRegister ? 'Already have an account? Sign in' : 'New to ATLAS? Create an account'}
  </button>
  </div>
  </div>
  </div>
+ {/* FORGOT PASSWORD MODAL */}
+ {showForgotPassword && (
+ <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.80)', backdropFilter: 'blur(20px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 3000, padding: '16px' }}>
+ <div className="animate-fade-in" style={{ width: '100%', maxWidth: '420px', background: '#09090b', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '24px', padding: '32px', boxShadow: '0 24px 80px rgba(0,0,0,0.9)' }}>
+ {/* Header */}
+ <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+ <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.20)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+ <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+ </div>
+ <h3 style={{ fontSize: '20px', fontWeight: 700, color: '#ffffff', marginBottom: '6px' }}>{resetSuccess ? 'Password Reset!' : showResetForm ? 'Set New Password' : 'Forgot Password'}</h3>
+ <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.50)' }}>
+ {resetSuccess ? 'Your password has been updated. Sign in with your new password.' : showResetForm ? 'Enter your reset token and choose a new password.' : 'Enter your primary or recovery email. We\'ll generate a reset token for you.'}
+ </p>
+ </div>
+
+ {/* Message banner */}
+ {forgotMessage && (
+ <div style={{ padding: '12px 14px', background: resetSuccess ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.06)', border: `1px solid ${resetSuccess ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.15)'}`, borderRadius: '12px', color: resetSuccess ? '#ffffff' : '#cbd5e1', fontSize: '13px', marginBottom: '20px', lineHeight: '1.5' }}>
+ {forgotMessage}
+ {resetToken && !showResetForm && (
+ <div style={{ marginTop: '12px', padding: '10px', background: 'rgba(255,255,255,0.08)', borderRadius: '8px', fontFamily: 'var(--font-mono)', fontSize: '11px', wordBreak: 'break-all', color: '#ffffff', border: '1px solid rgba(255,255,255,0.15)' }}>
+ <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.45)', marginBottom: '4px', fontFamily: 'var(--font-body)' }}>RESET TOKEN (valid 1 hour):</div>
+ {resetToken}
+ </div>
+ )}
+ </div>
+ )}
+
+ {/* Step 1: Request reset */}
+ {!showResetForm && !resetSuccess && (
+ <form onSubmit={handleForgotPassword} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+ <div>
+ <label style={{ display: 'block', color: 'rgba(255,255,255,0.65)', fontSize: '12px', fontWeight: 500, marginBottom: '6px' }}>Email Address</label>
+ <input type="email" required className="input-field" value={forgotEmail} onChange={e => setForgotEmail(e.target.value)} placeholder="your@email.com" />
+ </div>
+ <button type="submit" disabled={forgotLoading} className="btn-primary" style={{ justifyContent: 'center', padding: '13px', borderRadius: '14px', fontSize: '14px', opacity: forgotLoading ? 0.6 : 1 }}>
+ {forgotLoading ? 'Generating Token...' : 'Generate Reset Token'}
+ </button>
+ {resetToken && (
+ <button type="button" onClick={() => setShowResetForm(true)} style={{ background: 'none', border: '1px solid rgba(255,255,255,0.20)', borderRadius: '12px', color: '#ffffff', cursor: 'pointer', fontSize: '13px', fontFamily: 'var(--font-body)', padding: '11px', textAlign: 'center' }}>
+ I have my token → Set New Password
+ </button>
+ )}
+ </form>
+ )}
+
+ {/* Step 2: Enter token + new password */}
+ {showResetForm && !resetSuccess && (
+ <form onSubmit={handleResetPassword} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+ {!resetToken && (
+ <div>
+ <label style={{ display: 'block', color: 'rgba(255,255,255,0.65)', fontSize: '12px', fontWeight: 500, marginBottom: '6px' }}>Reset Token</label>
+ <input type="text" required className="input-field" value={resetTokenInput} onChange={e => setResetTokenInput(e.target.value)} placeholder="Paste your reset token here" style={{ fontFamily: 'var(--font-mono)', fontSize: '12px' }} />
+ </div>
+ )}
+ {resetToken && (
+ <div style={{ padding: '10px 12px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '10px', fontSize: '11px', color: '#94a3b8', fontFamily: 'var(--font-mono)', wordBreak: 'break-all' }}>
+ <span style={{ fontFamily: 'var(--font-body)', color: 'rgba(255,255,255,0.45)', fontSize: '10px' }}>Token loaded ✓</span>
+ </div>
+ )}
+ <div>
+ <label style={{ display: 'block', color: 'rgba(255,255,255,0.65)', fontSize: '12px', fontWeight: 500, marginBottom: '6px' }}>New Password</label>
+ <input type="password" required className="input-field" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Min. 6 characters" />
+ </div>
+ <div>
+ <label style={{ display: 'block', color: 'rgba(255,255,255,0.65)', fontSize: '12px', fontWeight: 500, marginBottom: '6px' }}>Confirm Password</label>
+ <input type="password" required className="input-field" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="Repeat new password" />
+ </div>
+ <button type="submit" disabled={resetLoading} className="btn-primary" style={{ justifyContent: 'center', padding: '13px', borderRadius: '14px', fontSize: '14px', opacity: resetLoading ? 0.6 : 1 }}>
+ {resetLoading ? 'Resetting...' : 'Reset Password'}
+ </button>
+ </form>
+ )}
+
+ {/* Success state */}
+ {resetSuccess && (
+ <button type="button" className="btn-primary" onClick={() => { setShowForgotPassword(false); setResetSuccess(false); setShowResetForm(false); setForgotMessage(''); }} style={{ justifyContent: 'center', width: '100%', padding: '13px', borderRadius: '14px', fontSize: '14px' }}>
+ Back to Sign In
+ </button>
+ )}
+
+ {/* Cancel */}
+ {!resetSuccess && (
+ <button type="button" onClick={() => setShowForgotPassword(false)} style={{ display: 'block', width: '100%', marginTop: '12px', background: 'none', border: 'none', color: 'rgba(255,255,255,0.35)', cursor: 'pointer', fontSize: '13px', fontFamily: 'var(--font-body)', textAlign: 'center' }}>
+ Cancel — Back to Sign In
+ </button>
+ )}
+ </div>
+ </div>
+ )}
  {showGoogleModal && (
  <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(16px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000, padding: '16px' }}>
  <div className="glass-panel animate-fade-in" style={{ width: '100%', maxWidth: '380px', padding: '32px' }}>
@@ -2603,6 +3387,27 @@ export default function App() {
  </button>
 
  <button 
+ onClick={async () => {
+   setActiveTab('contacts' as any);
+   setContactsView('diary');
+   try {
+     const [me, bk] = await Promise.all([api.contacts.me(), api.contacts.book()]);
+     setMyAtlasInfo(me);
+     setContactBook(bk?.contacts || []);
+   } catch {}
+ }}
+ className={activeTab === 'contacts' ? 'btn-primary' : 'btn-secondary'} 
+ style={{ width: '40px', height: '40px', borderRadius: '50%', padding: 0, justifyContent: 'center', background: activeTab === 'contacts' ? 'linear-gradient(135deg, #06b6d4, #0891b2)' : undefined, position: 'relative' }}
+ title="Atlas Contacts & Video Calls"
+ >
+ <Phone size={18} />
+ {contactsUnreadCount > 0 && (
+   <span style={{ position: 'absolute', top: '-2px', right: '-2px', background: '#ef4444', color: '#fff', borderRadius: '10px', fontSize: '9px', fontWeight: 800, padding: '1px 5px' }}>{contactsUnreadCount}</span>
+ )}
+ </button>
+
+
+ <button 
  onClick={() => setActiveTab('copilot')}
  className={activeTab === 'copilot' ? 'btn-primary lining-copilot' : 'btn-secondary'} 
  style={{ width: '46px', height: '46px', borderRadius: '50%', padding: 0, justifyContent: 'center' }}
@@ -2633,10 +3438,19 @@ export default function App() {
  ATLAS
  </h1>
  </div>
- <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
- <span style={{ fontSize: '13px', color: 'var(--text-muted)', padding: '6px 12px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-glass)', borderRadius: '20px' }}>
- {selectedMode === 'for_hire' ? 'Candidate Mode' : 'Recruiter Mode'}: {user.email}
- </span>
+ <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+    {myAtlasInfo?.atlas_no && (
+      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(6,182,212,0.15)', border: '1px solid rgba(6,182,212,0.4)', padding: '5px 12px', borderRadius: '16px' }}>
+        <span style={{ fontSize: '10px', color: '#06b6d4', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Atlas No:</span>
+        <span style={{ fontSize: '12px', fontWeight: 900, color: '#fff', fontFamily: 'monospace' }}>{myAtlasInfo.atlas_no}</span>
+        <button onClick={() => { navigator.clipboard.writeText(myAtlasInfo.atlas_no); alert(`Copied Atlas Phone Number ${myAtlasInfo.atlas_no} to clipboard!`); }} title="Copy My Atlas Phone Number" style={{ background: 'none', border: 'none', color: '#06b6d4', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', marginLeft: '2px' }}>
+          <Copy size={12} />
+        </button>
+      </div>
+    )}
+    <span style={{ fontSize: '13px', color: 'var(--text-muted)', padding: '6px 12px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-glass)', borderRadius: '20px' }}>
+      {selectedMode === 'for_hire' ? 'Candidate Mode' : 'Recruiter Mode'}: {user.email}
+    </span>
  <button onClick={handleLogout} className="btn-secondary" style={{ padding: '8px 12px', fontSize: '12px' }}>
  <LogOut size={14} />
  <span>Sign Out</span>
@@ -2986,9 +3800,10 @@ export default function App() {
  {/* TAB: MY PROFILE (CANDIDATE) */}
  {activeTab === 'my_profile' && (
  <div className="animate-fade-in">
- {myCandidateProfile ? (
- <div style={{ display: 'grid', gridTemplateColumns: '1fr 350px', gap: '24px', alignItems: 'start' }}>
- {/* Main Profile Info */}
+ {myCandidateProfile && !profileEditMode ? (
+ // ── PROFILE VIEW ────────────────────────────────────────────────────
+ <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: '24px', alignItems: 'start' }}>
+ {/* Left: Main Profile */}
  <div className="glass-panel lining-candidates" style={{ padding: '32px' }}>
  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '24px', borderBottom: '1px solid var(--border-glass)', paddingBottom: '20px' }}>
  <div>
@@ -2999,159 +3814,517 @@ export default function App() {
  {myCandidateProfile.location && <span> {myCandidateProfile.location}</span>}
  </div>
  </div>
- <div>
- <input 
- type="file" 
- ref={fileInputRef} 
- style={{ display: 'none' }} 
- accept=".pdf,.docx,.txt"
- onChange={handleResumeUpload}
- />
- <button 
- onClick={() => fileInputRef.current?.click()} 
- disabled={uploading}
- className="btn-secondary lining-candidates"
- style={{ fontSize: '12px', padding: '8px 16px' }}
- >
- <UploadCloud size={14} />
- <span>Update Resume</span>
+ <button onClick={enterEditMode} className="btn-secondary lining-candidates" style={{ fontSize: '12px', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+ <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+ <span>Edit Profile</span>
  </button>
  </div>
- </div>
 
- {uploading && (
- <div className="pulse-glow" style={{ padding: '12px 16px', background: 'var(--accent-purple-glow)', border: '1px solid rgba(140,80,255,0.3)', borderRadius: '8px', marginBottom: '20px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}>
- <Sparkles size={16} style={{ color: 'var(--accent-gold)' }} />
- <span>{uploadStatus}</span>
- </div>
- )}
-
- <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+ <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
  {myCandidateProfile.summary && (
  <div>
- <h4 style={{ fontSize: '14px', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: '8px', letterSpacing: '0.05em' }}>AI Professional Summary</h4>
- <p style={{ fontSize: '14px', color: 'var(--text-muted)', lineHeight: '1.6' }}>{myCandidateProfile.summary}</p>
+ <h4 style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: '10px', letterSpacing: '0.08em', fontWeight: 600 }}>Professional Summary</h4>
+ <p style={{ fontSize: '14px', color: 'var(--text-muted)', lineHeight: '1.7' }}>{myCandidateProfile.summary}</p>
  </div>
  )}
 
+ {myCandidateProfile.skills?.length > 0 && (
  <div>
- <h4 style={{ fontSize: '14px', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: '8px', letterSpacing: '0.05em' }}>Extracted Skills</h4>
+ <h4 style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: '10px', letterSpacing: '0.08em', fontWeight: 600 }}>Skills</h4>
  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
  {myCandidateProfile.skills.map((s: string, idx: number) => (
- <span key={idx} style={{ padding: '4px 10px', fontSize: '12px', background: 'var(--accent-purple-glow)', border: '1px solid rgba(140,80,255,0.2)', borderRadius: '6px', color: 'var(--text-main)' }}>
+ <span key={idx} style={{ padding: '5px 12px', fontSize: '12px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '20px', color: '#fff', fontWeight: 500 }}>
  {s}
  </span>
  ))}
  </div>
  </div>
+ )}
 
- {myCandidateProfile.experience && myCandidateProfile.experience.length > 0 && (
+ {myCandidateProfile.experience?.length > 0 && (
  <div>
- <h4 style={{ fontSize: '14px', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: '12px', letterSpacing: '0.05em' }}>Work Experience</h4>
- <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+ <h4 style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: '14px', letterSpacing: '0.08em', fontWeight: 600 }}>Work Experience</h4>
+ <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
  {myCandidateProfile.experience.map((exp: any, idx: number) => (
- <div key={idx} style={{ fontSize: '13px', paddingLeft: '12px', borderLeft: '2px solid var(--border-glass)' }}>
- <strong style={{ color: '#fff', fontSize: '15px' }}>{exp.role || 'Developer'}</strong> <span style={{ color: 'var(--text-muted)' }}>at {exp.company || 'Company'}</span>
- <div style={{ color: 'var(--text-dim)', fontSize: '11px', margin: '4px 0' }}>{exp.duration}</div>
- <p style={{ color: 'var(--text-muted)', marginTop: '6px', lineHeight: '1.5' }}>{exp.description}</p>
- </div>
- ))}
- </div>
- </div>
- )}
-
- {myCandidateProfile.education && myCandidateProfile.education.length > 0 && (
+ <div key={idx} style={{ paddingLeft: '16px', borderLeft: '2px solid rgba(255,255,255,0.15)' }}>
+ <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', gap: '8px' }}>
  <div>
- <h4 style={{ fontSize: '14px', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: '12px', letterSpacing: '0.05em' }}>Education</h4>
- <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
- {myCandidateProfile.education.map((edu: any, idx: number) => (
- <div key={idx} style={{ fontSize: '13px' }}>
- <strong style={{ color: '#fff' }}>{edu.degree || 'Degree'}</strong> <span style={{ color: 'var(--text-muted)' }}>- {edu.institution || 'University'}</span>
- <span style={{ color: 'var(--text-dim)', fontSize: '11px', marginLeft: '6px' }}>({edu.year})</span>
+ <strong style={{ color: '#fff', fontSize: '15px' }}>{exp.role || 'Developer'}</strong>
+ <span style={{ color: 'var(--text-muted)', fontSize: '14px' }}> · {exp.company || 'Company'}</span>
+ </div>
+ <span style={{ color: 'var(--text-dim)', fontSize: '11px', whiteSpace: 'nowrap', flexShrink: 0 }}>{exp.duration}</span>
+ </div>
+ {exp.description && <p style={{ color: 'var(--text-muted)', marginTop: '6px', fontSize: '13px', lineHeight: '1.6' }}>{exp.description}</p>}
  </div>
  ))}
  </div>
  </div>
  )}
+
+ {myCandidateProfile.education?.length > 0 && (
+ <div>
+ <h4 style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: '14px', letterSpacing: '0.08em', fontWeight: 600 }}>Education</h4>
+ <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+ {myCandidateProfile.education.map((edu: any, idx: number) => (
+ <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+ <div>
+ <strong style={{ color: '#fff', fontSize: '14px' }}>{edu.degree || 'Degree'}</strong>
+ <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}> — {edu.institution || 'University'}</span>
+ </div>
+ <span style={{ color: 'var(--text-dim)', fontSize: '11px' }}>{edu.year}</span>
+ </div>
+ ))}
+ </div>
+ </div>
+ )}
+
+ {myCandidateProfile.work_highlights && (
+ <div>
+ <h4 style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: '10px', letterSpacing: '0.08em', fontWeight: 600 }}>Highlights & Extra Info</h4>
+ <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: '1.6', background: 'rgba(255,255,255,0.02)', padding: '12px 16px', borderRadius: '8px', border: '1px solid var(--border-glass)' }}>
+ {myCandidateProfile.work_highlights}
+ </p>
+ </div>
+ )}
  </div>
  </div>
 
- {/* Right side Career Score card */}
+ {/* Right: Score Card */}
  <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
  <div className="glass-panel" style={{ padding: '24px', textAlign: 'center' }}>
- <span style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--accent-cyan)', fontWeight: 600 }}>ATLAS Identity Score</span>
- <div style={{ margin: '20px 0', position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
- <div className="pulse-glow" style={{ width: '100px', height: '100px', borderRadius: '50%', background: 'rgba(0, 220, 255, 0.05)', border: '2px solid var(--accent-cyan)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+ <span style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-dim)', fontWeight: 600, letterSpacing: '0.06em' }}>ATLAS Identity Score</span>
+ <div style={{ margin: '20px 0' }}>
+ <div style={{ width: '100px', height: '100px', borderRadius: '50%', background: 'rgba(255,255,255,0.04)', border: '2px solid rgba(255,255,255,0.25)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', margin: '0 auto' }}>
  <span style={{ fontSize: '28px', fontWeight: 800, color: '#fff' }}>
  {myCandidateProfile.ai_score ? Math.round(myCandidateProfile.ai_score * 100) : 85}%
  </span>
  <span style={{ fontSize: '9px', color: 'var(--text-dim)' }}>FIT SCORE</span>
  </div>
  </div>
- <p style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.4' }}>
- This profile is fully parsed, indexed, and available for recruiter semantic search queries across the org space.
+ <p style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.5' }}>
+ Profile indexed and available for recruiter AI shortlisting.
  </p>
  </div>
 
  <div className="glass-panel" style={{ padding: '24px' }}>
- <h4 style={{ fontSize: '14px', color: '#fff', marginBottom: '12px' }}>Profile Completeness</h4>
- <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '12px', color: 'var(--text-muted)' }}>
- <div style={{ display: 'flex', justifyContent: 'space-between' }}>
- <span>Resume Parsed</span>
- <span style={{ color: 'var(--accent-gold)' }}> Complete</span>
+ <h4 style={{ fontSize: '13px', color: '#fff', marginBottom: '14px', fontWeight: 600 }}>Profile Completeness</h4>
+ {[
+ { label: 'Personal Info', done: !!myCandidateProfile.name },
+ { label: 'Skills Tagged', done: (myCandidateProfile.skills?.length || 0) > 0, detail: `${myCandidateProfile.skills?.length || 0} skills` },
+ { label: 'Work Experience', done: (myCandidateProfile.experience?.length || 0) > 0, detail: `${myCandidateProfile.experience?.length || 0} entries` },
+ { label: 'Education', done: (myCandidateProfile.education?.length || 0) > 0 },
+ { label: 'Summary', done: !!myCandidateProfile.summary },
+ ].map((item, i) => (
+ <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '10px', marginBottom: '10px', borderBottom: i < 4 ? '1px solid var(--border-glass)' : 'none', fontSize: '12px' }}>
+ <span style={{ color: 'var(--text-muted)' }}>{item.label}</span>
+ <span style={{ color: item.done ? '#fff' : 'rgba(255,255,255,0.25)', fontWeight: 500 }}>
+ {item.done ? (item.detail || '✓') : '—'}
+ </span>
  </div>
- <div style={{ display: 'flex', justifyContent: 'space-between' }}>
- <span>Skills Tagged</span>
- <span style={{ color: 'var(--accent-gold)' }}>{myCandidateProfile.skills.length} tagged</span>
- </div>
- <div style={{ display: 'flex', justifyContent: 'space-between' }}>
- <span>Work Experience</span>
- <span style={{ color: 'var(--accent-gold)' }}>{myCandidateProfile.experience?.length || 0} items</span>
- </div>
- </div>
+ ))}
  </div>
  </div>
  </div>
  ) : (
- <div className="glass-panel lining-candidates animate-fade-in" style={{ padding: '48px', textAlign: 'center', maxWidth: '600px', margin: '40px auto' }}>
- <UploadCloud size={64} style={{ margin: '0 auto 20px auto', color: 'var(--accent-cyan)', opacity: 0.8 }} />
- <h3 style={{ fontSize: '20px', color: '#fff', marginBottom: '12px' }}>Complete Your Candidate Profile</h3>
- <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginBottom: '24px', lineHeight: '1.5' }}>
- Please upload your resume file (.pdf, .docx, or .txt). The ATLAS AI pipeline will parse your skills and experience to unlock job match scoring.
+ // ── DYNAMIC ADAPTIVE PROFILE FORM ─────────────────────────────────────
+ <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+ {/* Header */}
+ <div style={{ marginBottom: '28px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+ <div>
+ <h2 style={{ fontSize: '22px', color: '#fff', fontWeight: 700 }}>
+ {myCandidateProfile ? 'Edit Your Candidate Profile' : 'Build Your Candidate Profile'}
+ </h2>
+ <p style={{ color: 'var(--text-muted)', fontSize: '13px', marginTop: '4px' }}>
+ Fill in your information. Questions dynamically unfold based on your domain so our AI can accurately match & shortlist you for relevant roles.
  </p>
-
- <input 
- type="file" 
- ref={fileInputRef} 
- style={{ display: 'none' }} 
- accept=".pdf,.docx,.txt"
- onChange={handleResumeUpload}
- />
- 
- <button 
- onClick={() => fileInputRef.current?.click()} 
- disabled={uploading}
- className="btn-primary lining-candidates"
- style={{ padding: '12px 32px' }}
- >
- <UploadCloud size={16} />
- {uploading ? 'Processing resume...' : 'Upload Resume file'}
+ </div>
+ {myCandidateProfile && (
+ <button onClick={() => setProfileEditMode(false)} style={{ background: 'none', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '10px', color: 'rgba(255,255,255,0.45)', cursor: 'pointer', fontSize: '12px', fontFamily: 'var(--font-body)', padding: '8px 16px' }}>
+ ← Back to Profile
  </button>
+ )}
+ </div>
 
- {uploading && (
- <div className="pulse-glow" style={{ marginTop: '24px', padding: '12px', background: 'var(--accent-purple-glow)', borderRadius: '8px', fontSize: '13px', color: '#fff' }}>
- {uploadStatus}
+ {profileFormError && (
+ <div style={{ padding: '12px 16px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '12px', color: '#ff6b89', fontSize: '13px', marginBottom: '20px', display: 'flex', gap: '8px', alignItems: 'center' }}>
+ <AlertCircle size={15} style={{ flexShrink: 0 }} />
+ {profileFormError}
  </div>
  )}
- {uploadError && (
- <div style={{ marginTop: '24px', padding: '12px', background: 'rgba(128, 128, 128, 0.1)', border: '1px solid rgba(128, 128, 128, 0.2)', borderRadius: '8px', fontSize: '13px', color: '#ef4444' }}>
- {uploadError}
+ {profileFormSuccess && (
+ <div style={{ padding: '12px 16px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.20)', borderRadius: '12px', color: '#fff', fontSize: '13px', marginBottom: '20px' }}>
+ ✓ {profileFormSuccess}
+ </div>
+ )}
+
+ {/* ── STEP 0: Profession / Candidate Category ── */}
+ <div className="glass-panel" style={{ padding: '28px', marginBottom: '20px', border: '1px solid rgba(255,255,255,0.15)' }}>
+ <label style={{ display: 'block', fontSize: '12px', color: '#fff', marginBottom: '8px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+ Select Your Field / Domain (Unfolds Custom Tailored Questions) *
+ </label>
+ <p style={{ fontSize: '12px', color: 'var(--text-dim)', marginBottom: '16px' }}>
+ Selecting your field enables domain-specific fields that give your profile higher weighting during AI shortlisting.
+ </p>
+ <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: '10px' }}>
+ {[
+ { id: 'tech', label: 'Tech & Software', icon: '💻' },
+ { id: 'design', label: 'UI/UX & Design', icon: '🎨' },
+ { id: 'marketing', label: 'Marketing & Growth', icon: '📈' },
+ { id: 'finance', label: 'Finance & Accounting', icon: '⚖️' },
+ { id: 'healthcare', label: 'Healthcare & Medicine', icon: '🩺' },
+ { id: 'legal', label: 'Legal & Compliance', icon: '📜' },
+ { id: 'education', label: 'Education & EdTech', icon: '🎓' },
+ { id: 'operations', label: 'Operations & Logistics', icon: '📦' },
+ { id: 'other', label: 'Other Profession', icon: '💼' },
+ ].map(cat => (
+ <button
+ key={cat.id}
+ type="button"
+ onClick={() => setResumeForm((f: any) => ({ ...f, profession_type: cat.id }))}
+ style={{
+ padding: '12px 14px',
+ borderRadius: '12px',
+ background: resumeForm.profession_type === cat.id ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.02)',
+ border: resumeForm.profession_type === cat.id ? '1px solid rgba(255,255,255,0.40)' : '1px solid rgba(255,255,255,0.08)',
+ color: '#fff',
+ cursor: 'pointer',
+ textAlign: 'left',
+ fontSize: '13px',
+ fontFamily: 'var(--font-body)',
+ fontWeight: resumeForm.profession_type === cat.id ? 600 : 400,
+ display: 'flex',
+ alignItems: 'center',
+ gap: '10px',
+ transition: 'all 0.15s ease'
+ }}
+ >
+ <span style={{ fontSize: '16px' }}>{cat.icon}</span>
+ <span>{cat.label}</span>
+ </button>
+ ))}
+ </div>
+ </div>
+
+ {/* ── SECTION 1: Personal Info ── */}
+ <div className="glass-panel" style={{ padding: '28px', marginBottom: '20px' }}>
+ <h3 style={{ fontSize: '14px', fontWeight: 700, color: '#fff', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+ <span style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'rgba(255,255,255,0.12)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700 }}>1</span>
+ Personal Information
+ </h3>
+ <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+ <div>
+ <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-dim)', marginBottom: '6px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Full Name *</label>
+ <input className="input-field" type="text" required value={resumeForm.name} onChange={e => setResumeForm((f: any) => ({ ...f, name: e.target.value }))} placeholder="John Smith" />
+ </div>
+ <div>
+ <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-dim)', marginBottom: '6px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Phone</label>
+ <input className="input-field" type="tel" value={resumeForm.phone} onChange={e => setResumeForm((f: any) => ({ ...f, phone: e.target.value }))} placeholder="+91 9000000000" />
+ </div>
+ <div>
+ <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-dim)', marginBottom: '6px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Location</label>
+ <input className="input-field" type="text" value={resumeForm.location} onChange={e => setResumeForm((f: any) => ({ ...f, location: e.target.value }))} placeholder="Mumbai, India" />
+ </div>
+ <div>
+ <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-dim)', marginBottom: '6px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Target / Desired Job Title</label>
+ <input className="input-field" type="text" value={resumeForm.desired_role} onChange={e => setResumeForm((f: any) => ({ ...f, desired_role: e.target.value }))} placeholder="e.g. Senior Full Stack Engineer" />
+ </div>
+ <div style={{ gridColumn: '1 / -1' }}>
+ <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-dim)', marginBottom: '6px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Highest Qualification *</label>
+ <select className="input-field" value={resumeForm.qualification} onChange={e => setResumeForm((f: any) => ({ ...f, qualification: e.target.value }))} style={{ cursor: 'pointer' }}>
+ <option value="">Select qualification...</option>
+ <option value="High School">High School / Secondary</option>
+ <option value="Diploma">Diploma / Certificate</option>
+ <option value="Bachelor's">Bachelor's Degree (B.Tech / B.E / B.Sc / B.A)</option>
+ <option value="Master's">Master's Degree (M.Tech / M.Sc / M.A)</option>
+ <option value="MBA">MBA / Business Degree</option>
+ <option value="PhD">PhD / Doctorate</option>
+ <option value="Self-taught">Self-taught / Bootcamp Graduate</option>
+ </select>
+ </div>
+ </div>
+ </div>
+
+ {/* ── DYNAMIC UNFOLDED SECTION BASED ON PROFESSION ── */}
+ {resumeForm.profession_type === 'tech' && (
+ <div className="glass-panel animate-fade-in" style={{ padding: '28px', marginBottom: '20px', borderLeft: '3px solid #00d2ff' }}>
+ <h3 style={{ fontSize: '14px', fontWeight: 700, color: '#fff', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+ 💻 Engineering & Software Details
+ </h3>
+ <p style={{ fontSize: '12px', color: 'var(--text-dim)', marginBottom: '18px' }}>These technical details are used by the AI matcher to score code stack compatibility.</p>
+ <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+ <div>
+ <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-dim)', marginBottom: '6px', fontWeight: 600 }}>GitHub / GitLab Profile URL</label>
+ <input className="input-field" type="url" value={resumeForm.github_url} onChange={e => setResumeForm((f: any) => ({ ...f, github_url: e.target.value }))} placeholder="https://github.com/username" />
+ </div>
+ <div>
+ <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-dim)', marginBottom: '6px', fontWeight: 600 }}>Personal Portfolio / Site</label>
+ <input className="input-field" type="url" value={resumeForm.portfolio_url} onChange={e => setResumeForm((f: any) => ({ ...f, portfolio_url: e.target.value }))} placeholder="https://mywebsite.dev" />
+ </div>
+ <div style={{ gridColumn: '1 / -1' }}>
+ <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-dim)', marginBottom: '6px', fontWeight: 600 }}>Primary Tech Stack & Architecture</label>
+ <input className="input-field" type="text" value={resumeForm.tech_stack} onChange={e => setResumeForm((f: any) => ({ ...f, tech_stack: e.target.value }))} placeholder="e.g. Node.js, React, PostgreSQL, Docker, AWS Lambda, GraphQL" />
+ </div>
+ <div style={{ gridColumn: '1 / -1' }}>
+ <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-dim)', marginBottom: '6px', fontWeight: 600 }}>Open Source / Major Tech Project</label>
+ <input className="input-field" type="text" value={resumeForm.open_source} onChange={e => setResumeForm((f: any) => ({ ...f, open_source: e.target.value }))} placeholder="e.g. Contributor to React / Built open-source CLI with 500 stars" />
+ </div>
+ </div>
+ </div>
+ )}
+
+ {resumeForm.profession_type === 'design' && (
+ <div className="glass-panel animate-fade-in" style={{ padding: '28px', marginBottom: '20px', borderLeft: '3px solid #a855f7' }}>
+ <h3 style={{ fontSize: '14px', fontWeight: 700, color: '#fff', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+ 🎨 Design & Creative Details
+ </h3>
+ <p style={{ fontSize: '12px', color: 'var(--text-dim)', marginBottom: '18px' }}>Showcase your design tooling and design system experience.</p>
+ <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+ <div style={{ gridColumn: '1 / -1' }}>
+ <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-dim)', marginBottom: '6px', fontWeight: 600 }}>Portfolio / Behance / Dribbble Link *</label>
+ <input className="input-field" type="url" value={resumeForm.portfolio_url} onChange={e => setResumeForm((f: any) => ({ ...f, portfolio_url: e.target.value }))} placeholder="https://dribbble.com/username or https://behance.net/username" />
+ </div>
+ <div>
+ <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-dim)', marginBottom: '6px', fontWeight: 600 }}>Design Specialization</label>
+ <select className="input-field" value={resumeForm.design_specialization} onChange={e => setResumeForm((f: any) => ({ ...f, design_specialization: e.target.value }))}>
+ <option value="">Select primary focus...</option>
+ <option value="Product / UI UX">Product Design (UI/UX)</option>
+ <option value="Visual & Brand">Visual & Brand Design</option>
+ <option value="Motion & 3D">Motion Design & 3D</option>
+ <option value="Design Systems">Design Systems & Tokens</option>
+ </select>
+ </div>
+ <div>
+ <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-dim)', marginBottom: '6px', fontWeight: 600 }}>Primary Design Tools</label>
+ <input className="input-field" type="text" value={resumeForm.tech_stack} onChange={e => setResumeForm((f: any) => ({ ...f, tech_stack: e.target.value }))} placeholder="e.g. Figma, Framer, Rive, Adobe CC, Blender" />
+ </div>
+ </div>
+ </div>
+ )}
+
+ {resumeForm.profession_type === 'marketing' && (
+ <div className="glass-panel animate-fade-in" style={{ padding: '28px', marginBottom: '20px', borderLeft: '3px solid #22c55e' }}>
+ <h3 style={{ fontSize: '14px', fontWeight: 700, color: '#fff', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+ 📈 Marketing & Analytics Details
+ </h3>
+ <p style={{ fontSize: '12px', color: 'var(--text-dim)', marginBottom: '18px' }}>Highlight your growth channels and key measurable campaign outcomes.</p>
+ <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+ <div>
+ <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-dim)', marginBottom: '6px', fontWeight: 600 }}>Analytics & CRM Stack</label>
+ <input className="input-field" type="text" value={resumeForm.crm_tools} onChange={e => setResumeForm((f: any) => ({ ...f, crm_tools: e.target.value }))} placeholder="e.g. GA4, Mixpanel, HubSpot, Salesforce, Adjust" />
+ </div>
+ <div>
+ <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-dim)', marginBottom: '6px', fontWeight: 600 }}>Top Growth Metrics Achieved</label>
+ <input className="input-field" type="text" value={resumeForm.campaign_metrics} onChange={e => setResumeForm((f: any) => ({ ...f, campaign_metrics: e.target.value }))} placeholder="e.g. Scaled ARR 3x, Reduced CAC by 35%, 4.5x ROAS" />
+ </div>
+ </div>
+ </div>
+ )}
+
+ {resumeForm.profession_type === 'finance' && (
+ <div className="glass-panel animate-fade-in" style={{ padding: '28px', marginBottom: '20px', borderLeft: '3px solid #eab308' }}>
+ <h3 style={{ fontSize: '14px', fontWeight: 700, color: '#fff', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+ ⚖️ Finance & Accounting Qualifications
+ </h3>
+ <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+ <div>
+ <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-dim)', marginBottom: '6px', fontWeight: 600 }}>Certifications (CA, CFA, CPA, FRM)</label>
+ <input className="input-field" type="text" value={resumeForm.finance_certs} onChange={e => setResumeForm((f: any) => ({ ...f, finance_certs: e.target.value }))} placeholder="e.g. Chartered Accountant (CA), CFA Level II" />
+ </div>
+ <div>
+ <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-dim)', marginBottom: '6px', fontWeight: 600 }}>Financial Software & ERP</label>
+ <input className="input-field" type="text" value={resumeForm.financial_tools} onChange={e => setResumeForm((f: any) => ({ ...f, financial_tools: e.target.value }))} placeholder="e.g. SAP FICO, Tally Prime, Advanced Excel / VBA" />
+ </div>
+ </div>
+ </div>
+ )}
+
+ {resumeForm.profession_type === 'healthcare' && (
+ <div className="glass-panel animate-fade-in" style={{ padding: '28px', marginBottom: '20px', borderLeft: '3px solid #ef4444' }}>
+ <h3 style={{ fontSize: '14px', fontWeight: 700, color: '#fff', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+ 🩺 Medical & Healthcare Credentials
+ </h3>
+ <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+ <div>
+ <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-dim)', marginBottom: '6px', fontWeight: 600 }}>Medical License / Registration No.</label>
+ <input className="input-field" type="text" value={resumeForm.license_number} onChange={e => setResumeForm((f: any) => ({ ...f, license_number: e.target.value }))} placeholder="e.g. MCI-2018-88741" />
+ </div>
+ <div>
+ <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-dim)', marginBottom: '6px', fontWeight: 600 }}>Clinical Specialization</label>
+ <input className="input-field" type="text" value={resumeForm.medical_specialization} onChange={e => setResumeForm((f: any) => ({ ...f, medical_specialization: e.target.value }))} placeholder="e.g. Cardiology, General Surgery, Pediatrics" />
+ </div>
+ </div>
+ </div>
+ )}
+
+ {resumeForm.profession_type === 'legal' && (
+ <div className="glass-panel animate-fade-in" style={{ padding: '28px', marginBottom: '20px', borderLeft: '3px solid #3b82f6' }}>
+ <h3 style={{ fontSize: '14px', fontWeight: 700, color: '#fff', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+ 📜 Legal Bar & Practice Information
+ </h3>
+ <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+ <div>
+ <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-dim)', marginBottom: '6px', fontWeight: 600 }}>Bar Council Registration No.</label>
+ <input className="input-field" type="text" value={resumeForm.bar_registration} onChange={e => setResumeForm((f: any) => ({ ...f, bar_registration: e.target.value }))} placeholder="e.g. MAH/1482/2019" />
+ </div>
+ <div>
+ <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-dim)', marginBottom: '6px', fontWeight: 600 }}>Primary Legal Practice Areas</label>
+ <input className="input-field" type="text" value={resumeForm.tech_stack} onChange={e => setResumeForm((f: any) => ({ ...f, tech_stack: e.target.value }))} placeholder="e.g. Corporate M&A, Intellectual Property, Tax Law" />
+ </div>
+ </div>
+ </div>
+ )}
+
+ {/* ── SECTION 2: Skills ── */}
+ <div className="glass-panel" style={{ padding: '28px', marginBottom: '20px' }}>
+ <h3 style={{ fontSize: '14px', fontWeight: 700, color: '#fff', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+ <span style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'rgba(255,255,255,0.12)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700 }}>2</span>
+ Key Skills & Competencies *
+ </h3>
+ <p style={{ fontSize: '12px', color: 'var(--text-dim)', marginBottom: '16px' }}>Type a skill and press Enter or comma to add. The AI uses these to match you to jobs.</p>
+ <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', padding: '12px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.10)', borderRadius: '12px', minHeight: '60px', cursor: 'text' }}
+ onClick={() => document.getElementById('skill-input')?.focus()}>
+ {resumeForm.skills.map((skill: string, i: number) => (
+ <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 10px', background: 'rgba(255,255,255,0.10)', border: '1px solid rgba(255,255,255,0.20)', borderRadius: '20px', fontSize: '12px', color: '#fff', fontWeight: 500 }}>
+ {skill}
+ <button type="button" onClick={() => setResumeForm((f: any) => ({ ...f, skills: f.skills.filter((_: string, idx: number) => idx !== i) }))}
+ style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.45)', cursor: 'pointer', padding: '0', lineHeight: 1, fontSize: '14px' }}>×</button>
+ </span>
+ ))}
+ <input
+ id="skill-input"
+ type="text"
+ value={resumeForm.skillInput}
+ placeholder={resumeForm.skills.length === 0 ? 'e.g. React, Python, Financial Modeling...' : ''}
+ onChange={e => setResumeForm((f: any) => ({ ...f, skillInput: e.target.value }))}
+ onKeyDown={e => {
+ if ((e.key === 'Enter' || e.key === ',') && resumeForm.skillInput.trim()) {
+ e.preventDefault();
+ const s = resumeForm.skillInput.trim().replace(/,$/,'');
+ if (s && !resumeForm.skills.includes(s)) setResumeForm((f: any) => ({ ...f, skills: [...f.skills, s], skillInput: '' }));
+ else setResumeForm((f: any) => ({ ...f, skillInput: '' }));
+ }
+ }}
+ style={{ border: 'none', outline: 'none', background: 'transparent', color: '#fff', fontSize: '13px', fontFamily: 'var(--font-body)', minWidth: '140px', flex: 1 }}
+ />
+ </div>
+ </div>
+
+ {/* ── SECTION 3: Work Experience ── */}
+ <div className="glass-panel" style={{ padding: '28px', marginBottom: '20px' }}>
+ <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+ <h3 style={{ fontSize: '14px', fontWeight: 700, color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
+ <span style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'rgba(255,255,255,0.12)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700 }}>3</span>
+ Work Experience
+ </h3>
+ <button type="button" onClick={() => setResumeForm((f: any) => ({ ...f, experience: [...f.experience, { role: '', company: '', duration: '', description: '' }] }))}
+ style={{ fontSize: '12px', padding: '6px 14px', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.18)', borderRadius: '8px', color: '#fff', cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
+ + Add Entry
+ </button>
+ </div>
+ {resumeForm.experience.length === 0 ? (
+ <p style={{ color: 'var(--text-dim)', fontSize: '13px', textAlign: 'center', padding: '20px 0' }}>No work experience added yet. Click "+ Add Entry" to begin.</p>
+ ) : (
+ <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+ {resumeForm.experience.map((exp: any, i: number) => (
+ <div key={i} style={{ padding: '20px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', position: 'relative' }}>
+ <button type="button" onClick={() => setResumeForm((f: any) => ({ ...f, experience: f.experience.filter((_: any, idx: number) => idx !== i) }))}
+ style={{ position: 'absolute', top: '14px', right: '14px', background: 'none', border: 'none', color: 'rgba(255,255,255,0.30)', cursor: 'pointer', fontSize: '18px', lineHeight: 1, padding: '0' }}>×</button>
+ <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+ <div>
+ <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-dim)', marginBottom: '5px', fontWeight: 600 }}>Job Title</label>
+ <input className="input-field" type="text" value={exp.role} placeholder="Job Title" onChange={e => { const ex = [...resumeForm.experience]; ex[i] = { ...ex[i], role: e.target.value }; setResumeForm((f: any) => ({ ...f, experience: ex })); }} style={{ fontSize: '13px', padding: '9px 12px' }} />
+ </div>
+ <div>
+ <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-dim)', marginBottom: '5px', fontWeight: 600 }}>Company</label>
+ <input className="input-field" type="text" value={exp.company} placeholder="Company Name" onChange={e => { const ex = [...resumeForm.experience]; ex[i] = { ...ex[i], company: e.target.value }; setResumeForm((f: any) => ({ ...f, experience: ex })); }} style={{ fontSize: '13px', padding: '9px 12px' }} />
+ </div>
+ <div style={{ gridColumn: '1 / -1' }}>
+ <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-dim)', marginBottom: '5px', fontWeight: 600 }}>Duration</label>
+ <input className="input-field" type="text" value={exp.duration} placeholder="Jan 2022 – Dec 2023 (2 yrs)" onChange={e => { const ex = [...resumeForm.experience]; ex[i] = { ...ex[i], duration: e.target.value }; setResumeForm((f: any) => ({ ...f, experience: ex })); }} style={{ fontSize: '13px', padding: '9px 12px' }} />
+ </div>
+ <div style={{ gridColumn: '1 / -1' }}>
+ <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-dim)', marginBottom: '5px', fontWeight: 600 }}>Key Responsibilities & Achievements</label>
+ <textarea className="input-field" rows={3} value={exp.description} placeholder="Describe your key outcomes, projects led, metrics improved..." onChange={e => { const ex = [...resumeForm.experience]; ex[i] = { ...ex[i], description: e.target.value }; setResumeForm((f: any) => ({ ...f, experience: ex })); }} style={{ fontSize: '13px', padding: '9px 12px', resize: 'vertical', minHeight: '80px' }} />
+ </div>
+ </div>
+ </div>
+ ))}
+ </div>
+ )}
+ </div>
+
+ {/* ── SECTION 4: Education ── */}
+ <div className="glass-panel" style={{ padding: '28px', marginBottom: '20px' }}>
+ <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+ <h3 style={{ fontSize: '14px', fontWeight: 700, color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
+ <span style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'rgba(255,255,255,0.12)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700 }}>4</span>
+ Education
+ </h3>
+ <button type="button" onClick={() => setResumeForm((f: any) => ({ ...f, education: [...f.education, { degree: '', institution: '', year: '' }] }))}
+ style={{ fontSize: '12px', padding: '6px 14px', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.18)', borderRadius: '8px', color: '#fff', cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
+ + Add Entry
+ </button>
+ </div>
+ {resumeForm.education.length === 0 ? (
+ <p style={{ color: 'var(--text-dim)', fontSize: '13px', textAlign: 'center', padding: '20px 0' }}>No education added yet.</p>
+ ) : (
+ <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+ {resumeForm.education.map((edu: any, i: number) => (
+ <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 120px 32px', gap: '10px', alignItems: 'end' }}>
+ <div>
+ <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-dim)', marginBottom: '5px', fontWeight: 600 }}>Degree / Certification</label>
+ <input className="input-field" type="text" value={edu.degree} placeholder="Degree" onChange={e => { const ed = [...resumeForm.education]; ed[i] = { ...ed[i], degree: e.target.value }; setResumeForm((f: any) => ({ ...f, education: ed })); }} style={{ fontSize: '13px', padding: '9px 12px' }} />
+ </div>
+ <div>
+ <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-dim)', marginBottom: '5px', fontWeight: 600 }}>Institution</label>
+ <input className="input-field" type="text" value={edu.institution} placeholder="University / College" onChange={e => { const ed = [...resumeForm.education]; ed[i] = { ...ed[i], institution: e.target.value }; setResumeForm((f: any) => ({ ...f, education: ed })); }} style={{ fontSize: '13px', padding: '9px 12px' }} />
+ </div>
+ <div>
+ <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-dim)', marginBottom: '5px', fontWeight: 600 }}>Graduation Year</label>
+ <input className="input-field" type="text" value={edu.year} placeholder="2023" onChange={e => { const ed = [...resumeForm.education]; ed[i] = { ...ed[i], year: e.target.value }; setResumeForm((f: any) => ({ ...f, education: ed })); }} style={{ fontSize: '13px', padding: '9px 12px' }} />
+ </div>
+ <button type="button" onClick={() => setResumeForm((f: any) => ({ ...f, education: f.education.filter((_: any, idx: number) => idx !== i) }))}
+ style={{ background: 'none', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '8px', color: 'rgba(255,255,255,0.35)', cursor: 'pointer', fontSize: '16px', height: '38px', width: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+ </div>
+ ))}
+ </div>
+ )}
+ </div>
+
+ {/* ── SECTION 5: Summary & Total Years ── */}
+ <div className="glass-panel" style={{ padding: '28px', marginBottom: '28px' }}>
+ <h3 style={{ fontSize: '14px', fontWeight: 700, color: '#fff', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+ <span style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'rgba(255,255,255,0.12)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700 }}>5</span>
+ Summary & Experience Duration
+ </h3>
+ <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+ <div>
+ <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-dim)', marginBottom: '6px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Professional Summary</label>
+ <textarea className="input-field" rows={4} value={resumeForm.summary} placeholder="A short 2-3 sentence overview of your background, core strengths, and career aspirations..." onChange={e => setResumeForm((f: any) => ({ ...f, summary: e.target.value }))} style={{ resize: 'vertical', minHeight: '100px' }} />
+ </div>
+ <div>
+ <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-dim)', marginBottom: '6px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Years of Professional Experience</label>
+ <input className="input-field" type="number" min="0" max="50" value={resumeForm.experience_years} onChange={e => setResumeForm((f: any) => ({ ...f, experience_years: parseInt(e.target.value) || 0 }))} placeholder="3" style={{ maxWidth: '160px' }} />
+ </div>
+ </div>
+ </div>
+
+ {/* Submit */}
+ <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+ {myCandidateProfile && (
+ <button type="button" onClick={() => { setProfileEditMode(false); setProfileFormError(''); setProfileFormSuccess(''); }} className="btn-secondary" style={{ padding: '12px 24px', borderRadius: '12px' }}>
+ Cancel
+ </button>
+ )}
+ <button type="button" disabled={profileSaving} onClick={handleSaveResumeForm} className="btn-primary" style={{ padding: '12px 32px', borderRadius: '12px', justifyContent: 'center', minWidth: '180px', opacity: profileSaving ? 0.6 : 1 }}>
+ {profileSaving ? 'Saving...' : myCandidateProfile ? 'Save Changes' : 'Save Candidate Profile'}
+ </button>
+ </div>
  </div>
  )}
  </div>
  )}
- </div>
- )}
+
 
  {/* TAB: BROWSE JOBS (CANDIDATE) */}
  {activeTab === 'jobs_board' && (
@@ -3228,7 +4401,7 @@ export default function App() {
  <span> {selectedJob.location || 'Remote'}</span>
  <span> {selectedJob.salary || 'N/A'}</span>
  <span> {selectedJob.employment_type || 'Full-time'}</span>
- <span>⏳ Exp: {selectedJob.experience_years} years</span>
+ <span><Clock size={13} style={{ verticalAlign: 'middle', marginRight: '4px' }} /> Exp: {selectedJob.experience_years} years</span>
  </div>
  </div>
  
@@ -4870,12 +6043,12 @@ export default function App() {
  setTvAskMessages(m => [...m, { role: 'user', content: msg }]);
  setTvAskLoading(true);
  try {
- const r = await api.copilot?.chat?.([
+ const r = await (api.copilot as any)?.chat?.([
  { role: 'system', content: `You are an expert on this video: "${tvCurrentVideo.title}" by ${tvCurrentVideo.company || 'unknown'}. Topics: ${tvCurrentVideo.tags || ''}. Answer concisely.` },
  ...tvAskMessages,
  { role: 'user', content: msg }
  ]) ?? { reply: 'Ask Nova is not available right now.' };
- setTvAskMessages(m => [...m, { role: 'assistant', content: r.reply || r.message || 'No response.' }]);
+ setTvAskMessages(m => [...m, { role: 'assistant', content: (r as any)?.reply || (r as any)?.message || 'No response.' }]);
  } catch { setTvAskMessages(m => [...m, { role: 'assistant', content: 'Could not get a response. Try again.' }]); }
  setTvAskLoading(false);
  };
@@ -5183,7 +6356,6 @@ export default function App() {
 
  {/* TAB: ADVERTISE WITH ATLAS */}
  {activeTab === 'advertise' && (() => {
-  const PKG_ICONS: Record<string, any> = { briefcase: Briefcase, users: Users, tv: Tv, building: Building2 };
   const packages = advPackages.length > 0 ? advPackages : [
    { id:'job_spotlight', name:'Job Spotlight', tagline:'Feature your job at the top of every search', price_usd:199, price_inr:16500, duration_days:30, color:'#3b82f6', popular:false, features:['Pinned at top of Job Board for 30 days','Highlighted with Featured badge','Shown in Atlas Copilot recommendations','Up to 3 active job slots','Performance analytics dashboard'] },
    { id:'talent_reach', name:'Talent Reach', tagline:'Direct exposure to 10k+ active candidates', price_usd:499, price_inr:41500, duration_days:30, color:'#8b5cf6', popular:true, features:['Everything in Job Spotlight','Company profile banner in Candidate search','Featured in Atlas TV channel ads','Weekly AI-matched candidate recommendations','Priority recruiter support','Unlimited job slots'] },
@@ -5365,15 +6537,15 @@ export default function App() {
          <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#fff', marginBottom: '20px' }}>Why Advertise on Atlas?</h3>
          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '16px' }}>
           {[
-           { icon: '🎯', title: 'Precision Targeting', desc: 'Reach candidates matched by skills, location, and experience level.' },
-           { icon: '📺', title: 'Atlas TV Reach', desc: 'Brand visibility across 58+ tech, AI, and career videos.' },
-           { icon: '🤖', title: 'AI-Powered Matching', desc: 'Our Copilot recommends your jobs to qualified candidates automatically.' },
-           { icon: '📊', title: 'Real-time Analytics', desc: 'Track impressions, clicks, and conversions in your dashboard.' },
-           { icon: '⚡', title: 'Go Live in 24h', desc: 'Campaigns activate within 24 hours of payment confirmation.' },
-           { icon: '🔒', title: 'Secure Payments', desc: 'Stripe & Razorpay integration — all major cards and UPI accepted.' },
+           { icon: <Target size={22} color="#f59e0b" />, title: 'Precision Targeting', desc: 'Reach candidates matched by skills, location, and experience level.' },
+           { icon: <Tv size={22} color="#3b82f6" />, title: 'Atlas TV Reach', desc: 'Brand visibility across 58+ tech, AI, and career videos.' },
+           { icon: <Bot size={22} color="#8b5cf6" />, title: 'AI-Powered Matching', desc: 'Our Copilot recommends your jobs to qualified candidates automatically.' },
+           { icon: <BarChart3 size={22} color="#10b981" />, title: 'Real-time Analytics', desc: 'Track impressions, clicks, and conversions in your dashboard.' },
+           { icon: <Zap size={22} color="#ec4899" />, title: 'Go Live in 24h', desc: 'Campaigns activate within 24 hours of payment confirmation.' },
+           { icon: <Lock size={22} color="#06b6d4" />, title: 'Secure Payments', desc: 'Stripe & Razorpay integration — all major cards and UPI accepted.' },
           ].map(w => (
            <div key={w.title} style={{ padding: '16px', background: 'rgba(255,255,255,0.03)', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.06)' }}>
-            <div style={{ fontSize: '24px', marginBottom: '8px' }}>{w.icon}</div>
+            <div style={{ marginBottom: '8px' }}>{w.icon}</div>
             <div style={{ fontSize: '13px', fontWeight: 700, color: '#fff', marginBottom: '4px' }}>{w.title}</div>
             <div style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: 1.5 }}>{w.desc}</div>
            </div>
@@ -5434,7 +6606,7 @@ export default function App() {
       {advStep === 'checkout' && advInquiry && advSelectedPkg && (
        <div style={{ maxWidth: '560px' }}>
         <div className="glass-panel" style={{ padding: '28px', marginBottom: '20px', textAlign: 'center', border: '1px solid rgba(34,197,94,0.2)' }}>
-         <div style={{ fontSize: '40px', marginBottom: '12px' }}>✅</div>
+         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}><CheckCircle size={44} color="#22c55e" /></div>
          <h3 style={{ color: '#22c55e', fontSize: '18px', fontWeight: 700, margin: '0 0 6px' }}>Inquiry Received!</h3>
          <p style={{ color: 'var(--text-muted)', fontSize: '13px', margin: 0 }}>Your inquiry ID: <strong style={{ color: '#fff', fontFamily: 'monospace' }}>{advInquiry.inquiry_id}</strong></p>
         </div>
@@ -5454,11 +6626,11 @@ export default function App() {
          <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '10px' }}>Payment Method</label>
          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '20px' }}>
           {[
-           { id: 'stripe', label: 'Credit / Debit Card', sub: 'Visa, Mastercard, Amex', icon: '💳' },
-           { id: 'razorpay', label: 'UPI / Net Banking', sub: 'GPay, PhonePe, NEFT', icon: '📱' },
+           { id: 'stripe', label: 'Credit / Debit Card', sub: 'Visa, Mastercard, Amex', icon: <CreditCard size={22} color="#f59e0b" /> },
+           { id: 'razorpay', label: 'UPI / Net Banking', sub: 'GPay, PhonePe, NEFT', icon: <Smartphone size={22} color="#06b6d4" /> },
           ].map(p => (
            <div key={p.id} onClick={() => setAdvPayProvider(p.id as any)} style={{ padding: '14px', borderRadius: '10px', border: `1.5px solid ${advPayProvider === p.id ? '#f59e0b' : 'rgba(255,255,255,0.1)'}`, cursor: 'pointer', background: advPayProvider === p.id ? 'rgba(245,158,11,0.08)' : 'transparent', transition: 'all 0.2s' }}>
-            <div style={{ fontSize: '22px', marginBottom: '6px' }}>{p.icon}</div>
+            <div style={{ marginBottom: '6px' }}>{p.icon}</div>
             <div style={{ fontSize: '13px', fontWeight: 700, color: '#fff' }}>{p.label}</div>
             <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{p.sub}</div>
            </div>
@@ -5467,7 +6639,7 @@ export default function App() {
          <button onClick={handleCheckout} disabled={advLoading} style={{ width: '100%', padding: '14px', background: 'linear-gradient(135deg, #f59e0b, #d97706)', border: 'none', borderRadius: '10px', color: '#fff', fontWeight: 700, fontSize: '15px', cursor: advLoading ? 'not-allowed' : 'pointer', opacity: advLoading ? 0.7 : 1 }}>
           {advLoading ? 'Processing…' : `Pay ${advCurrency === 'usd' ? `$${advSelectedPkg.price_usd}` : `₹${advSelectedPkg.price_inr?.toLocaleString()}`} & Activate Campaign`}
          </button>
-         <p style={{ fontSize: '11px', color: 'var(--text-muted)', textAlign: 'center', marginTop: '10px' }}>🔒 Secured by Stripe & Razorpay. Campaign activates within 24h of payment.</p>
+         <p style={{ fontSize: '11px', color: 'var(--text-muted)', textAlign: 'center', marginTop: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}><Lock size={12} /> Secured by Stripe & Razorpay. Campaign activates within 24h of payment.</p>
         </div>
        </div>
       )}
@@ -5475,7 +6647,7 @@ export default function App() {
       {/* STEP: SUCCESS */}
       {advStep === 'success' && (
        <div style={{ maxWidth: '560px', textAlign: 'center', padding: '60px 0' }}>
-        <div style={{ fontSize: '64px', marginBottom: '16px' }}>🎉</div>
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}><CheckCircle size={64} color="#10b981" /></div>
         <h2 style={{ fontSize: '26px', fontWeight: 800, color: '#fff', margin: '0 0 12px' }}>Campaign is Live!</h2>
         <p style={{ color: 'var(--text-muted)', fontSize: '15px', lineHeight: 1.6, marginBottom: '28px' }}>
          Your campaign is now active. Our team will send a confirmation to your registered email within 24 hours. You can track performance from the Admin Dashboard.
@@ -5494,11 +6666,401 @@ export default function App() {
       )}
      </div>
     )}
+        {/* INCOMING ATLAS VIDEO CALL TOAST (MATCHING EXACT UI SCREENSHOT) */}
+        {incomingCall && (
+          <div className="animate-slide-in-right" style={{
+            position: 'fixed', top: '32px', right: '32px', zIndex: 9999,
+            width: '380px',
+            background: 'rgba(22, 24, 33, 0.88)',
+            backdropFilter: 'blur(24px) saturate(180%)',
+            border: '1px solid rgba(255, 255, 255, 0.16)',
+            borderRadius: '24px',
+            padding: '24px 28px',
+            boxShadow: '0 24px 60px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.25)',
+            boxSizing: 'border-box'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '18px', marginBottom: '22px' }}>
+              {/* Metallic Silver Circular Avatar */}
+              <div style={{
+                width: '64px', height: '64px', borderRadius: '50%',
+                background: 'linear-gradient(145deg, #2a2d39, #12141a)',
+                border: '2px solid rgba(255, 255, 255, 0.45)',
+                boxShadow: '0 0 16px rgba(255, 255, 255, 0.12), inset 0 0 10px rgba(0, 0, 0, 0.8)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '24px', fontWeight: 700, color: '#ffffff',
+                flexShrink: 0,
+                animation: 'callRingPulse 1.8s ease-in-out infinite'
+              }}>
+                {(incomingCall.from_name || 'A')[0].toUpperCase()}
+              </div>
+
+              {/* Caller Meta */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: '11px', color: 'rgba(255, 255, 255, 0.45)', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '3px' }}>
+                  INCOMING ATLAS CALL
+                </div>
+                <div style={{ fontSize: '19px', fontWeight: 700, color: '#ffffff', letterSpacing: '-0.3px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.2 }}>
+                  {incomingCall.from_name}
+                </div>
+                <div style={{ fontSize: '13px', color: 'rgba(255, 255, 255, 0.55)', marginTop: '2px', fontWeight: 500 }}>
+                  via Atlas Contact No.
+                </div>
+              </div>
+            </div>
+
+            {/* Action Pill Buttons */}
+            <div style={{ display: 'flex', gap: '12px' }}>
+              {/* Decline Button (Red Glass Pill) */}
+              <button onClick={async () => {
+                await api.contacts.declineCall(incomingCall.call_id);
+                setIncomingCall(null);
+              }} style={{
+                flex: 1, height: '48px', borderRadius: '24px',
+                background: 'rgba(140, 30, 30, 0.35)',
+                border: '1px solid rgba(239, 68, 68, 0.35)',
+                color: '#fca5a5', fontWeight: 600, fontSize: '14px',
+                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                transition: 'all 0.2s ease',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)'
+              }}
+              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(170, 35, 35, 0.5)')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'rgba(140, 30, 30, 0.35)')}
+              >
+                <PhoneOff size={16} color="#ef4444" />
+                Decline
+              </button>
+
+              {/* Accept Button (Metallic Silver/White Gradient Pill) */}
+              <button onClick={async () => {
+                try {
+                  const res = await api.contacts.acceptCall(incomingCall.call_id);
+                  setActiveCall({ call_id: incomingCall.call_id, room_id: res.room_id, calling_name: incomingCall.from_name, calling_atlas_no: incomingCall.from_atlas_no });
+                  setIncomingCall(null);
+                  try {
+                    const stream = await getNoiseCancelledStream(true);
+                    setLocalStream(stream);
+                  } catch {}
+                } catch (e: any) { alert(e.message || 'Could not accept call'); }
+              }} style={{
+                flex: 1, height: '48px', borderRadius: '24px',
+                background: 'linear-gradient(135deg, #ffffff 0%, #e2e8f0 50%, #cbd5e1 100%)',
+                border: 'none',
+                color: '#0f172a', fontWeight: 700, fontSize: '14px',
+                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                transition: 'all 0.2s ease',
+                boxShadow: '0 4px 20px rgba(255, 255, 255, 0.22), inset 0 1px 0 #ffffff'
+              }}
+              onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.02)')}
+              onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
+              >
+                <Phone size={16} color="#0f172a" />
+                Accept
+              </button>
+            </div>
+          </div>
+        )}
    </div>
   );
  })()}
 
- {/* TAB: ATLAS ACADEMY */}
+  {/* TAB: ATLAS CONTACTS & MESSAGING */}
+  {activeTab === 'contacts' && (() => {
+    const handleLookup = async () => {
+      if (!contactAddInput.trim()) return;
+      setContactLookupLoading(true);
+      setContactLookupResult(null);
+      try {
+        const res = await api.contacts.lookup(contactAddInput.trim());
+        setContactLookupResult(res);
+      } catch (e: any) {
+        alert(e.message || 'Contact not found');
+      }
+      setContactLookupLoading(false);
+    };
+
+    const handleAddContact = async () => {
+      if (!contactLookupResult) return;
+      try {
+        const res = await api.contacts.add(contactLookupResult.atlas_no, contactNickname);
+        alert(res.message);
+        setContactLookupResult(null);
+        setContactAddInput('');
+        setContactNickname('');
+        setContactsView('diary');
+        const bk = await api.contacts.book();
+        setContactBook(bk?.contacts || []);
+      } catch (e: any) {
+        alert(e.message || 'Failed to add contact');
+      }
+    };
+
+    const handleOpenChat = async (contact: any) => {
+      setActiveChat(contact);
+      setContactsView('chat');
+      try {
+        const res = await api.contacts.conversation(contact.atlas_no);
+        setDirectMessages(res?.messages || []);
+      } catch {}
+    };
+
+    const handleSendMessage = async () => {
+      if (!activeChat || !directChatInput.trim()) return;
+      const textToSend = directChatInput.trim();
+      setDirectChatInput('');
+      try {
+        await api.contacts.sendMessage(activeChat.atlas_no, textToSend);
+        const res = await api.contacts.conversation(activeChat.atlas_no);
+        setDirectMessages(res?.messages || []);
+      } catch (e: any) {
+        alert(e.message || 'Failed to send message');
+      }
+    };
+
+    const handleStartCall = async (atlasNo: string) => {
+      try {
+        let stream: MediaStream | null = null;
+        try {
+          stream = await getNoiseCancelledStream(true);
+        } catch {
+          stream = await getNoiseCancelledStream(false);
+        }
+        setLocalStream(stream);
+
+        const inv = await api.contacts.inviteCall(atlasNo);
+        setActiveCall({
+          call_id: inv.call_id,
+          room_id: inv.room_id,
+          calling_atlas_no: inv.calling_atlas_no,
+          calling_name: inv.calling_name || atlasNo,
+          peerName: inv.calling_name || atlasNo,
+          status: 'pending',
+          role: 'caller'
+        });
+      } catch (e: any) {
+        alert(e.message || 'Call failed');
+      }
+    };
+
+    return (
+      <div className="animate-fade-in" style={{ minHeight: '100%', background: 'transparent' }}>
+
+        {/* HERO HEADER */}
+        <div style={{ padding: '32px 32px 24px', borderBottom: '1px solid rgba(255,255,255,0.07)', position: 'relative', overflow: 'hidden' }}>
+          <div style={{ position: 'absolute', top: '-50px', right: '-50px', width: '250px', height: '250px', background: 'radial-gradient(circle, rgba(6,182,212,0.15) 0%, transparent 70%)', borderRadius: '50%', pointerEvents: 'none' }} />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px', position: 'relative', zIndex: 1 }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                <div style={{ width: '42px', height: '42px', background: 'linear-gradient(135deg, #06b6d4, #0891b2)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 20px rgba(6,182,212,0.3)' }}>
+                  <Phone size={20} color="#fff" />
+                </div>
+                <div>
+                  <h1 style={{ fontSize: '24px', fontWeight: 800, color: '#fff', margin: 0, letterSpacing: '-0.5px' }}>Atlas Contact Diary & Calls</h1>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '13px', margin: 0 }}>In-platform direct contacts, 1:1 messaging, and WebRTC video calling</p>
+                </div>
+              </div>
+            </div>
+
+            {/* MY ATLAS NUMBER CARD */}
+            {myAtlasInfo && (
+              <div className="glass-panel" style={{ padding: '12px 20px', borderRadius: '14px', border: '1px solid rgba(6,182,212,0.3)', background: 'linear-gradient(135deg, rgba(6,182,212,0.1), rgba(8,145,178,0.05))', display: 'flex', alignItems: 'center', gap: '16px' }}>
+                <div>
+                  <div style={{ fontSize: '10px', color: '#06b6d4', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.8px' }}>My Atlas Phone No</div>
+                  <div style={{ fontSize: '20px', fontWeight: 900, color: '#fff', fontFamily: 'monospace', letterSpacing: '1px' }}>{myAtlasInfo.atlas_no}</div>
+                </div>
+                <button onClick={() => { navigator.clipboard.writeText(myAtlasInfo.atlas_no); alert(`Copied ${myAtlasInfo.atlas_no} to clipboard!`); }} style={{ background: 'rgba(6,182,212,0.2)', border: '1px solid #06b6d4', color: '#06b6d4', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Copy size={13} /> Copy
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* SUB NAV TABS */}
+          <div style={{ display: 'flex', gap: '8px', marginTop: '24px' }}>
+            {[
+              { id: 'diary', label: 'My Diary', icon: <BookOpen size={14} />, count: contactBook.length },
+              { id: 'add', label: 'Add Contact', icon: <UserPlus size={14} /> },
+              { id: 'saved_me', label: 'Saved Me', icon: <Inbox size={14} />, count: myAtlasInfo?.saved_by_count },
+            ].map(tab => (
+              <button key={tab.id} onClick={async () => {
+                setContactsView(tab.id as any);
+                if (tab.id === 'diary') { const bk = await api.contacts.book(); setContactBook(bk?.contacts || []); }
+              }} style={{ padding: '8px 18px', borderRadius: '8px', fontSize: '13px', fontWeight: 700, cursor: 'pointer', background: contactsView === tab.id ? 'rgba(6,182,212,0.2)' : 'rgba(255,255,255,0.05)', color: contactsView === tab.id ? '#06b6d4' : 'var(--text-muted)', border: contactsView === tab.id ? '1px solid #06b6d4' : '1px solid transparent', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                {tab.icon}
+                {tab.label}
+                {tab.count !== undefined && tab.count > 0 && <span style={{ background: '#06b6d4', color: '#000', borderRadius: '10px', fontSize: '10px', padding: '1px 6px', fontWeight: 800 }}>{tab.count}</span>}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* MAIN BODY */}
+        <div style={{ padding: '28px 32px' }}>
+
+          {/* VIEW: DIARY */}
+          {contactsView === 'diary' && (
+            <div>
+              {contactBook.length === 0 ? (
+                <div className="glass-panel" style={{ padding: '60px 20px', textAlign: 'center' }}>
+                  <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}><Phone size={48} color="#06b6d4" /></div>
+                  <h3 style={{ color: '#fff', fontSize: '18px', fontWeight: 700, margin: '0 0 6px' }}>Your Contact Diary is empty</h3>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '13px', marginBottom: '20px' }}>Ask a recruiter or candidate for their Atlas Number (ATL-XXXXX) to save them!</p>
+                  <button onClick={() => setContactsView('add')} style={{ padding: '10px 20px', background: 'linear-gradient(135deg, #06b6d4, #0891b2)', border: 'none', borderRadius: '8px', color: '#fff', fontWeight: 700, fontSize: '13px', cursor: 'pointer' }}>
+                    + Add Your First Contact
+                  </button>
+                </div>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
+                  {contactBook.map(c => (
+                    <div key={c.entry_id} className="glass-panel" style={{ padding: '20px', position: 'relative', border: '1px solid rgba(255,255,255,0.08)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '14px' }}>
+                        <div style={{ width: '46px', height: '46px', background: 'linear-gradient(135deg, #06b6d4, #3b82f6)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: 800, color: '#fff' }}>
+                          {c.display_name[0].toUpperCase()}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <div style={{ fontSize: '15px', fontWeight: 700, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.display_name}</div>
+                            {c.is_mutual && <span style={{ padding: '2px 7px', background: 'rgba(34,197,94,0.15)', border: '1px solid #22c55e', borderRadius: '12px', fontSize: '10px', color: '#22c55e', fontWeight: 700 }}>Mutual</span>}
+                          </div>
+                          <div style={{ fontSize: '12px', color: '#06b6d4', fontFamily: 'monospace', fontWeight: 700 }}>{c.atlas_no}</div>
+                          <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'capitalize' }}>{c.role}</div>
+                        </div>
+                      </div>
+
+                      {c.last_message && (
+                        <div style={{ fontSize: '12px', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.03)', padding: '8px 12px', borderRadius: '6px', marginBottom: '14px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <MessageSquare size={12} color="#06b6d4" /> {c.last_message}
+                        </div>
+                      )}
+
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button onClick={() => handleOpenChat(c)} style={{ flex: 1, padding: '8px', background: 'rgba(6,182,212,0.15)', border: '1px solid #06b6d4', borderRadius: '8px', color: '#06b6d4', fontWeight: 700, fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                          <MessageSquare size={14} /> Message
+                        </button>
+                        <button onClick={() => handleStartCall(c.atlas_no)} style={{ padding: '8px 14px', background: 'linear-gradient(135deg, #06b6d4, #0891b2)', border: 'none', borderRadius: '8px', color: '#fff', fontWeight: 700, fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <Video size={14} /> Call
+                        </button>
+                        <button onClick={async () => { if (confirm(`Remove ${c.display_name} from your diary?`)) { await api.contacts.remove(c.entry_id); const bk = await api.contacts.book(); setContactBook(bk?.contacts || []); } }} style={{ padding: '8px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '8px', color: '#ef4444', cursor: 'pointer' }}>
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* VIEW: ADD CONTACT */}
+          {contactsView === 'add' && (
+            <div style={{ maxWidth: '520px' }}>
+              <div className="glass-panel" style={{ padding: '28px' }}>
+                <h3 style={{ fontSize: '17px', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>Add New Contact</h3>
+                <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '20px' }}>Enter the user's 5-digit Atlas Phone Number (e.g. ATL-48291)</p>
+
+                <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+                  <input value={contactAddInput} onChange={e => setContactAddInput(e.target.value)} placeholder="e.g. ATL-48291"
+                    style={{ flex: 1, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '11px 14px', fontSize: '14px', color: '#fff', outline: 'none', fontFamily: 'monospace', textTransform: 'uppercase' }}
+                    onKeyDown={e => e.key === 'Enter' && handleLookup()}
+                  />
+                  <button onClick={handleLookup} disabled={contactLookupLoading} style={{ padding: '11px 20px', background: 'linear-gradient(135deg, #06b6d4, #0891b2)', border: 'none', borderRadius: '8px', color: '#fff', fontWeight: 700, fontSize: '13px', cursor: 'pointer' }}>
+                    {contactLookupLoading ? 'Searching…' : 'Lookup'}
+                  </button>
+                </div>
+
+                {contactLookupResult && (
+                  <div style={{ padding: '20px', background: 'rgba(6,182,212,0.08)', border: '1px solid rgba(6,182,212,0.3)', borderRadius: '12px', marginBottom: '20px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '16px' }}>
+                      <div style={{ width: '48px', height: '48px', background: 'linear-gradient(135deg, #06b6d4, #3b82f6)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', fontWeight: 800, color: '#fff' }}>
+                        {contactLookupResult.display_name[0].toUpperCase()}
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '16px', fontWeight: 700, color: '#fff' }}>{contactLookupResult.display_name}</div>
+                        <div style={{ fontSize: '12px', color: '#06b6d4', fontFamily: 'monospace', fontWeight: 700 }}>{contactLookupResult.atlas_no}</div>
+                        <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'capitalize' }}>{contactLookupResult.role}</div>
+                      </div>
+                    </div>
+
+                    <div style={{ marginBottom: '16px' }}>
+                      <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: '6px' }}>Nickname (Optional)</label>
+                      <input value={contactNickname} onChange={e => setContactNickname(e.target.value)} placeholder="e.g. Lead Recruiter"
+                        style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '9px 12px', fontSize: '13px', color: '#fff', outline: 'none', boxSizing: 'border-box' }}
+                      />
+                    </div>
+
+                    <button onClick={handleAddContact} style={{ width: '100%', padding: '12px', background: 'linear-gradient(135deg, #06b6d4, #0891b2)', border: 'none', borderRadius: '8px', color: '#fff', fontWeight: 700, fontSize: '14px', cursor: 'pointer' }}>
+                      + Save to Contact Diary
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* VIEW: 1:1 DIRECT CHAT */}
+          {contactsView === 'chat' && activeChat && (
+            <div className="glass-panel" style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 260px)', borderRadius: '16px', overflow: 'hidden' }}>
+              {/* CHAT HEADER */}
+              <div style={{ padding: '16px 24px', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.02)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <button onClick={() => setContactsView('diary')} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '13px' }}>← Back</button>
+                  <div style={{ width: '36px', height: '36px', background: 'linear-gradient(135deg, #06b6d4, #3b82f6)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, color: '#fff' }}>
+                    {activeChat.display_name[0].toUpperCase()}
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '15px', fontWeight: 700, color: '#fff' }}>{activeChat.display_name}</div>
+                    <div style={{ fontSize: '11px', color: '#06b6d4', fontFamily: 'monospace' }}>{activeChat.atlas_no}</div>
+                  </div>
+                </div>
+                <button onClick={() => handleStartCall(activeChat.atlas_no)} style={{ padding: '8px 16px', background: 'linear-gradient(135deg, #06b6d4, #0891b2)', border: 'none', borderRadius: '8px', color: '#fff', fontWeight: 700, fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Video size={15} /> Video Call
+                </button>
+              </div>
+
+              {/* MESSAGES THREAD */}
+              <div style={{ flex: 1, padding: '20px 24px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {directMessages.length === 0 ? (
+                  <div style={{ textAlign: 'center', color: 'var(--text-muted)', margin: 'auto', fontSize: '13px' }}>No messages yet. Say hello to {activeChat.display_name}!</div>
+                ) : (
+                  directMessages.map(m => (
+                    <div key={m.id} style={{ display: 'flex', flexDirection: 'column', alignItems: m.is_mine ? 'flex-end' : 'flex-start' }}>
+                      <div style={{ maxWidth: '70%', padding: '10px 16px', borderRadius: m.is_mine ? '16px 16px 2px 16px' : '16px 16px 16px 2px', background: m.is_mine ? 'linear-gradient(135deg, #06b6d4, #0891b2)' : 'rgba(255,255,255,0.07)', color: '#fff', fontSize: '14px', lineHeight: 1.5 }}>
+                        {m.content}
+                      </div>
+                      <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '4px', padding: '0 4px' }}>
+                        {new Date(m.sent_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* INPUT BAR */}
+              <div style={{ padding: '16px 24px', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', gap: '12px' }}>
+                <input value={directChatInput} onChange={e => setDirectChatInput(e.target.value)} placeholder={`Message ${activeChat.display_name}…`}
+                  style={{ flex: 1, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '11px 16px', fontSize: '14px', color: '#fff', outline: 'none', fontFamily: 'inherit' }}
+                  onKeyDown={e => e.key === 'Enter' && handleSendMessage()}
+                />
+                <button onClick={handleSendMessage} style={{ padding: '11px 20px', background: 'linear-gradient(135deg, #06b6d4, #0891b2)', border: 'none', borderRadius: '10px', color: '#fff', fontWeight: 700, fontSize: '14px', cursor: 'pointer' }}>
+                  Send
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* VIEW: SAVED ME */}
+          {contactsView === 'saved_me' && (
+            <div>
+              <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#fff', marginBottom: '16px' }}>People Who Saved Your Atlas Number</h3>
+              <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '20px' }}>These users have added your Atlas number ({myAtlasInfo?.atlas_no}) to their contact diary.</p>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  })()}
+
+  {/* TAB: ATLAS ACADEMY */}
+
 
  {activeTab === 'academy' && (() => {
  const ACADEMY_CATEGORIES = ['Programming','AI','Cloud','DevOps','Cybersecurity','Electronics','Marketing','Sales','Finance','HR','UI/UX','Communication','Interview Prep'];
@@ -5937,7 +7499,7 @@ export default function App() {
  </div>
  <button onClick={handleSkillGap} disabled={academySkillGapLoading}
  style={{ padding:'12px 28px', background:'linear-gradient(135deg,#6366f1,#8b5cf6)', border:'none', borderRadius:'10px', color:'#fff', fontWeight:700, fontSize:'14px', cursor:'pointer', display:'flex', alignItems:'center', gap:'8px', alignSelf:'flex-start', opacity: academySkillGapLoading?0.7:1 }}>
- {academySkillGapLoading ? <><span className="pulse-glow">⏳</span> Analyzing…</> : <><Zap size={16} /> Analyze Gap</>}
+ {academySkillGapLoading ? <><Loader2 className="spin" size={16} /> Analyzing…</> : <><Zap size={16} /> Analyze Gap</>}
  </button>
  </div>
 
@@ -6012,8 +7574,8 @@ export default function App() {
  placeholder="e.g. Become an AI Engineer, Get a job at Google, Learn DevOps"
  style={{ flex:1, padding:'10px 14px', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'10px', color:'#fff', fontSize:'14px' }} />
  <button onClick={handleRoadmap} disabled={academyRoadmapLoading}
- style={{ padding:'10px 20px', background:'linear-gradient(135deg,#6366f1,#8b5cf6)', border:'none', borderRadius:'10px', color:'#fff', fontWeight:600, fontSize:'13px', cursor:'pointer', opacity:academyRoadmapLoading?0.7:1, flexShrink:0 }}>
- {academyRoadmapLoading ? '⏳ Building…' : ' Generate'}
+ style={{ padding:'10px 20px', background:'linear-gradient(135deg,#6366f1,#8b5cf6)', border:'none', borderRadius:'10px', color:'#fff', fontWeight:600, fontSize:'13px', cursor:'pointer', opacity:academyRoadmapLoading?0.7:1, flexShrink:0, display:'flex', alignItems:'center', gap:'6px' }}>
+ {academyRoadmapLoading ? <><Loader2 className="spin" size={14} /> Building…</> : <><Sparkles size={14} /> Generate</>}
  </button>
  </div>
  {academyRoadmap && (
@@ -6367,7 +7929,7 @@ export default function App() {
  </div>
  <button onClick={handleGenerateResume} disabled={resumeGenerating}
  style={{ padding:'11px', background:'linear-gradient(135deg,#10b981,#059669)', border:'none', borderRadius:'8px', color:'#fff', fontWeight:700, fontSize:'13px', cursor:'pointer', opacity:resumeGenerating?0.7:1, display:'flex', alignItems:'center', justifyContent:'center', gap:'8px' }}>
- {resumeGenerating ? <><span className="pulse-glow">⏳</span> Building Your Resume…</> : ' Generate AI Resume'}
+ {resumeGenerating ? <><Loader2 className="spin" size={14} /> Building Your Resume…</> : ' Generate AI Resume'}
  </button>
  </div>
  </div>
@@ -7776,122 +9338,159 @@ export default function App() {
  </div>
  )}
 
- {/* INCOMING CALL MODAL DIALOG */}
- {incomingCall && (
- <div style={{ position: 'fixed', top: '0', left: '0', width: '100%', height: '100%', background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(10px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 3000, padding: '16px' }}>
- <div className="glass-panel animate-fade-in" style={{ width: '100%', maxWidth: '360px', padding: '32px', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '20px' }}>
- <div style={{ display: 'inline-flex', alignSelf: 'center', padding: '16px', background: 'rgba(128, 128, 128, 0.1)', borderRadius: '50%', color: '#808080' }} className="pulse-glow">
- <Phone size={36} />
- </div>
- <div>
- <span style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-dim)', letterSpacing: '0.1em' }}>INCOMING CALL</span>
- <h3 style={{ fontSize: '18px', color: '#fff', marginTop: '6px' }}>{incomingCall.callerName}</h3>
- </div>
- <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
- <button 
- onClick={handleRejectCall} 
- className="btn-secondary" 
- style={{ flex: 1, color: '#808080', border: '1px solid rgba(255,45,85,0.2)', padding: '12px', justifyContent: 'center' }}
- >
- Reject
- </button>
- <button 
- onClick={handleAcceptCall} 
- className="btn-primary" 
- style={{ flex: 1, padding: '12px', justifyContent: 'center' }}
- >
- Accept
- </button>
- </div>
- </div>
- </div>
- )}
+  {/* INCOMING CALL TOAST — top-right corner, non-blocking (MONOCHROME MATT BLACK + WHITE + SILVER) */}
+  {incomingCall && (() => {
+    const callerDisplayName = incomingCall.from_name || incomingCall.callerName || 'Atlas Contact';
+    const callerAtlasNo = incomingCall.from_atlas_no ? ` (${incomingCall.from_atlas_no})` : '';
 
- {/* ACTIVE CALL DESK MODAL OVERLAY */}
- {activeCall && (
- <div style={{ position: 'fixed', top: '0', left: '0', width: '100%', height: '100%', background: 'rgba(0,0,0,0.92)', backdropFilter: 'blur(16px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 3000, padding: '16px' }}>
- <div className="glass-panel animate-fade-in" style={{ width: '100%', maxWidth: '720px', padding: '24px', position: 'relative', display: 'flex', flexDirection: 'column', gap: '16px' }}>
- 
- {/* Call Header info */}
- <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-glass)', paddingBottom: '12px' }}>
- <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
- <span className="pulse-glow" style={{ width: '8px', height: '8px', borderRadius: '50%', background: activeCall.status === 'connected' ? '#84cc16' : '#eab308' }} />
- <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
- {activeCall.status === 'connected' ? 'Live Call Connected' : 'Dialing / Connecting...'}
- </span>
- </div>
- <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#fff' }}>
- {activeCall.peerName}
- </div>
- </div>
+    return (
+      <div className="animate-slide-in-right" style={{
+        position: 'fixed', top: '20px', right: '20px', zIndex: 9000,
+        width: '330px',
+        background: 'rgba(10, 10, 12, 0.94)',
+        backdropFilter: 'blur(40px) saturate(180%)',
+        WebkitBackdropFilter: 'blur(40px) saturate(180%)',
+        borderRadius: '20px',
+        border: '1px solid rgba(226, 232, 240, 0.22)',
+        boxShadow: '0 8px 40px rgba(0,0,0,0.85), inset 0.5px 0.5px 0 rgba(255,255,255,0.20)',
+        padding: '18px 20px 20px',
+        display: 'flex', flexDirection: 'column', gap: '14px', overflow: 'hidden',
+      }}>
+        <div style={{ position: 'absolute', top: 0, left: '20px', right: '20px', height: '1px', background: 'linear-gradient(90deg, transparent, rgba(226,232,240,0.50), transparent)', borderRadius: '99px' }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <div style={{ position: 'relative', flexShrink: 0 }}>
+            <div style={{ position: 'absolute', inset: '-5px', borderRadius: '50%', border: '1px solid #cbd5e1', animation: 'callRingPulse 1.4s ease-in-out infinite' }} />
+            <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'linear-gradient(135deg, #18181b 0%, #09090b 100%)', border: '1px solid #cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 16px rgba(203,213,225,0.2)' }}>
+              <TitanLogo size={26} />
+            </div>
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: '10px', textTransform: 'uppercase', color: '#cbd5e1', letterSpacing: '0.12em', marginBottom: '2px', fontWeight: 700 }}>INCOMING ATLAS CALL</div>
+            <div style={{ fontSize: '15px', fontWeight: '700', color: '#ffffff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {callerDisplayName}
+            </div>
+            <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '1px', fontWeight: 600 }}>via Atlas Contact{callerAtlasNo}</div>
+          </div>
+          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#ffffff', display: 'inline-block', flexShrink: 0, animation: 'callRingPulse 1s ease-in-out infinite', boxShadow: '0 0 8px rgba(255,255,255,0.9)' }} />
+        </div>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button onClick={handleRejectCall} style={{ flex: 1, padding: '10px 0', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.20)', background: 'rgba(255, 255, 255, 0.06)', color: '#ffffff', fontSize: '13px', fontWeight: '700', fontFamily: 'var(--font-body)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', transition: 'all 0.18s ease' }}>
+            <PhoneOff size={13} color="#ffffff" /> Decline
+          </button>
+          <button onClick={handleAcceptCall} style={{ flex: 1, padding: '10px 0', borderRadius: '12px', border: 'none', background: 'linear-gradient(135deg, #ffffff 0%, #e2e8f0 50%, #94a3b8 100%)', color: '#09090b', fontSize: '13px', fontWeight: '700', fontFamily: 'var(--font-body)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', transition: 'all 0.18s ease', boxShadow: '0 4px 16px rgba(255,255,255,0.25)' }}>
+            <Phone size={13} color="#09090b" /> Accept
+          </button>
+        </div>
+      </div>
+    );
+  })()}
 
- {/* Video Streams Canvas Area */}
- <div style={{ position: 'relative', width: '100%', height: '360px', background: '#09090b', borderRadius: '4px', overflow: 'hidden', border: '1px solid var(--border-glass)' }}>
- {activeCall.status === 'connected' && !videoDisabled ? (
- // Remote/Loopback stream video
- <video 
- ref={remoteVideoRef} 
- autoPlay 
- playsInline 
- style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
- />
- ) : (
- <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', color: 'var(--text-dim)' }}>
- <Users size={48} />
- <span style={{ fontSize: '13px', marginTop: '12px' }}>
- {videoDisabled ? 'Camera Disabled' : 'Waiting for participant to join...'}
- </span>
- </div>
- )}
+  {/* ACTIVE CALL DESK MODAL OVERLAY (MONOCHROME MATT BLACK + WHITE + SILVER) */}
+  {activeCall && (() => {
+    const isCallConnected = activeCall.status === 'active' || activeCall.status === 'connected';
 
- {/* Local picture-in-picture stream preview bubble */}
- {localStream && !videoDisabled && (
- <div style={{ position: 'absolute', bottom: '16px', right: '16px', width: '140px', height: '105px', borderRadius: '4px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.15)', background: '#111', boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}>
- <video 
- ref={localVideoRef} 
- autoPlay 
- muted 
- playsInline 
- style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
- />
- </div>
- )}
- </div>
+    return (
+      <div style={{ position: 'fixed', top: '0', left: '0', width: '100%', height: '100%', background: 'rgba(9,9,11,0.95)', backdropFilter: 'blur(20px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 3000, padding: '16px' }}>
+        <div style={{ width: '100%', maxWidth: '720px', padding: '28px', position: 'relative', display: 'flex', flexDirection: 'column', gap: '18px', background: '#09090b', borderRadius: '24px', border: '1px solid rgba(226, 232, 240, 0.20)', boxShadow: '0 24px 80px rgba(0,0,0,0.9)' }}>
+          
+          {/* Always play remote audio stream offscreen */}
+          <audio
+            ref={(el) => {
+              if (el && remoteStream && el.srcObject !== remoteStream) {
+                el.srcObject = remoteStream;
+                el.muted = false;
+                el.volume = 1.0;
+                el.play().catch(() => {});
+              }
+            }}
+            autoPlay
+            playsInline
+            style={{ position: 'fixed', top: '-9999px', left: '-9999px', width: '1px', height: '1px', opacity: 0.001, pointerEvents: 'none' }}
+          />
 
- {/* Calling control deck actions */}
- <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', marginTop: '8px' }}>
- <button 
- onClick={handleToggleMic} 
- className={micMuted ? "btn-secondary" : "btn-primary"}
- style={{ padding: '12px', borderRadius: '50%', color: micMuted ? '#808080' : 'inherit' }}
- title={micMuted ? "Unmute Mic" : "Mute Mic"}
- >
- {micMuted ? <MicOff size={18} /> : <Mic size={18} />}
- </button>
- 
- <button 
- onClick={handleToggleVideo} 
- className={videoDisabled ? "btn-secondary" : "btn-primary"}
- style={{ padding: '12px', borderRadius: '50%', color: videoDisabled ? '#808080' : 'inherit' }}
- title={videoDisabled ? "Enable Video" : "Disable Video"}
- >
- {videoDisabled ? <VideoOff size={18} /> : <Video size={18} />}
- </button>
+          {/* Call Header info */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.10)', paddingBottom: '14px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: isCallConnected ? '#ffffff' : '#94a3b8', boxShadow: isCallConnected ? '0 0 10px #ffffff' : 'none' }} />
+              <span style={{ fontSize: '13px', color: '#cbd5e1', fontWeight: 600 }}>
+                {isCallConnected ? 'Live Call Connected' : 'Dialing / Connecting...'}
+              </span>
+            </div>
+            <div style={{ fontSize: '15px', fontWeight: '700', color: '#ffffff' }}>
+              {activeCall.peerName || activeCall.calling_name || 'Atlas Contact'}
+            </div>
+          </div>
 
- <button 
- onClick={() => handleEndCall(activeCall.candidateId)} 
- className="btn-primary"
- style={{ padding: '12px 18px', background: '#808080', border: 'none', color: '#fff', display: 'flex', gap: '8px', alignItems: 'center' }}
- title="Hang Up"
- >
- <PhoneOff size={18} />
- <span>Hang Up</span>
- </button>
- </div>
+          {/* Video Streams Canvas Area */}
+          <div style={{ position: 'relative', width: '100%', height: '360px', background: '#000000', borderRadius: '16px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.12)' }}>
+            {isCallConnected && !videoDisabled ? (
+              // Remote/Loopback stream video
+              <video 
+                ref={remoteVideoRef} 
+                autoPlay 
+                muted={true}
+                playsInline 
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+              />
 
- </div>
- </div>
- )}
+
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', color: '#94a3b8' }}>
+                <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'linear-gradient(135deg, #18181b 0%, #09090b 100%)', border: '1px solid #cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px', boxShadow: '0 0 24px rgba(255,255,255,0.12)' }}>
+                  <TitanLogo size={44} />
+                </div>
+                <span style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff' }}>
+                  {isCallConnected ? (videoDisabled ? 'Camera Disabled (Voice Call Active)' : 'Connected') : 'Connecting WebRTC Audio/Video stream...'}
+                </span>
+              </div>
+            )}
+
+            {/* Local picture-in-picture stream preview bubble */}
+            {localStream && !videoDisabled && (
+              <div style={{ position: 'absolute', bottom: '16px', right: '16px', width: '140px', height: '105px', borderRadius: '12px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.25)', background: '#09090b', boxShadow: '0 8px 24px rgba(0,0,0,0.8)' }}>
+                <video 
+                  ref={localVideoRef} 
+                  autoPlay 
+                  muted 
+                  playsInline 
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Calling control deck actions */}
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', marginTop: '10px' }}>
+            <button 
+              onClick={handleToggleMic} 
+              style={{ width: '48px', height: '48px', borderRadius: '50%', border: '1px solid rgba(255,255,255,0.25)', background: micMuted ? 'rgba(255,255,255,0.1)' : 'linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%)', color: micMuted ? '#ffffff' : '#09090b', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s ease', boxShadow: '0 4px 14px rgba(0,0,0,0.5)' }}
+              title={micMuted ? "Unmute Mic" : "Mute Mic"}
+            >
+              {micMuted ? <MicOff size={20} color="#ffffff" /> : <Mic size={20} color="#09090b" />}
+            </button>
+            
+            <button 
+              onClick={handleToggleVideo} 
+              style={{ width: '48px', height: '48px', borderRadius: '50%', border: '1px solid rgba(255,255,255,0.25)', background: videoDisabled ? 'rgba(255,255,255,0.1)' : 'linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%)', color: videoDisabled ? '#ffffff' : '#09090b', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s ease', boxShadow: '0 4px 14px rgba(0,0,0,0.5)' }}
+              title={videoDisabled ? "Enable Video" : "Disable Video"}
+            >
+              {videoDisabled ? <VideoOff size={20} color="#ffffff" /> : <Video size={20} color="#09090b" />}
+            </button>
+
+            <button 
+              onClick={() => handleEndCall(activeCall.candidateId)} 
+              style={{ padding: '0 24px', height: '48px', borderRadius: '24px', background: 'rgba(255, 255, 255, 0.12)', border: '1px solid rgba(255, 255, 255, 0.3)', color: '#ffffff', fontWeight: 700, fontSize: '14px', display: 'flex', gap: '8px', alignItems: 'center', cursor: 'pointer', transition: 'all 0.2s ease' }}
+              title="Hang Up"
+            >
+              <PhoneOff size={18} color="#ffffff" />
+              <span>Hang Up</span>
+            </button>
+          </div>
+
+        </div>
+      </div>
+    );
+  })()}
  </div>
  );
 }

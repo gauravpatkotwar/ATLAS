@@ -27,6 +27,7 @@ from atlas.database import tv_models  # registers TV models with Base metadata  
 from atlas.api.v1.tv import seed_tv_videos
 from atlas.api.v1.ats_score import router as ats_router
 from atlas.api.v1.advertise import router as advertise_router
+from atlas.api.v1.contacts import router as contacts_router
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -80,6 +81,57 @@ async def lifespan(app: FastAPI):
                 paid_at TIMESTAMP
             )
         """))
+    # Atlas Contact Diary + Messaging migrations
+    async with engine.begin() as conn:
+        await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS atlas_no VARCHAR(12) UNIQUE"))
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS atlas_contact_book (
+                id SERIAL PRIMARY KEY,
+                owner_user_id INT REFERENCES users(id) ON DELETE CASCADE,
+                contact_user_id INT REFERENCES users(id) ON DELETE CASCADE,
+                nickname VARCHAR(100),
+                created_at TIMESTAMP DEFAULT NOW(),
+                UNIQUE(owner_user_id, contact_user_id)
+            )
+        """))
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS atlas_messages (
+                id SERIAL PRIMARY KEY,
+                sender_user_id INT REFERENCES users(id) ON DELETE CASCADE,
+                receiver_user_id INT REFERENCES users(id) ON DELETE CASCADE,
+                content TEXT NOT NULL,
+                read_at TIMESTAMP,
+                created_at TIMESTAMP DEFAULT NOW()
+            )
+        """))
+        # Index for fast conversation queries
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_messages_sender ON atlas_messages(sender_user_id)"))
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_messages_receiver ON atlas_messages(receiver_user_id)"))
+        # Video call tables
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS atlas_call_invitations (
+                id SERIAL PRIMARY KEY,
+                caller_user_id INT REFERENCES users(id) ON DELETE CASCADE,
+                receiver_user_id INT REFERENCES users(id) ON DELETE CASCADE,
+                room_id VARCHAR(50) NOT NULL,
+                status VARCHAR(20) DEFAULT 'pending',
+                created_at TIMESTAMP DEFAULT NOW()
+            )
+        """))
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS atlas_call_signals (
+                id SERIAL PRIMARY KEY,
+                call_id INT REFERENCES atlas_call_invitations(id) ON DELETE CASCADE,
+                from_user_id INT REFERENCES users(id) ON DELETE CASCADE,
+                signal_type VARCHAR(20) NOT NULL,
+                data TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT NOW()
+            )
+        """))
+        # High-performance indexes for concurrent signaling & incoming call polling
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_call_inv_recv_status ON atlas_call_invitations(receiver_user_id, status)"))
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_call_inv_caller ON atlas_call_invitations(caller_user_id)"))
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_call_signals_lookup ON atlas_call_signals(call_id, from_user_id, id)"))
     # Seed Atlas TV videos if library is empty
     from atlas.database.session import SessionLocal
     async with SessionLocal() as seed_db:
@@ -168,6 +220,9 @@ app.include_router(
 )
 app.include_router(
     advertise_router, prefix=f"{settings.API_V1_STR}/advertise", tags=["Advertise"]
+)
+app.include_router(
+    contacts_router, prefix=f"{settings.API_V1_STR}/contacts", tags=["Contacts"]
 )
 
 from fastapi.staticfiles import StaticFiles

@@ -73,6 +73,9 @@ class User(Base):
     )  # admin, recruiter
     is_active: Mapped[bool] = mapped_column(default=True, nullable=False)
     video_path: Mapped[Optional[str]] = mapped_column(nullable=True)
+    recovery_email: Mapped[Optional[str]] = mapped_column(nullable=True)  # Secondary recovery email
+    reset_password_token: Mapped[Optional[str]] = mapped_column(nullable=True, index=True)  # One-time reset token
+    reset_token_expires: Mapped[Optional[datetime.datetime]] = mapped_column(nullable=True)  # Token expiry
     created_at: Mapped[datetime.datetime] = mapped_column(
         default=get_utc_now, nullable=False
     )

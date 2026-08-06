@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100%" height="100%">
+  <rect width="100" height="100" rx="20" fill="#09090b" />
+  {/* Left Leg (Dark Charcoal) */}
+  <path d="M50 36 L25 80 H40 L48 40 Z" fill="#444446" />
+  {/* Right Leg (Muted Silver) */}
+  <path d="M50 36 L75 80 H60 L52 40 Z" fill="#8e8e93" />
+  {/* Top Globe (Stark White) */}
+  <circle cx="50" cy="26" r="14" fill="#ffffff" />
+  {/* Signature Blue Ink Indicator Dot */}
+  <circle cx="70" cy="18" r="5" fill="#0052CC" />
+</svg>

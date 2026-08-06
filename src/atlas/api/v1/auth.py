@@ -7,6 +7,7 @@ from atlas.database.session import get_db
 from atlas.services.auth import AuthService
 from atlas.api.deps import get_current_user
 from atlas.database.models import User
+from atlas.utils.email_validator import validate_email_deliverable
 
 router = APIRouter()
 
@@ -17,6 +18,7 @@ class UserRegister(BaseModel):
     role: str = "recruiter"
     org_name: Optional[str] = None
     invite_code: Optional[str] = None
+    recovery_email: Optional[str] = None  # Optional secondary recovery email
 
 
 class UserResponse(BaseModel):
@@ -37,11 +39,46 @@ class TokenResponse(BaseModel):
     token_type: str
 
 
+class ForgotPasswordRequest(BaseModel):
+    email: str  # Primary or recovery email
+
+
+class ForgotPasswordResponse(BaseModel):
+    message: str
+    reset_token: Optional[str] = None  # Shown directly (no SMTP configured)
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+
 @router.post(
     "/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED
 )
 async def register(payload: UserRegister, db: AsyncSession = Depends(get_db)):
-    """Registers a new recruiter, creating a new tenant organization or joining an existing one."""
+    """
+    Registers a new user after validating that the email is real and deliverable.
+    Checks: disposable email blocklist + DNS MX record lookup.
+    """
+    # ── Email deliverability check ──────────────────────────────────────────
+    is_valid, error_msg = await validate_email_deliverable(str(payload.email))
+    if not is_valid:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Email validation failed: {error_msg}",
+        )
+
+    # ── Optional recovery email validation ──────────────────────────────────
+    if payload.recovery_email and payload.recovery_email.strip():
+        rec_valid, rec_error = await validate_email_deliverable(payload.recovery_email.strip())
+        if not rec_valid:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Recovery email validation failed: {rec_error}",
+            )
+
+    # ── Register user ────────────────────────────────────────────────────────
     auth_service = AuthService(db)
     try:
         user = await auth_service.register_user(
@@ -50,6 +87,7 @@ async def register(payload: UserRegister, db: AsyncSession = Depends(get_db)):
             role=payload.role,
             org_name=payload.org_name,
             invite_code=payload.invite_code,
+            recovery_email=payload.recovery_email,
         )
         return user
     except ValueError as e:
@@ -150,3 +188,52 @@ async def google_login(
     )
     return {"access_token": access_token, "token_type": "bearer"}
 
+
+@router.post("/forgot-password", response_model=ForgotPasswordResponse)
+async def forgot_password(
+    payload: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)
+):
+    """
+    Generates a one-time password reset token for the given email (primary or recovery).
+    Returns the token directly in response (no SMTP required).
+    """
+    auth_service = AuthService(db)
+    token = await auth_service.generate_password_reset_token(payload.email)
+
+    if not token:
+        # Return success message even if email not found (prevents user enumeration)
+        return ForgotPasswordResponse(
+            message="If this email is registered, a reset token has been generated.",
+            reset_token=None,
+        )
+
+    return ForgotPasswordResponse(
+        message="Password reset token generated successfully. Use the token below to set a new password.",
+        reset_token=token,
+    )
+
+
+@router.post("/reset-password")
+async def reset_password(
+    payload: ResetPasswordRequest, db: AsyncSession = Depends(get_db)
+):
+    """
+    Validates the reset token and applies a new password.
+    Token is valid for 1 hour.
+    """
+    if len(payload.new_password) < 6:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password must be at least 6 characters.",
+        )
+
+    auth_service = AuthService(db)
+    success = await auth_service.reset_password_with_token(payload.token, payload.new_password)
+
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired reset token. Please request a new one.",
+        )
+
+    return {"message": "Password successfully reset. You can now sign in with your new password."}

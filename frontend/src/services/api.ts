@@ -14,24 +14,58 @@ async function apiRequest<T>(path: string, options: RequestInit = {}): Promise<T
     headers.set('Authorization', `Bearer ${token}`);
   }
   
-  const response = await fetch(`${BASE_URL}${path}`, {
-    ...options,
-    headers
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${BASE_URL}${path}`, {
+      ...options,
+      headers
+    });
+  } catch (networkErr: any) {
+    // Network-level failure (server down, no internet, CORS)
+    throw new Error('Unable to reach the ATLAS server. Please check your connection and try again.');
+  }
   
   if (response.status === 204) {
     return null as unknown as T;
   }
   
-  const data = await response.json();
+  // Safely parse response — server may return HTML on 502/503/nginx errors
+  const contentType = response.headers.get('content-type') || '';
+  let data: any = null;
+  if (contentType.includes('application/json')) {
+    try {
+      data = await response.json();
+    } catch {
+      throw new Error('The server returned an unexpected response. Please try again.');
+    }
+  } else {
+    // Non-JSON response (HTML error page, plain text, etc.)
+    const text = await response.text().catch(() => '');
+    if (!response.ok) {
+      // Map common HTTP status codes to friendly messages
+      if (response.status === 502 || response.status === 503) {
+        throw new Error('The server is temporarily unavailable. Please wait a moment and try again.');
+      }
+      if (response.status === 504) {
+        throw new Error('The server request timed out. Please try again.');
+      }
+      throw new Error(`Server error (${response.status}). Please try again.`);
+    }
+    return text as unknown as T;
+  }
   
   if (!response.ok) {
-    const errorMsg = data.detail || 'An error occurred during the API transaction.';
-    throw new Error(Array.isArray(errorMsg) ? JSON.stringify(errorMsg) : errorMsg);
+    let errorMsg = data?.detail || 'An error occurred. Please try again.';
+    if (Array.isArray(errorMsg)) {
+      // FastAPI validation error array — extract the first meaningful message
+      errorMsg = errorMsg.map((e: any) => e.msg || JSON.stringify(e)).join('. ');
+    }
+    throw new Error(errorMsg);
   }
   
   return data as T;
 }
+
 
 export const api = {
   auth: {
@@ -40,7 +74,8 @@ export const api = {
       password: string,
       role: string = 'recruiter',
       orgName?: string,
-      inviteCode?: string
+      inviteCode?: string,
+      recoveryEmail?: string
     ): Promise<any> {
       return apiRequest('/auth/register', {
         method: 'POST',
@@ -50,7 +85,8 @@ export const api = {
           password,
           role,
           org_name: orgName || undefined,
-          invite_code: inviteCode || undefined
+          invite_code: inviteCode || undefined,
+          recovery_email: recoveryEmail || undefined
         })
       });
     },
@@ -82,6 +118,22 @@ export const api = {
     
     async me(): Promise<{ id: number; email: string; role: string; is_active: boolean; video_path?: string }> {
       return apiRequest('/auth/me');
+    },
+    
+    async forgotPassword(email: string): Promise<{ message: string; reset_token?: string }> {
+      return apiRequest('/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+    },
+
+    async resetPassword(token: string, newPassword: string): Promise<{ message: string }> {
+      return apiRequest('/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, new_password: newPassword })
+      });
     },
     
     async uploadVideo(fileBlob: Blob): Promise<{ status: string; video_path: string }> {
@@ -667,6 +719,48 @@ export const api = {
     },
     async stats(): Promise<any> {
       return apiRequest('/advertise/stats');
+    },
+  },
+
+  contacts: {
+    async me(): Promise<any> { return apiRequest('/contacts/me'); },
+    async lookup(atlasNo: string): Promise<any> { return apiRequest(`/contacts/lookup/${atlasNo}`); },
+    async add(atlasNo: string, nickname?: string): Promise<any> {
+      return apiRequest('/contacts/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ atlas_no: atlasNo, nickname }) });
+    },
+    async book(): Promise<any> { return apiRequest('/contacts/book'); },
+    async savedMe(): Promise<any> { return apiRequest('/contacts/saved-me'); },
+    async remove(entryId: number): Promise<any> {
+      return apiRequest(`/contacts/remove/${entryId}`, { method: 'DELETE' });
+    },
+    // Messaging
+    async sendMessage(atlasNo: string, content: string): Promise<any> {
+      return apiRequest('/contacts/message/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ atlas_no: atlasNo, content }) });
+    },
+    async conversation(atlasNo: string, limit = 50): Promise<any> {
+      return apiRequest(`/contacts/message/conversation/${atlasNo}?limit=${limit}`);
+    },
+    async inbox(): Promise<any> { return apiRequest('/contacts/message/inbox'); },
+    // Video calls
+    async inviteCall(atlasNo: string): Promise<any> {
+      return apiRequest(`/contacts/calls/invite/${atlasNo}`, { method: 'POST' });
+    },
+    async checkIncoming(): Promise<any> { return apiRequest('/contacts/calls/incoming'); },
+    async acceptCall(callId: number): Promise<any> {
+      return apiRequest(`/contacts/calls/${callId}/accept`, { method: 'POST' });
+    },
+    async declineCall(callId: number): Promise<any> {
+      return apiRequest(`/contacts/calls/${callId}/decline`, { method: 'POST' });
+    },
+    async endCall(callId: number): Promise<any> {
+      return apiRequest(`/contacts/calls/${callId}/end`, { method: 'POST' });
+    },
+    async sendSignal(callId: number, signalType: string, data: any): Promise<any> {
+      const payloadData = typeof data === 'string' ? data : JSON.stringify(data);
+      return apiRequest(`/contacts/calls/${callId}/signal`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ signal_type: signalType, data: payloadData }) });
+    },
+    async getSignals(callId: number, afterId = 0): Promise<any> {
+      return apiRequest(`/contacts/calls/${callId}/signals?after_id=${afterId}`);
     },
   },
 };
