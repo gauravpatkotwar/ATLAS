@@ -103,7 +103,7 @@ export default function App() {
  const [authError, setAuthError] = useState('');
 
  // App navigation
- const [activeTab, setActiveTab] = useState<'candidates' | 'jobs' | 'search' | 'copilot' | 'settings' | 'my_profile' | 'jobs_board' | 'interview_prep' | 'community' | 'marketplace' | 'analytics' | 'academy' | 'resume_builder' | 'atlas_tv'>('copilot');
+ const [activeTab, setActiveTab] = useState<'candidates' | 'jobs' | 'search' | 'copilot' | 'settings' | 'my_profile' | 'jobs_board' | 'interview_prep' | 'community' | 'marketplace' | 'analytics' | 'academy' | 'resume_builder' | 'atlas_tv' | 'advertise'>('copilot');
  const [settingsSubPage, setSettingsSubPage] = useState<'appearance' | 'sso' | 'developer' | 'automations' | 'integrations'>('appearance');
 
  // ATLAS ACADEMY STATE 
@@ -148,6 +148,20 @@ export default function App() {
  const [tvAskMessages, setTvAskMessages] = useState<{role:string;content:string}[]>([]);
  const [tvAskLoading, setTvAskLoading] = useState(false);
  // 
+
+ // ADVERTISE WITH ATLAS STATE
+ const [advPackages, setAdvPackages] = useState<any[]>([]);
+ const [advSelectedPkg, setAdvSelectedPkg] = useState<any>(null);
+ const [advCurrency, setAdvCurrency] = useState<'usd' | 'inr'>('usd');
+ const [advStep, setAdvStep] = useState<'packages' | 'form' | 'checkout' | 'success'>('packages');
+ const [advForm, setAdvForm] = useState({ company_name: '', contact_name: '', contact_email: '', contact_phone: '', website: '', goals: '' });
+ const [advLoading, setAdvLoading] = useState(false);
+ const [advInquiry, setAdvInquiry] = useState<any>(null);
+ const [advPayProvider, setAdvPayProvider] = useState<'stripe' | 'razorpay'>('stripe');
+ const [advAdminCampaigns, setAdvAdminCampaigns] = useState<any[]>([]);
+ const [advAdminStats, setAdvAdminStats] = useState<any>(null);
+ const [advAdminView, setAdvAdminView] = useState(false);
+
 
  // RESUME BUILDER STATE 
  const [resumeSubView, setResumeSubView] = useState<'builder' | 'score' | 'salary' | 'analytics' | 'showcase' | 'gamification'>('builder');
@@ -2568,6 +2582,15 @@ export default function App() {
  title="Atlas TV"
  >
  <Tv size={18} />
+ </button>
+
+ <button
+ onClick={async () => { setActiveTab('advertise' as any); setAdvStep('packages'); try { const pkgs = await api.advertise.packages(); setAdvPackages(pkgs?.packages || []); } catch {} }}
+ className={activeTab === 'advertise' ? 'btn-primary' : 'btn-secondary'}
+ style={{ width: '40px', height: '40px', borderRadius: '50%', padding: 0, justifyContent: 'center', background: activeTab === 'advertise' ? 'linear-gradient(135deg, #f59e0b, #d97706)' : undefined }}
+ title="Advertise with Atlas"
+ >
+ <DollarSign size={18} />
  </button>
 
  <button 
@@ -5158,7 +5181,325 @@ export default function App() {
  );
  })()}
 
+ {/* TAB: ADVERTISE WITH ATLAS */}
+ {activeTab === 'advertise' && (() => {
+  const PKG_ICONS: Record<string, any> = { briefcase: Briefcase, users: Users, tv: Tv, building: Building2 };
+  const packages = advPackages.length > 0 ? advPackages : [
+   { id:'job_spotlight', name:'Job Spotlight', tagline:'Feature your job at the top of every search', price_usd:199, price_inr:16500, duration_days:30, color:'#3b82f6', popular:false, features:['Pinned at top of Job Board for 30 days','Highlighted with Featured badge','Shown in Atlas Copilot recommendations','Up to 3 active job slots','Performance analytics dashboard'] },
+   { id:'talent_reach', name:'Talent Reach', tagline:'Direct exposure to 10k+ active candidates', price_usd:499, price_inr:41500, duration_days:30, color:'#8b5cf6', popular:true, features:['Everything in Job Spotlight','Company profile banner in Candidate search','Featured in Atlas TV channel ads','Weekly AI-matched candidate recommendations','Priority recruiter support','Unlimited job slots'] },
+   { id:'brand_channel', name:'Brand Channel', tagline:'Own a branded channel on Atlas TV', price_usd:999, price_inr:82500, duration_days:30, color:'#e11d48', popular:false, features:['Everything in Talent Reach','Dedicated company channel on Atlas TV','Upload up to 10 branded videos/month','Pre-roll brand mentions before videos','Custom channel banner & branding','Monthly reach report'] },
+   { id:'enterprise', name:'Enterprise', tagline:'Full-stack recruitment marketing', price_usd:0, price_inr:0, duration_days:90, color:'#f59e0b', popular:false, features:['Everything in Brand Channel','Custom AI candidate shortlisting','Dedicated Atlas account manager','White-label candidate portal','ATS API integration','Quarterly strategy review'] },
+  ];
+
+  const handleSubmitInquiry = async () => {
+   if (!advForm.company_name || !advForm.contact_name || !advForm.contact_email) return alert('Please fill required fields.');
+   setAdvLoading(true);
+   try {
+    const result = await api.advertise.inquire({ ...advForm, package_id: advSelectedPkg.id, currency: advCurrency });
+    setAdvInquiry(result);
+    setAdvStep('checkout');
+   } catch(e:any) { alert(e.message || 'Submission failed.'); }
+   setAdvLoading(false);
+  };
+
+  const handleCheckout = async () => {
+   if (!advInquiry) return;
+   if (advSelectedPkg.price_usd === 0) { alert('Our team will contact you within 24 hours for Enterprise pricing.'); setAdvStep('success'); return; }
+   setAdvLoading(true);
+   try {
+    const result = await api.advertise.checkout({ inquiry_id: advInquiry.inquiry_id, package_id: advSelectedPkg.id, provider: advPayProvider, currency: advCurrency });
+    if (result.mode === 'mock') {
+     // Demo mode — show success directly
+     setAdvStep('success');
+    } else {
+     window.open(result.checkout_url, '_blank');
+    }
+   } catch(e:any) { alert(e.message || 'Checkout failed.'); }
+   setAdvLoading(false);
+  };
+
+  return (
+   <div className="animate-fade-in" style={{ minHeight: '100%' }}>
+
+    {/* HERO */}
+    <div style={{ padding: '40px 32px 32px', borderBottom: '1px solid rgba(255,255,255,0.07)', position: 'relative', overflow: 'hidden' }}>
+     <div style={{ position: 'absolute', top: '-60px', right: '-60px', width: '300px', height: '300px', background: 'radial-gradient(circle, rgba(245,158,11,0.12) 0%, transparent 70%)', borderRadius: '50%', pointerEvents: 'none' }} />
+     <div style={{ position: 'absolute', bottom: '-80px', left: '20%', width: '400px', height: '400px', background: 'radial-gradient(circle, rgba(99,102,241,0.07) 0%, transparent 70%)', borderRadius: '50%', pointerEvents: 'none' }} />
+     <div style={{ position: 'relative', zIndex: 1, maxWidth: '700px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+       <div style={{ width: '44px', height: '44px', background: 'linear-gradient(135deg, #f59e0b, #d97706)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 24px rgba(245,158,11,0.3)' }}>
+        <DollarSign size={22} color="#fff" />
+       </div>
+       <div>
+        <h1 style={{ fontSize: '26px', fontWeight: 800, color: '#fff', margin: 0, letterSpacing: '-0.5px' }}>Advertise with Atlas</h1>
+        <p style={{ color: 'rgba(245,158,11,0.9)', fontSize: '13px', margin: 0, fontWeight: 500 }}>Reach 10,000+ recruiters & candidates</p>
+       </div>
+       {user?.role === 'admin' && (
+        <button onClick={async () => { setAdvAdminView(!advAdminView); try { const [c, s] = await Promise.all([api.advertise.campaigns(), api.advertise.stats()]); setAdvAdminCampaigns(c?.campaigns || []); setAdvAdminStats(s); } catch {} }} style={{ marginLeft: 'auto', background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.3)', color: '#f59e0b', padding: '7px 14px', borderRadius: '8px', fontSize: '12px', cursor: 'pointer', fontWeight: 600 }}>
+         {advAdminView ? '← Back to Packages' : '⚙ Admin Dashboard'}
+        </button>
+       )}
+      </div>
+      <p style={{ color: 'var(--text-muted)', fontSize: '15px', lineHeight: 1.6, margin: 0 }}>
+       Put your brand in front of the right people. Atlas connects companies with active job-seekers, tech professionals, and hiring teams every day.
+      </p>
+      {/* Stats bar */}
+      <div style={{ display: 'flex', gap: '24px', marginTop: '20px', flexWrap: 'wrap' }}>
+       {[{v:'10,000+',l:'Monthly Active Users'},{v:'58+',l:'Atlas TV Videos'},{v:'500+',l:'Companies Hiring'},{v:'95%',l:'Candidate Match Rate'}].map(s => (
+        <div key={s.l} style={{ textAlign: 'center' }}>
+         <div style={{ fontSize: '20px', fontWeight: 800, color: '#f59e0b' }}>{s.v}</div>
+         <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{s.l}</div>
+        </div>
+       ))}
+      </div>
+     </div>
+    </div>
+
+    {/* ADMIN VIEW */}
+    {advAdminView && user?.role === 'admin' && (
+     <div style={{ padding: '24px 32px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '16px', marginBottom: '24px' }}>
+       {[
+        { label: 'Active Campaigns', value: advAdminStats?.active_campaigns ?? '—', color: '#22c55e' },
+        { label: 'Pending Inquiries', value: advAdminStats?.pending_campaigns ?? '—', color: '#f59e0b' },
+        { label: 'Total Inquiries', value: advAdminStats?.total_inquiries ?? '—', color: '#3b82f6' },
+        { label: 'Total Revenue', value: advAdminStats?.total_revenue_usd ? `$${advAdminStats.total_revenue_usd.toLocaleString()}` : '$0', color: '#8b5cf6' },
+       ].map(s => (
+        <div key={s.label} className="glass-panel" style={{ padding: '20px', textAlign: 'center', border: `1px solid ${s.color}22` }}>
+         <div style={{ fontSize: '28px', fontWeight: 800, color: s.color }}>{s.value}</div>
+         <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>{s.label}</div>
+        </div>
+       ))}
+      </div>
+      <div className="glass-panel" style={{ padding: '20px' }}>
+       <h3 style={{ color: '#fff', fontSize: '15px', fontWeight: 700, marginBottom: '16px' }}>All Campaigns</h3>
+       {advAdminCampaigns.length === 0 ? (
+        <p style={{ color: 'var(--text-muted)', fontSize: '13px' }}>No campaigns yet.</p>
+       ) : (
+        <div style={{ overflowX: 'auto' }}>
+         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+          <thead>
+           <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+            {['ID','Company','Package','Status','Revenue','Date'].map(h => (
+             <th key={h} style={{ padding: '8px 12px', color: 'var(--text-muted)', fontWeight: 600, textAlign: 'left', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{h}</th>
+            ))}
+           </tr>
+          </thead>
+          <tbody>
+           {advAdminCampaigns.map(c => (
+            <tr key={c.inquiry_id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+             <td style={{ padding: '10px 12px', color: '#fff', fontFamily: 'monospace', fontSize: '12px' }}>{c.inquiry_id}</td>
+             <td style={{ padding: '10px 12px', color: '#fff' }}><div style={{ fontWeight: 600 }}>{c.company_name}</div><div style={{ color: 'var(--text-muted)', fontSize: '11px' }}>{c.contact_email}</div></td>
+             <td style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>{c.package_name}</td>
+             <td style={{ padding: '10px 12px' }}><span style={{ padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 700, background: c.status === 'active' ? 'rgba(34,197,94,0.15)' : 'rgba(245,158,11,0.15)', color: c.status === 'active' ? '#22c55e' : '#f59e0b', border: `1px solid ${c.status === 'active' ? '#22c55e44' : '#f59e0b44'}` }}>{c.status.toUpperCase()}</span></td>
+             <td style={{ padding: '10px 12px', color: '#22c55e', fontWeight: 700 }}>{c.status === 'active' ? `$${c.price_usd}` : '—'}</td>
+             <td style={{ padding: '10px 12px', color: 'var(--text-muted)', fontSize: '11px' }}>{new Date(c.created_at).toLocaleDateString()}</td>
+            </tr>
+           ))}
+          </tbody>
+         </table>
+        </div>
+       )}
+      </div>
+     </div>
+    )}
+
+    {/* MAIN CONTENT */}
+    {!advAdminView && (
+     <div style={{ padding: '32px' }}>
+
+      {/* STEP: PACKAGES */}
+      {advStep === 'packages' && (
+       <div>
+        {/* Currency toggle */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
+         <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#fff', margin: 0 }}>Choose Your Package</h2>
+         <div style={{ display: 'flex', gap: '0', background: 'rgba(255,255,255,0.06)', borderRadius: '8px', padding: '3px' }}>
+          {(['usd','inr'] as const).map(c => (
+           <button key={c} onClick={() => setAdvCurrency(c)} style={{ padding: '6px 16px', borderRadius: '6px', border: 'none', fontSize: '13px', fontWeight: 600, cursor: 'pointer', background: advCurrency === c ? 'rgba(245,158,11,0.9)' : 'transparent', color: advCurrency === c ? '#000' : 'var(--text-muted)', transition: 'all 0.2s' }}>
+            {c === 'usd' ? '$ USD' : '₹ INR'}
+           </button>
+          ))}
+         </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
+         {packages.map((pkg: any) => (
+          <div key={pkg.id} onClick={() => { setAdvSelectedPkg(pkg); setAdvStep('form'); }} style={{ position: 'relative', background: advSelectedPkg?.id === pkg.id ? `${pkg.color}11` : 'rgba(255,255,255,0.04)', border: `1.5px solid ${advSelectedPkg?.id === pkg.id ? pkg.color : 'rgba(255,255,255,0.08)'}`, borderRadius: '16px', padding: '24px', cursor: 'pointer', transition: 'all 0.25s', boxShadow: advSelectedPkg?.id === pkg.id ? `0 0 24px ${pkg.color}22` : 'none' }}
+           onMouseEnter={e => (e.currentTarget.style.transform = 'translateY(-4px)')}
+           onMouseLeave={e => (e.currentTarget.style.transform = 'translateY(0)')}
+          >
+           {pkg.popular && <div style={{ position: 'absolute', top: '-12px', left: '50%', transform: 'translateX(-50%)', background: `linear-gradient(135deg, ${pkg.color}, #6366f1)`, color: '#fff', fontSize: '10px', fontWeight: 800, padding: '4px 14px', borderRadius: '20px', whiteSpace: 'nowrap', letterSpacing: '0.5px' }}>MOST POPULAR</div>}
+           <div style={{ width: '44px', height: '44px', background: `${pkg.color}22`, borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '14px', border: `1px solid ${pkg.color}33` }}>
+            <DollarSign size={20} color={pkg.color} />
+           </div>
+           <h3 style={{ fontSize: '17px', fontWeight: 700, color: '#fff', margin: '0 0 4px' }}>{pkg.name}</h3>
+           <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: '0 0 16px', lineHeight: 1.5 }}>{pkg.tagline}</p>
+           <div style={{ marginBottom: '16px' }}>
+            {pkg.price_usd === 0 ? (
+             <div style={{ fontSize: '22px', fontWeight: 800, color: pkg.color }}>Custom Pricing</div>
+            ) : (
+             <div>
+              <span style={{ fontSize: '32px', fontWeight: 800, color: pkg.color }}>{advCurrency === 'usd' ? `$${pkg.price_usd}` : `₹${pkg.price_inr.toLocaleString()}`}</span>
+              <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}> / {pkg.duration_days} days</span>
+             </div>
+            )}
+           </div>
+           <div style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
+            {pkg.features.map((f: string) => (
+             <div key={f} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', fontSize: '12px', color: 'rgba(255,255,255,0.8)' }}>
+              <CheckCircle2 size={13} color={pkg.color} style={{ flexShrink: 0, marginTop: '2px' }} />
+              {f}
+             </div>
+            ))}
+           </div>
+           <button style={{ width: '100%', marginTop: '20px', padding: '11px', background: `linear-gradient(135deg, ${pkg.color}, ${pkg.color}cc)`, border: 'none', borderRadius: '10px', color: '#fff', fontWeight: 700, fontSize: '13px', cursor: 'pointer' }}>
+            {pkg.price_usd === 0 ? 'Contact Sales' : 'Get Started →'}
+           </button>
+          </div>
+         ))}
+        </div>
+
+        {/* Why Atlas */}
+        <div className="glass-panel" style={{ marginTop: '32px', padding: '28px 32px' }}>
+         <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#fff', marginBottom: '20px' }}>Why Advertise on Atlas?</h3>
+         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '16px' }}>
+          {[
+           { icon: '🎯', title: 'Precision Targeting', desc: 'Reach candidates matched by skills, location, and experience level.' },
+           { icon: '📺', title: 'Atlas TV Reach', desc: 'Brand visibility across 58+ tech, AI, and career videos.' },
+           { icon: '🤖', title: 'AI-Powered Matching', desc: 'Our Copilot recommends your jobs to qualified candidates automatically.' },
+           { icon: '📊', title: 'Real-time Analytics', desc: 'Track impressions, clicks, and conversions in your dashboard.' },
+           { icon: '⚡', title: 'Go Live in 24h', desc: 'Campaigns activate within 24 hours of payment confirmation.' },
+           { icon: '🔒', title: 'Secure Payments', desc: 'Stripe & Razorpay integration — all major cards and UPI accepted.' },
+          ].map(w => (
+           <div key={w.title} style={{ padding: '16px', background: 'rgba(255,255,255,0.03)', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.06)' }}>
+            <div style={{ fontSize: '24px', marginBottom: '8px' }}>{w.icon}</div>
+            <div style={{ fontSize: '13px', fontWeight: 700, color: '#fff', marginBottom: '4px' }}>{w.title}</div>
+            <div style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: 1.5 }}>{w.desc}</div>
+           </div>
+          ))}
+         </div>
+        </div>
+       </div>
+      )}
+
+      {/* STEP: FORM */}
+      {advStep === 'form' && advSelectedPkg && (
+       <div style={{ maxWidth: '680px' }}>
+        <button onClick={() => setAdvStep('packages')} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '13px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+         ← Back to packages
+        </button>
+        <div className="glass-panel" style={{ padding: '28px', border: `1px solid ${advSelectedPkg.color}33`, marginBottom: '20px' }}>
+         <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '4px' }}>
+          <div style={{ width: '36px', height: '36px', background: `${advSelectedPkg.color}22`, borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+           <DollarSign size={16} color={advSelectedPkg.color} />
+          </div>
+          <div>
+           <div style={{ fontSize: '15px', fontWeight: 700, color: '#fff' }}>{advSelectedPkg.name}</div>
+           <div style={{ fontSize: '13px', color: advSelectedPkg.color, fontWeight: 600 }}>
+            {advSelectedPkg.price_usd === 0 ? 'Custom Pricing' : advCurrency === 'usd' ? `$${advSelectedPkg.price_usd}/month` : `₹${advSelectedPkg.price_inr.toLocaleString()}/month`}
+           </div>
+          </div>
+         </div>
+        </div>
+
+        <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#fff', marginBottom: '20px' }}>Company Details</h2>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+         {[
+          { label: 'Company Name *', key: 'company_name', placeholder: 'Acme Corp' },
+          { label: 'Contact Name *', key: 'contact_name', placeholder: 'John Smith' },
+          { label: 'Work Email *', key: 'contact_email', placeholder: 'john@acmecorp.com' },
+          { label: 'Phone Number', key: 'contact_phone', placeholder: '+91 99999 99999' },
+          { label: 'Website', key: 'website', placeholder: 'https://acmecorp.com' },
+         ].map(f => (
+          <div key={f.key} style={{ gridColumn: f.key === 'company_name' ? '1/-1' : undefined }}>
+           <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '6px' }}>{f.label}</label>
+           <input value={(advForm as any)[f.key]} onChange={e => setAdvForm(prev => ({ ...prev, [f.key]: e.target.value }))} placeholder={f.placeholder}
+            style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', color: '#fff', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }} />
+          </div>
+         ))}
+         <div style={{ gridColumn: '1/-1' }}>
+          <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '6px' }}>Your Advertising Goals</label>
+          <textarea value={advForm.goals} onChange={e => setAdvForm(prev => ({ ...prev, goals: e.target.value }))} placeholder="e.g. We want to hire 5 senior engineers in Bangalore by Q4..." rows={3}
+           style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', color: '#fff', outline: 'none', resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5, boxSizing: 'border-box' }} />
+         </div>
+        </div>
+        <button onClick={handleSubmitInquiry} disabled={advLoading} style={{ marginTop: '24px', width: '100%', padding: '14px', background: `linear-gradient(135deg, ${advSelectedPkg.color}, ${advSelectedPkg.color}cc)`, border: 'none', borderRadius: '10px', color: '#fff', fontWeight: 700, fontSize: '15px', cursor: advLoading ? 'not-allowed' : 'pointer', opacity: advLoading ? 0.7 : 1 }}>
+         {advLoading ? 'Submitting…' : 'Submit & Proceed to Payment →'}
+        </button>
+       </div>
+      )}
+
+      {/* STEP: CHECKOUT */}
+      {advStep === 'checkout' && advInquiry && advSelectedPkg && (
+       <div style={{ maxWidth: '560px' }}>
+        <div className="glass-panel" style={{ padding: '28px', marginBottom: '20px', textAlign: 'center', border: '1px solid rgba(34,197,94,0.2)' }}>
+         <div style={{ fontSize: '40px', marginBottom: '12px' }}>✅</div>
+         <h3 style={{ color: '#22c55e', fontSize: '18px', fontWeight: 700, margin: '0 0 6px' }}>Inquiry Received!</h3>
+         <p style={{ color: 'var(--text-muted)', fontSize: '13px', margin: 0 }}>Your inquiry ID: <strong style={{ color: '#fff', fontFamily: 'monospace' }}>{advInquiry.inquiry_id}</strong></p>
+        </div>
+
+        <div className="glass-panel" style={{ padding: '28px', marginBottom: '20px' }}>
+         <h3 style={{ color: '#fff', fontSize: '16px', fontWeight: 700, marginBottom: '20px' }}>Complete Payment</h3>
+         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px', padding: '14px', background: 'rgba(255,255,255,0.04)', borderRadius: '10px' }}>
+          <div>
+           <div style={{ color: '#fff', fontWeight: 700 }}>{advSelectedPkg.name}</div>
+           <div style={{ color: 'var(--text-muted)', fontSize: '12px' }}>{advSelectedPkg.duration_days}-day campaign</div>
+          </div>
+          <div style={{ fontSize: '22px', fontWeight: 800, color: advSelectedPkg.color }}>
+           {advSelectedPkg.price_usd === 0 ? 'Custom' : advCurrency === 'usd' ? `$${advSelectedPkg.price_usd}` : `₹${advSelectedPkg.price_inr.toLocaleString()}`}
+          </div>
+         </div>
+
+         <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '10px' }}>Payment Method</label>
+         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '20px' }}>
+          {[
+           { id: 'stripe', label: 'Credit / Debit Card', sub: 'Visa, Mastercard, Amex', icon: '💳' },
+           { id: 'razorpay', label: 'UPI / Net Banking', sub: 'GPay, PhonePe, NEFT', icon: '📱' },
+          ].map(p => (
+           <div key={p.id} onClick={() => setAdvPayProvider(p.id as any)} style={{ padding: '14px', borderRadius: '10px', border: `1.5px solid ${advPayProvider === p.id ? '#f59e0b' : 'rgba(255,255,255,0.1)'}`, cursor: 'pointer', background: advPayProvider === p.id ? 'rgba(245,158,11,0.08)' : 'transparent', transition: 'all 0.2s' }}>
+            <div style={{ fontSize: '22px', marginBottom: '6px' }}>{p.icon}</div>
+            <div style={{ fontSize: '13px', fontWeight: 700, color: '#fff' }}>{p.label}</div>
+            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{p.sub}</div>
+           </div>
+          ))}
+         </div>
+         <button onClick={handleCheckout} disabled={advLoading} style={{ width: '100%', padding: '14px', background: 'linear-gradient(135deg, #f59e0b, #d97706)', border: 'none', borderRadius: '10px', color: '#fff', fontWeight: 700, fontSize: '15px', cursor: advLoading ? 'not-allowed' : 'pointer', opacity: advLoading ? 0.7 : 1 }}>
+          {advLoading ? 'Processing…' : `Pay ${advCurrency === 'usd' ? `$${advSelectedPkg.price_usd}` : `₹${advSelectedPkg.price_inr?.toLocaleString()}`} & Activate Campaign`}
+         </button>
+         <p style={{ fontSize: '11px', color: 'var(--text-muted)', textAlign: 'center', marginTop: '10px' }}>🔒 Secured by Stripe & Razorpay. Campaign activates within 24h of payment.</p>
+        </div>
+       </div>
+      )}
+
+      {/* STEP: SUCCESS */}
+      {advStep === 'success' && (
+       <div style={{ maxWidth: '560px', textAlign: 'center', padding: '60px 0' }}>
+        <div style={{ fontSize: '64px', marginBottom: '16px' }}>🎉</div>
+        <h2 style={{ fontSize: '26px', fontWeight: 800, color: '#fff', margin: '0 0 12px' }}>Campaign is Live!</h2>
+        <p style={{ color: 'var(--text-muted)', fontSize: '15px', lineHeight: 1.6, marginBottom: '28px' }}>
+         Your campaign is now active. Our team will send a confirmation to your registered email within 24 hours. You can track performance from the Admin Dashboard.
+        </p>
+        <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+         <button onClick={() => { setAdvStep('packages'); setAdvSelectedPkg(null); setAdvInquiry(null); setAdvForm({ company_name:'',contact_name:'',contact_email:'',contact_phone:'',website:'',goals:'' }); }} style={{ padding: '12px 24px', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '10px', color: '#fff', fontWeight: 600, cursor: 'pointer' }}>
+          View Other Packages
+         </button>
+         {user?.role === 'admin' && (
+          <button onClick={async () => { setAdvAdminView(true); try { const [c, s] = await Promise.all([api.advertise.campaigns(), api.advertise.stats()]); setAdvAdminCampaigns(c?.campaigns || []); setAdvAdminStats(s); } catch {} }} style={{ padding: '12px 24px', background: 'linear-gradient(135deg,#f59e0b,#d97706)', border: 'none', borderRadius: '10px', color: '#fff', fontWeight: 600, cursor: 'pointer' }}>
+           View Admin Dashboard
+          </button>
+         )}
+        </div>
+       </div>
+      )}
+     </div>
+    )}
+   </div>
+  );
+ })()}
+
  {/* TAB: ATLAS ACADEMY */}
+
  {activeTab === 'academy' && (() => {
  const ACADEMY_CATEGORIES = ['Programming','AI','Cloud','DevOps','Cybersecurity','Electronics','Marketing','Sales','Finance','HR','UI/UX','Communication','Interview Prep'];
  const LEVEL_COLORS: Record<string,string> = { beginner: '#22c55e', intermediate: '#f59e0b', advanced: '#ef4444' };

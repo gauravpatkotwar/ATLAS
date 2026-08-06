@@ -26,6 +26,7 @@ from atlas.api.v1.tv import router as tv_router
 from atlas.database import tv_models  # registers TV models with Base metadata  # noqa: F401
 from atlas.api.v1.tv import seed_tv_videos
 from atlas.api.v1.ats_score import router as ats_router
+from atlas.api.v1.advertise import router as advertise_router
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -59,6 +60,26 @@ async def lifespan(app: FastAPI):
         await conn.execute(text("CREATE TABLE IF NOT EXISTS academy_skill_gaps (id SERIAL PRIMARY KEY)"))
         await conn.execute(text("CREATE TABLE IF NOT EXISTS academy_learning_paths (id SERIAL PRIMARY KEY)"))
     logger.info("Database tables verified.")
+    # Create ad_inquiries table for advertiser campaigns
+    async with engine.begin() as conn:
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS ad_inquiries (
+                id SERIAL PRIMARY KEY,
+                inquiry_id VARCHAR(20) UNIQUE NOT NULL,
+                company_name VARCHAR(255) NOT NULL,
+                contact_name VARCHAR(255) NOT NULL,
+                contact_email VARCHAR(255) NOT NULL,
+                contact_phone VARCHAR(50),
+                website VARCHAR(500),
+                package_id VARCHAR(50) NOT NULL,
+                budget_range VARCHAR(100),
+                goals TEXT,
+                currency VARCHAR(10) DEFAULT 'usd',
+                status VARCHAR(20) DEFAULT 'pending',
+                created_at TIMESTAMP DEFAULT NOW(),
+                paid_at TIMESTAMP
+            )
+        """))
     # Seed Atlas TV videos if library is empty
     from atlas.database.session import SessionLocal
     async with SessionLocal() as seed_db:
@@ -144,6 +165,9 @@ app.include_router(
 )
 app.include_router(
     ats_router, prefix=f"{settings.API_V1_STR}/ats", tags=["ATS Scoring"]
+)
+app.include_router(
+    advertise_router, prefix=f"{settings.API_V1_STR}/advertise", tags=["Advertise"]
 )
 
 from fastapi.staticfiles import StaticFiles

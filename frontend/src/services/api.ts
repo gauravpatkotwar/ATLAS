@@ -627,6 +627,48 @@ export const api = {
         body: JSON.stringify(data),
       });
     },
-  }
+  },
+
+  advertise: {
+    async packages(): Promise<any> {
+      return apiRequest('/advertise/packages');
+    },
+    async inquire(data: {
+      company_name: string;
+      contact_name: string;
+      contact_email: string;
+      contact_phone?: string;
+      website?: string;
+      package_id: string;
+      budget_range?: string;
+      goals?: string;
+      currency?: string;
+    }): Promise<any> {
+      return apiRequest('/advertise/inquire', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+    },
+    async checkout(data: {
+      inquiry_id: string;
+      package_id: string;
+      provider: string;
+      currency: string;
+    }): Promise<any> {
+      return apiRequest('/advertise/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+    },
+    async campaigns(): Promise<any> {
+      return apiRequest('/advertise/campaigns');
+    },
+    async stats(): Promise<any> {
+      return apiRequest('/advertise/stats');
+    },
+  },
 };
+
 
