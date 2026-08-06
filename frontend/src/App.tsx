@@ -2045,15 +2045,22 @@ export default function App() {
  };
 
  pc.ontrack = (event) => {
-  const remoteStream = event.streams[0] || new MediaStream([event.track]);
-  remoteStream.getAudioTracks().forEach(t => { t.enabled = true; });
-  remoteStream.getVideoTracks().forEach(t => { t.enabled = true; });
-  setMeetRemoteStreams(prev => {
-  const existing = prev[peerId];
-  if (existing && existing.id === remoteStream.id) return prev;
-  return { ...prev, [peerId]: remoteStream };
-  });
-  };
+   const stream = event.streams[0] ? event.streams[0] : new MediaStream([event.track]);
+   stream.getAudioTracks().forEach(t => { t.enabled = true; });
+   stream.getVideoTracks().forEach(t => {
+     t.enabled = true;
+     t.onunmute = () => {
+       setMeetRemoteStreams(prev => ({
+         ...prev,
+         [peerId]: new MediaStream(stream.getTracks())
+       }));
+     };
+   });
+   setMeetRemoteStreams(prev => ({
+     ...prev,
+     [peerId]: new MediaStream(stream.getTracks())
+   }));
+   };
 
  const offer = await pc.createOffer();
  await pc.setLocalDescription(offer);
@@ -2087,15 +2094,22 @@ export default function App() {
  };
 
  pc.ontrack = (event) => {
-  const remoteStream = event.streams[0] || new MediaStream([event.track]);
-  remoteStream.getAudioTracks().forEach(t => { t.enabled = true; });
-  remoteStream.getVideoTracks().forEach(t => { t.enabled = true; });
-  setMeetRemoteStreams(prev => {
-  const existing = prev[sender];
-  if (existing && existing.id === remoteStream.id) return prev;
-  return { ...prev, [sender]: remoteStream };
-  });
-  };
+   const stream = event.streams[0] ? event.streams[0] : new MediaStream([event.track]);
+   stream.getAudioTracks().forEach(t => { t.enabled = true; });
+   stream.getVideoTracks().forEach(t => {
+     t.enabled = true;
+     t.onunmute = () => {
+       setMeetRemoteStreams(prev => ({
+         ...prev,
+         [sender]: new MediaStream(stream.getTracks())
+       }));
+     };
+   });
+   setMeetRemoteStreams(prev => ({
+     ...prev,
+     [sender]: new MediaStream(stream.getTracks())
+   }));
+   };
 
  await pc.setRemoteDescription(new RTCSessionDescription(sig.data));
  const answer = await pc.createAnswer();
@@ -2222,6 +2236,10 @@ export default function App() {
         });
         screenStreamRef.current = screenStream;
         const screenTrack = screenStream.getVideoTracks()[0];
+        try {
+          (screenTrack as any).contentHint = "detail";
+        } catch (e) {}
+
         screenTrack.onended = () => {
           handleMeetToggleScreenShare();
         };
@@ -2236,10 +2254,10 @@ export default function App() {
           setMeetLocalStream(screenStream);
         }
 
-        Object.values(meetPeerConnectionsRef.current).forEach(pc => {
+        Object.values(meetPeerConnectionsRef.current).forEach(async pc => {
           const sender = pc.getSenders().find(s => s.track?.kind === 'video');
           if (sender) {
-            sender.replaceTrack(screenTrack);
+            await sender.replaceTrack(screenTrack);
           } else {
             pc.addTrack(screenTrack, screenStream);
           }
@@ -2831,20 +2849,19 @@ export default function App() {
  {/* Local Video — srcObject assigned once via stable ref */}
  <div className="glass-panel" style={{ position: 'relative', overflow: 'hidden', background: '#000', borderRadius: '12px', minHeight: '200px' }}>
  <video
- ref={el => {
- meetLocalVideoRef.current = el;
- if (el && meetLocalStream) {
-    const cur = el.srcObject as MediaStream | null;
-    if (!cur || cur.id !== meetLocalStream.id) {
-      el.srcObject = meetLocalStream;
-      el.play().catch(() => {});
-    }
-  }
- }}
- autoPlay
- playsInline
- muted
- style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }}
+  ref={el => {
+  meetLocalVideoRef.current = el;
+  if (el && meetLocalStream) {
+     if (el.srcObject !== meetLocalStream) {
+       el.srcObject = meetLocalStream;
+       el.play().catch(() => {});
+     }
+   }
+  }}
+  autoPlay
+  playsInline
+  muted
+  style={{ width: '100%', height: '100%', objectFit: 'contain', transform: 'none' }}
  />
  <div style={{ position: 'absolute', bottom: '12px', left: '12px', background: 'rgba(0,0,0,0.5)', padding: '4px 8px', borderRadius: '4px', fontSize: '12px', color: '#fff' }}>
  You ({user.email}) {meetMicMuted && ' Muted'}
@@ -2863,8 +2880,7 @@ export default function App() {
    meetRemoteVideoRefs.current[p.id] = el;
  }
  if (el && remoteStream) {
-   const cur = el.srcObject as MediaStream | null;
-   if (!cur || cur.id !== remoteStream.id) {
+   if (el.srcObject !== remoteStream) {
      el.srcObject = remoteStream;
      el.muted = false;
      el.volume = 1.0;
