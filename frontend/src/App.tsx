@@ -4861,7 +4861,7 @@ export default function App() {
  const channelColor = TV_CHANNELS.find(c => c.id === tvChannel)?.color || '#e11d48';
 
  return (
- <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 60px)', overflow: 'hidden', background: 'linear-gradient(180deg, #0a0a0f 0%, #0f0f1a 100%)' }}>
+ <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 60px)', overflow: 'hidden', background: 'transparent' }}>
 
  {/* Header */}
  <div style={{ padding: '16px 24px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
@@ -5232,7 +5232,7 @@ export default function App() {
  <div className="animate-fade-in" style={{ display:'flex', flexDirection:'column', gap:'0', minHeight:'100%' }}>
 
  {/* ACADEMY HEADER HERO */}
- <div style={{ background:'linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%)', borderBottom:'1px solid rgba(99,102,241,0.2)', padding:'28px 32px', marginBottom:'0', position:'relative', overflow:'hidden' }}>
+ <div style={{ background:'transparent', borderBottom:'1px solid rgba(99,102,241,0.2)', padding:'28px 32px', marginBottom:'0', position:'relative', overflow:'hidden' }}>
  <div style={{ position:'absolute', top:'-40px', right:'-40px', width:'200px', height:'200px', background:'radial-gradient(circle, rgba(99,102,241,0.15) 0%, transparent 70%)', borderRadius:'50%' }} />
  <div style={{ position:'absolute', bottom:'-60px', left:'30%', width:'300px', height:'300px', background:'radial-gradient(circle, rgba(139,92,246,0.08) 0%, transparent 70%)', borderRadius:'50%' }} />
  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', position:'relative', zIndex:1 }}>
@@ -5940,7 +5940,7 @@ export default function App() {
  <div className="animate-fade-in" style={{ display:'flex', flexDirection:'column', gap:'0', minHeight:'100%' }}>
 
  {/* CAREER HUB HEADER */}
- <div style={{ background:'linear-gradient(135deg, #0a1a0a 0%, #0d2818 50%, #0f3020 100%)', borderBottom:'1px solid rgba(16,185,129,0.2)', padding:'28px 32px', position:'relative', overflow:'hidden' }}>
+ <div style={{ background:'transparent', borderBottom:'1px solid rgba(16,185,129,0.2)', padding:'28px 32px', position:'relative', overflow:'hidden' }}>
  <div style={{ position:'absolute', top:'-40px', right:'-40px', width:'200px', height:'200px', background:'radial-gradient(circle, rgba(16,185,129,0.12) 0%, transparent 70%)', borderRadius:'50%' }} />
  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:'16px', position:'relative', zIndex:1 }}>
  <div>
