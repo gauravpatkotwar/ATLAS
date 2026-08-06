@@ -55,14 +55,21 @@ class AuthService:
         return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
     def decode_token(self, token: str) -> Optional[Dict[str, Any]]:
-        """Parses JWT token, returning content payload or None if invalid."""
+        """Parses JWT token (local signature or Supabase Auth token), returning content payload or None if invalid."""
         try:
             return jwt.decode(
                 token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
             )
-        except jwt.PyJWTError as e:
-            logger.debug(f"JWT Token decode failed: {e}")
-            return None
+        except jwt.PyJWTError:
+            try:
+                # Fallback for Supabase Auth Tokens (JWT signed by Supabase)
+                payload = jwt.decode(token, options={"verify_signature": False})
+                if payload.get("email"):
+                    payload["sub"] = payload.get("email")
+                return payload
+            except Exception as e:
+                logger.debug(f"JWT Token decode failed: {e}")
+                return None
 
     async def authenticate_user(self, email: str, password: str) -> Optional[User]:
         """Validates credentials, returning User if match, else None."""

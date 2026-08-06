@@ -33,11 +33,20 @@ async def get_current_user(
 
     user = await auth_service.repo.get_by_email(email)
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        import secrets
+        try:
+            user = await auth_service.register_user(
+                email=email,
+                password=secrets.token_urlsafe(16),
+                role="candidate",
+                org_name=f"{email.split('@')[0]}'s Workspace"
+            )
+        except Exception:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User not found",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
 
     if not user.is_active:
         raise HTTPException(

@@ -7,6 +7,7 @@ import {
   Loader2, Smartphone, UserPlus, Inbox, Clock, Bot, BarChart3, Monitor, MonitorOff
 } from 'lucide-react';
 import { api } from './services/api';
+import { supabase } from './services/supabase';
 
 const TitanLogo = ({ size = 24, style = {}, className = '' }: { size?: number; style?: React.CSSProperties; className?: string }) => (
  <svg 
@@ -296,7 +297,21 @@ export default function App() {
  const [confirmPassword, setConfirmPassword] = useState('');
  const [resetLoading, setResetLoading] = useState(false);
  const [resetSuccess, setResetSuccess] = useState(false);
- const [forgotMessage, setForgotMessage] = useState('');
+  const [forgotMessage, setForgotMessage] = useState('');
+  const [magicLinkSent, setMagicLinkSent] = useState(false);
+  const [magicLinkLoading, setMagicLinkLoading] = useState(false);
+
+  useEffect(() => {
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session?.access_token) {
+        localStorage.setItem('atlas_token', session.access_token);
+        setToken(session.access_token);
+      }
+    });
+    return () => {
+      authListener?.subscription?.unsubscribe();
+    };
+  }, []);
 
  // App navigation
  const [activeTab, setActiveTab] = useState<'candidates' | 'jobs' | 'search' | 'copilot' | 'settings' | 'my_profile' | 'jobs_board' | 'interview_prep' | 'community' | 'marketplace' | 'analytics' | 'academy' | 'resume_builder' | 'atlas_tv' | 'advertise' | 'contacts'>('copilot');
@@ -2296,47 +2311,91 @@ export default function App() {
  return '';
  };
 
- const handleLogin = async (e: React.FormEvent) => {
- e.preventDefault();
- setAuthError('');
+  const handleMagicLinkLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError('');
+    if (!email.trim()) {
+      setAuthError('Please enter your email address to receive a magic link.');
+      return;
+    }
+    const emailErr = validateEmailClient(email);
+    if (emailErr) { setAuthError(emailErr); return; }
+    setMagicLinkLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        email: email.trim(),
+        options: {
+          emailRedirectTo: window.location.origin,
+        },
+      });
+      if (error) throw error;
+      setMagicLinkSent(true);
+    } catch (err: any) {
+      setAuthError(err.message || 'Failed to send Magic Link email.');
+    } finally {
+      setMagicLinkLoading(false);
+    }
+  };
 
- // Client-side email validation on registration
- if (isRegister) {
- const emailErr = validateEmailClient(email);
- if (emailErr) { setAuthError(emailErr); return; }
- if (recoveryEmail.trim()) {
- const recErr = validateEmailClient(recoveryEmail);
- if (recErr) { setAuthError(`Recovery email: ${recErr}`); return; }
- }
- }
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError('');
 
- try {
- if (isRegister) {
- const computedOrgName = orgName.trim() || `${email.split('@')[0]}'s Workspace`;
- const computedRole = selectedMode === 'for_hire' ? 'candidate' : 'recruiter';
- 
- await api.auth.register(
- email,
- password,
- computedRole,
- computedOrgName,
- inviteCode.trim() || undefined,
- recoveryEmail.trim() || undefined
- );
- 
- // Auto log in immediately after registration!
- await api.auth.login(email, password);
- setToken(localStorage.getItem('atlas_token'));
- } else {
- await api.auth.login(email, password);
- setToken(localStorage.getItem('atlas_token'));
- }
- } catch (err: any) {
- // Surface clean backend validation messages
- const msg = err.message || 'Authentication failed. Please try again.';
- setAuthError(msg);
- }
- };
+    if (isRegister) {
+      const emailErr = validateEmailClient(email);
+      if (emailErr) { setAuthError(emailErr); return; }
+      if (recoveryEmail.trim()) {
+        const recErr = validateEmailClient(recoveryEmail);
+        if (recErr) { setAuthError(`Recovery email: ${recErr}`); return; }
+      }
+    }
+
+    try {
+      if (isRegister) {
+        const computedOrgName = orgName.trim() || `${email.split('@')[0]}'s Workspace`;
+        const computedRole = selectedMode === 'for_hire' ? 'candidate' : 'recruiter';
+        
+        try {
+          const { data: supaData } = await supabase.auth.signUp({
+            email: email.trim(),
+            password: password,
+            options: { emailRedirectTo: window.location.origin }
+          });
+          if (supaData?.session?.access_token) {
+            localStorage.setItem('atlas_token', supaData.session.access_token);
+          }
+        } catch (sErr) {}
+
+        await api.auth.register(
+          email,
+          password,
+          computedRole,
+          computedOrgName,
+          inviteCode.trim() || undefined,
+          recoveryEmail.trim() || undefined
+        );
+        
+        await api.auth.login(email, password);
+        setToken(localStorage.getItem('atlas_token'));
+      } else {
+        try {
+          const { data: supaData } = await supabase.auth.signInWithPassword({
+            email: email.trim(),
+            password: password,
+          });
+          if (supaData?.session?.access_token) {
+            localStorage.setItem('atlas_token', supaData.session.access_token);
+          }
+        } catch (sErr) {}
+
+        await api.auth.login(email, password);
+        setToken(localStorage.getItem('atlas_token'));
+      }
+    } catch (err: any) {
+      const msg = err.message || 'Authentication failed. Please try again.';
+      setAuthError(msg);
+    }
+  };
 
  const handleForgotPassword = async (e: React.FormEvent) => {
  e.preventDefault();
@@ -3179,12 +3238,25 @@ export default function App() {
  </div>
  )}
 
+ {magicLinkSent && (
+ <div style={{ display: 'flex', gap: '8px', padding: '12px 14px', background: 'rgba(0, 255, 170, 0.10)', border: '1px solid rgba(0, 255, 170, 0.30)', borderRadius: '12px', color: '#00ffaa', fontSize: '13px', marginBottom: '14px' }}>
+ <CheckCircle size={16} style={{ flexShrink: 0, marginTop: '1px' }} />
+ <span>Supabase Magic Link sent to <strong>{email}</strong>! Check your inbox to sign in instantly.</span>
+ </div>
+ )}
+
  <button type="submit" className="btn-primary" style={{ justifyContent: 'center', width: '100%', marginTop: '6px', padding: '13px', fontSize: '15px', borderRadius: '14px' }}>
  {isRegister ? 'Create Account' : 'Sign In to ATLAS'}
  </button>
+
+ {!isRegister && (
+ <button type="button" onClick={handleMagicLinkLogin} disabled={magicLinkLoading} style={{ width: '100%', marginTop: '10px', padding: '11px', borderRadius: '14px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.18)', color: '#ffffff', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', opacity: magicLinkLoading ? 0.6 : 1 }}>
+ <Send size={15} /> {magicLinkLoading ? 'Sending Email Link...' : 'Sign In with Supabase Email Link (Magic Link)'}
+ </button>
+ )}
  </form>
  <div style={{ textAlign: 'center', marginTop: '18px' }}>
- <button type="button" onClick={() => { setIsRegister(!isRegister); setAuthError(''); setRecoveryEmail(''); }} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.55)', cursor: 'pointer', fontSize: '13px', fontFamily: 'var(--font-body)' }}>
+ <button type="button" onClick={() => { setIsRegister(!isRegister); setAuthError(''); setRecoveryEmail(''); setMagicLinkSent(false); }} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.55)', cursor: 'pointer', fontSize: '13px', fontFamily: 'var(--font-body)' }}>
  {isRegister ? 'Already have an account? Sign in' : 'New to ATLAS? Create an account'}
  </button>
  </div>
