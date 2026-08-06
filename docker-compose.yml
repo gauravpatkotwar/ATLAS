@@ -43,9 +43,12 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@db:5432/atlas
+      - DATABASE_URL=${DATABASE_URL:-postgresql+asyncpg://postgres:postgres@db:5432/atlas}
+      - SUPABASE_URL=${SUPABASE_URL:-}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY:-}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY:-}
       - OLLAMA_BASE_URL=http://ollama:11434
-      - SECRET_KEY=DOCKER_SECURE_JWT_KEY_GENERATED_FOR_PRODUCTION_SESSION_DEPLOYMENT
+      - SECRET_KEY=${SECRET_KEY:-DOCKER_SECURE_JWT_KEY_GENERATED_FOR_PRODUCTION_SESSION_DEPLOYMENT}
       - FAISS_INDEX_PATH=/app/vector/vector_index.faiss
       - UPLOAD_DIR=/app/uploads
       - AI_PROVIDER=${AI_PROVIDER:-gemini}
