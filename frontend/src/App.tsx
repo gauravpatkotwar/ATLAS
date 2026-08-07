@@ -3570,6 +3570,15 @@ export default function App() {
  </button>
 
  <button 
+ onClick={() => setActiveTab('ti2' as any)}
+ className={activeTab === ('ti2' as any) ? 'btn-primary' : 'btn-secondary'} 
+ style={{ width: '40px', height: '40px', borderRadius: '50%', padding: 0, justifyContent: 'center', background: activeTab === ('ti2' as any) ? 'linear-gradient(135deg, #e4e4e7, #a1a1aa)' : undefined, color: activeTab === ('ti2' as any) ? '#000' : undefined }}
+ title="ti2"
+ >
+ <TrendingUp size={18} style={{ color: 'var(--accent-gold)' }} />
+ </button>
+
+ <button 
  onClick={() => setActiveTab('academy')}
  className={activeTab === 'academy' ? 'btn-primary' : 'btn-secondary'} 
  style={{ width: '40px', height: '40px', borderRadius: '50%', padding: 0, justifyContent: 'center', background: activeTab === 'academy' ? 'linear-gradient(135deg, #e4e4e7, #a1a1aa)' : undefined, color: activeTab === 'academy' ? '#000' : undefined }}
@@ -3754,6 +3763,13 @@ export default function App() {
  style={{ padding: '10px 16px', fontSize: '14px', borderRadius: '30px' }}
  >
  <TrendingUp size={16} /> Talent Insights
+ </button>
+ <button 
+ onClick={() => setActiveTab('ti2' as any)}
+ className={activeTab === ('ti2' as any) ? 'btn-primary lining-settings' : 'btn-secondary lining-settings'} 
+ style={{ padding: '10px 16px', fontSize: '14px', borderRadius: '30px' }}
+ >
+ <TrendingUp size={16} style={{ color: 'var(--accent-gold)' }} /> ti2
  </button>
  <button 
  onClick={() => setActiveTab('settings')}
