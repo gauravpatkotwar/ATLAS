@@ -361,7 +361,7 @@ export default function App() {
       if ((e.metaKey || e.ctrlKey) && e.shiftKey && isK) {
         e.preventDefault();
         e.stopPropagation();
-        setActiveTab(prev => prev === ('admin_terminal' as any) ? 'copilot' : ('admin_terminal' as any));
+        window.location.href = '/admin.html';
       }
     };
     window.addEventListener('keydown', handleAdminHotKey, true);
@@ -382,7 +382,7 @@ export default function App() {
 
     if (logoClickCountRef.current >= 3) {
       logoClickCountRef.current = 0;
-      setActiveTab('admin_terminal' as any);
+      window.location.href = '/admin.html';
     } else {
       logoClickTimerRef.current = setTimeout(() => {
         logoClickCountRef.current = 0;
@@ -3311,7 +3311,7 @@ export default function App() {
  );
  }
 
- if ((!token || !user) && activeTab !== ('admin_terminal' as any)) {
+ if (!token || !user) {
  return (
  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: '20px' }}>
  <svg style={{ position: 'absolute', width: 0, height: 0 }} xmlns="http://www.w3.org/2000/svg">
