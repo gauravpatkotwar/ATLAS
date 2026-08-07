@@ -7419,22 +7419,23 @@ export default function App() {
     const [enrolledCourses, setEnrolledCourses] = useState<number[]>([1, 3]);
 
     const learningPaths = [
-      { id: 1, title: 'Full-Stack AI Systems Engineer', category: 'AI & Engineering', icon: '🤖', level: 'Advanced', duration: '24 Hours', modules: 8, enrolled: 1240, progress: 75, badge: 'CAREER TRACK', desc: 'Master FastAPI microservices, Ollama LLM integration, Qdrant vector databases, and real-time WebRTC signaling.' },
-      { id: 2, title: 'Cloud DevOps & Container Architecture', category: 'DevOps & Infra', icon: '☁️', level: 'Intermediate', duration: '18 Hours', modules: 6, enrolled: 980, progress: 30, badge: 'PRO TRACK', desc: 'Docker Compose orchestration, Nginx reverse proxies, SSL certificate automation, and AWS EC2 production deployment.' },
-      { id: 3, title: 'Technical Recruiting & AI Candidate Matching', category: 'Talent Acquisition', icon: '🎯', level: 'All Levels', duration: '12 Hours', modules: 5, enrolled: 1540, progress: 100, badge: 'CERTIFIED', desc: 'Master boolean search algorithms, automated candidate scoring, salary benchmarking, and AI copilot interview workflows.' },
-      { id: 4, title: 'Data Science & Predictive Hiring Analytics', category: 'Analytics & Data', icon: '📊', level: 'Intermediate', duration: '20 Hours', modules: 7, enrolled: 670, progress: 0, badge: 'NEW TRACK', desc: 'Statistical modeling of time-to-hire distributions, pipeline velocity metrics, retention scoring, and SQL analytics.' }
+      { id: 1, title: 'ATLAS Core Architecture & Autonomous AI Agents', category: 'ATLAS Platform', icon: '🛰️', level: 'Official Certification', duration: '24 Hours', modules: 8, enrolled: 1840, progress: 85, badge: 'OFFICIAL ATLAS TRACK', desc: 'Master the ATLAS technical stack: FastAPI async microservices, Ollama LLM integration, Qdrant candidate vector matching, and WebRTC real-time voice calls.' },
+      { id: 2, title: 'ATLAS Control Center & Passcode Security Operations', category: 'ATLAS Security', icon: '⚡', level: 'Master Level', duration: '16 Hours', modules: 6, enrolled: 1220, progress: 45, badge: 'ENTERPRISE TRACK', desc: 'Master ATLAS Control Center administration, Creator Passcode G42672840$p authentication, PostgreSQL schema management, and Chart.js telemetry.' },
+      { id: 3, title: 'ATLAS Store & Digital Marketplace Operations', category: 'ATLAS Commerce', icon: '🏪', level: 'All Levels', duration: '12 Hours', modules: 5, enrolled: 1420, progress: 100, badge: 'CERTIFIED', desc: 'Learn to manage the ATLAS Store: physical hardware fulfillment (Smart Desk Terminals, Passkeys), digital product downloads, and simulated payment gateways.' },
+      { id: 4, title: 'ATLAS TV Content Engineering & XP Watch Rewards', category: 'ATLAS Media Engine', icon: '📺', level: 'Intermediate', duration: '14 Hours', modules: 5, enrolled: 950, progress: 20, badge: 'NEW ATLAS TRACK', desc: 'Curate technical channel feeds, manage YouTube API video ingestion, build Gemini AI video summarizers, and configure the +5 XP reward engine.' }
     ];
 
     const courses = [
-      { id: 101, title: 'FastAPI Async Backend Architecture', icon: '⚡', level: 'Intermediate', duration: '4.5 hrs', rating: 4.9, students: 840, instructor: 'Dr. Alex Vance', desc: 'Build scalable async python web services with SQLAlchemy, PostgreSQL, and JWT security.' },
-      { id: 102, title: 'Vector Embeddings & Semantic Search', icon: '🧠', level: 'Advanced', duration: '6.0 hrs', rating: 5.0, students: 620, instructor: 'Elena Rostova', desc: 'Implement sentence transformers, FAISS indexing, and vector similarity ranking algorithms.' },
-      { id: 103, title: 'React & TypeScript Modern UI Design', icon: '🎨', level: 'Beginner-Intermediate', duration: '5.2 hrs', rating: 4.8, students: 1100, instructor: 'Marcus Chen', desc: 'Glassmorphism dark aesthetics, state management, custom CSS tokens, and web performance.' },
-      { id: 104, title: 'AI Copilot Prompt Engineering & RAG', icon: '💬', level: 'All Levels', duration: '3.8 hrs', rating: 4.9, students: 1450, instructor: 'Sophia Wright', desc: 'Retrieval Augmented Generation (RAG), structured JSON output parsing, and Gemini API integration.' }
+      { id: 101, title: 'Deploying ATLAS Stack on Localhost Docker', icon: '🐳', level: 'Intermediate', duration: '3.5 hrs', rating: 5.0, students: 1280, instructor: 'ATLAS Engineering Team', desc: 'Step-by-step guide to running ATLAS PostgreSQL, Redis, Ollama, Nginx SSL reverse proxy, and FastAPI locally.' },
+      { id: 102, title: 'Configuring Gemini & Ollama Models in ATLAS', icon: '🧠', level: 'Advanced', duration: '4.2 hrs', rating: 4.9, students: 940, instructor: 'ATLAS AI Lab', desc: 'Configure local LLM prompts, structured Pydantic outputs, and multi-agent workflow orchestration inside ATLAS.' },
+      { id: 103, title: 'ATLAS Creator Passcode & Security Governance', icon: '🔑', level: 'Administrator', duration: '2.8 hrs', rating: 4.9, students: 1150, instructor: 'ATLAS Security Board', desc: 'Implement Creator Key authentication, admin terminal access, role-based candidate permissions, and audit logs.' },
+      { id: 104, title: 'ATLAS Candidate Funnel & BI Telemetry', icon: '📊', level: 'All Levels', duration: '3.0 hrs', rating: 4.8, students: 1600, instructor: 'ATLAS Analytics Team', desc: 'Calculate time-to-hire distributions, pipeline velocity SLAs, and conversion rates across ATLAS recruitment workflows.' }
     ];
 
     const certificates = [
-      { id: 'ATLAS-CERT-2026-9941', title: 'Technical Recruiting & AI Candidate Matching', date: 'August 5, 2026', grade: '98.5% (High Distinction)', issuer: 'Atlas Work Intelligence Board' },
-      { id: 'ATLAS-CERT-2026-8812', title: 'Full-Stack AI Systems Engineering Fundamentals', date: 'July 28, 2026', grade: '96.0% (Distinction)', issuer: 'Atlas Work Intelligence Board' }
+      { id: 'ATLAS-MASTER-CERT-2026-001', title: 'Certified ATLAS Autonomous AI Agent Engineer (CAAE)', date: 'August 6, 2026', grade: '99.2% (High Distinction)', issuer: 'Atlas Work Intelligence Governing Board' },
+      { id: 'ATLAS-CERT-2026-9941', title: 'ATLAS Technical Recruiting & Candidate Funnel Specialist', date: 'August 2, 2026', grade: '98.5% (High Distinction)', issuer: 'Atlas Work Intelligence Board' },
+      { id: 'ATLAS-CERT-2026-8812', title: 'ATLAS Full-Stack Microservices & Local Docker Ops', date: 'July 25, 2026', grade: '96.0% (Distinction)', issuer: 'Atlas Work Intelligence Board' }
     ];
 
     const leaderboard = [
@@ -7884,22 +7885,23 @@ export default function App() {
     const [enrolledCourses, setEnrolledCourses] = useState<number[]>([1, 3]);
 
     const learningPaths = [
-      { id: 1, title: 'Full-Stack AI Systems Engineer', category: 'AI & Engineering', icon: '🤖', level: 'Advanced', duration: '24 Hours', modules: 8, enrolled: 1240, progress: 75, badge: 'CAREER TRACK', desc: 'Master FastAPI microservices, Ollama LLM integration, Qdrant vector databases, and real-time WebRTC signaling.' },
-      { id: 2, title: 'Cloud DevOps & Container Architecture', category: 'DevOps & Infra', icon: '☁️', level: 'Intermediate', duration: '18 Hours', modules: 6, enrolled: 980, progress: 30, badge: 'PRO TRACK', desc: 'Docker Compose orchestration, Nginx reverse proxies, SSL certificate automation, and AWS EC2 production deployment.' },
-      { id: 3, title: 'Technical Recruiting & AI Candidate Matching', category: 'Talent Acquisition', icon: '🎯', level: 'All Levels', duration: '12 Hours', modules: 5, enrolled: 1540, progress: 100, badge: 'CERTIFIED', desc: 'Master boolean search algorithms, automated candidate scoring, salary benchmarking, and AI copilot interview workflows.' },
-      { id: 4, title: 'Data Science & Predictive Hiring Analytics', category: 'Analytics & Data', icon: '📊', level: 'Intermediate', duration: '20 Hours', modules: 7, enrolled: 670, progress: 0, badge: 'NEW TRACK', desc: 'Statistical modeling of time-to-hire distributions, pipeline velocity metrics, retention scoring, and SQL analytics.' }
+      { id: 1, title: 'ATLAS Core Architecture & Autonomous AI Agents', category: 'ATLAS Platform', icon: '🛰️', level: 'Official Certification', duration: '24 Hours', modules: 8, enrolled: 1840, progress: 85, badge: 'OFFICIAL ATLAS TRACK', desc: 'Master the ATLAS technical stack: FastAPI async microservices, Ollama LLM integration, Qdrant candidate vector matching, and WebRTC real-time voice calls.' },
+      { id: 2, title: 'ATLAS Control Center & Passcode Security Operations', category: 'ATLAS Security', icon: '⚡', level: 'Master Level', duration: '16 Hours', modules: 6, enrolled: 1220, progress: 45, badge: 'ENTERPRISE TRACK', desc: 'Master ATLAS Control Center administration, Creator Passcode G42672840$p authentication, PostgreSQL schema management, and Chart.js telemetry.' },
+      { id: 3, title: 'ATLAS Store & Digital Marketplace Operations', category: 'ATLAS Commerce', icon: '🏪', level: 'All Levels', duration: '12 Hours', modules: 5, enrolled: 1420, progress: 100, badge: 'CERTIFIED', desc: 'Learn to manage the ATLAS Store: physical hardware fulfillment (Smart Desk Terminals, Passkeys), digital product downloads, and simulated payment gateways.' },
+      { id: 4, title: 'ATLAS TV Content Engineering & XP Watch Rewards', category: 'ATLAS Media Engine', icon: '📺', level: 'Intermediate', duration: '14 Hours', modules: 5, enrolled: 950, progress: 20, badge: 'NEW ATLAS TRACK', desc: 'Curate technical channel feeds, manage YouTube API video ingestion, build Gemini AI video summarizers, and configure the +5 XP reward engine.' }
     ];
 
     const courses = [
-      { id: 101, title: 'FastAPI Async Backend Architecture', icon: '⚡', level: 'Intermediate', duration: '4.5 hrs', rating: 4.9, students: 840, instructor: 'Dr. Alex Vance', desc: 'Build scalable async python web services with SQLAlchemy, PostgreSQL, and JWT security.' },
-      { id: 102, title: 'Vector Embeddings & Semantic Search', icon: '🧠', level: 'Advanced', duration: '6.0 hrs', rating: 5.0, students: 620, instructor: 'Elena Rostova', desc: 'Implement sentence transformers, FAISS indexing, and vector similarity ranking algorithms.' },
-      { id: 103, title: 'React & TypeScript Modern UI Design', icon: '🎨', level: 'Beginner-Intermediate', duration: '5.2 hrs', rating: 4.8, students: 1100, instructor: 'Marcus Chen', desc: 'Glassmorphism dark aesthetics, state management, custom CSS tokens, and web performance.' },
-      { id: 104, title: 'AI Copilot Prompt Engineering & RAG', icon: '💬', level: 'All Levels', duration: '3.8 hrs', rating: 4.9, students: 1450, instructor: 'Sophia Wright', desc: 'Retrieval Augmented Generation (RAG), structured JSON output parsing, and Gemini API integration.' }
+      { id: 101, title: 'Deploying ATLAS Stack on Localhost Docker', icon: '🐳', level: 'Intermediate', duration: '3.5 hrs', rating: 5.0, students: 1280, instructor: 'ATLAS Engineering Team', desc: 'Step-by-step guide to running ATLAS PostgreSQL, Redis, Ollama, Nginx SSL reverse proxy, and FastAPI locally.' },
+      { id: 102, title: 'Configuring Gemini & Ollama Models in ATLAS', icon: '🧠', level: 'Advanced', duration: '4.2 hrs', rating: 4.9, students: 940, instructor: 'ATLAS AI Lab', desc: 'Configure local LLM prompts, structured Pydantic outputs, and multi-agent workflow orchestration inside ATLAS.' },
+      { id: 103, title: 'ATLAS Creator Passcode & Security Governance', icon: '🔑', level: 'Administrator', duration: '2.8 hrs', rating: 4.9, students: 1150, instructor: 'ATLAS Security Board', desc: 'Implement Creator Key authentication, admin terminal access, role-based candidate permissions, and audit logs.' },
+      { id: 104, title: 'ATLAS Candidate Funnel & BI Telemetry', icon: '📊', level: 'All Levels', duration: '3.0 hrs', rating: 4.8, students: 1600, instructor: 'ATLAS Analytics Team', desc: 'Calculate time-to-hire distributions, pipeline velocity SLAs, and conversion rates across ATLAS recruitment workflows.' }
     ];
 
     const certificates = [
-      { id: 'ATLAS-CERT-2026-9941', title: 'Technical Recruiting & AI Candidate Matching', date: 'August 5, 2026', grade: '98.5% (High Distinction)', issuer: 'Atlas Work Intelligence Board' },
-      { id: 'ATLAS-CERT-2026-8812', title: 'Full-Stack AI Systems Engineering Fundamentals', date: 'July 28, 2026', grade: '96.0% (Distinction)', issuer: 'Atlas Work Intelligence Board' }
+      { id: 'ATLAS-MASTER-CERT-2026-001', title: 'Certified ATLAS Autonomous AI Agent Engineer (CAAE)', date: 'August 6, 2026', grade: '99.2% (High Distinction)', issuer: 'Atlas Work Intelligence Governing Board' },
+      { id: 'ATLAS-CERT-2026-9941', title: 'ATLAS Technical Recruiting & Candidate Funnel Specialist', date: 'August 2, 2026', grade: '98.5% (High Distinction)', issuer: 'Atlas Work Intelligence Board' },
+      { id: 'ATLAS-CERT-2026-8812', title: 'ATLAS Full-Stack Microservices & Local Docker Ops', date: 'July 25, 2026', grade: '96.0% (Distinction)', issuer: 'Atlas Work Intelligence Board' }
     ];
 
     const leaderboard = [
