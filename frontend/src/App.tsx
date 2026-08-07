@@ -3753,7 +3753,7 @@ export default function App() {
  className={activeTab === 'analytics' ? 'btn-primary lining-settings' : 'btn-secondary lining-settings'} 
  style={{ padding: '10px 16px', fontSize: '14px', borderRadius: '30px' }}
  >
- <TrendingUp size={16} /> Analytics
+ <GraduationCap size={16} style={{ color: "var(--accent-gold)" }} /> Atlas Academy
  </button>
  <button 
  onClick={() => setActiveTab('settings')}
@@ -8109,150 +8109,330 @@ export default function App() {
  );
  })()}
 
- {/* TAB: BI ANALYTICS DASHBOARD */}
- {activeTab === 'analytics' && (
+ {/* TAB: ATLAS ACADEMY (LEARNING PATHS, COURSES & CERTIFICATIONS) */}
+  {activeTab === 'analytics' && (() => {
+    const [academyTab, setAcademyTab] = useState<'paths' | 'courses' | 'certificates' | 'leaderboard'>('paths');
+    const [selectedCourse, setSelectedCourse] = useState<any>(null);
+    const [viewCertificate, setViewCertificate] = useState<any>(null);
+    const [enrolledCourses, setEnrolledCourses] = useState<number[]>([1, 3]);
 
- <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
- <h2 style={{ fontSize: '22px', color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
- <TrendingUp style={{ color: 'var(--accent-cyan)' }} />
- <span>Workspace BI Analytics</span>
- </h2>
- <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginTop: '-12px', marginBottom: '12px' }}>
- Real-time recruitment performance metrics, funnel conversion analytics, and time-to-hire distributions.
- </p>
+    const learningPaths = [
+      { id: 1, title: 'Full-Stack AI Systems Engineer', category: 'AI & Engineering', icon: '🤖', level: 'Advanced', duration: '24 Hours', modules: 8, enrolled: 1240, progress: 75, badge: 'CAREER TRACK', desc: 'Master FastAPI microservices, Ollama LLM integration, Qdrant vector databases, and real-time WebRTC signaling.' },
+      { id: 2, title: 'Cloud DevOps & Container Architecture', category: 'DevOps & Infra', icon: '☁️', level: 'Intermediate', duration: '18 Hours', modules: 6, enrolled: 980, progress: 30, badge: 'PRO TRACK', desc: 'Docker Compose orchestration, Nginx reverse proxies, SSL certificate automation, and AWS EC2 production deployment.' },
+      { id: 3, title: 'Technical Recruiting & AI Candidate Matching', category: 'Talent Acquisition', icon: '🎯', level: 'All Levels', duration: '12 Hours', modules: 5, enrolled: 1540, progress: 100, badge: 'CERTIFIED', desc: 'Master boolean search algorithms, automated candidate scoring, salary benchmarking, and AI copilot interview workflows.' },
+      { id: 4, title: 'Data Science & Predictive Hiring Analytics', category: 'Analytics & Data', icon: '📊', level: 'Intermediate', duration: '20 Hours', modules: 7, enrolled: 670, progress: 0, badge: 'NEW TRACK', desc: 'Statistical modeling of time-to-hire distributions, pipeline velocity metrics, retention scoring, and SQL analytics.' }
+    ];
 
- {/* Metric Cards Grid */}
- <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '20px' }}>
- <div className="glass-panel" style={{ padding: '20px', background: 'rgba(255,255,255,0.01)' }}>
- <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 'bold', textTransform: 'uppercase' }}>Active Talent Pool</span>
- <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#fff', marginTop: '6px' }}>
- {analyticsThroughput ? (Object.values(analyticsThroughput).reduce((a: number, b: unknown) => a + (Number(b) || 0), 0) as number) : 0}
- </div>
- <div style={{ fontSize: '11px', color: '#10b981', marginTop: '4px' }}>↑ Live tracked candidate profiles</div>
- </div>
+    const courses = [
+      { id: 101, title: 'FastAPI Async Backend Architecture', icon: '⚡', level: 'Intermediate', duration: '4.5 hrs', rating: 4.9, students: 840, instructor: 'Dr. Alex Vance', desc: 'Build scalable async python web services with SQLAlchemy, PostgreSQL, and JWT security.' },
+      { id: 102, title: 'Vector Embeddings & Semantic Search', icon: '🧠', level: 'Advanced', duration: '6.0 hrs', rating: 5.0, students: 620, instructor: 'Elena Rostova', desc: 'Implement sentence transformers, FAISS indexing, and vector similarity ranking algorithms.' },
+      { id: 103, title: 'React & TypeScript Modern UI Design', icon: '🎨', level: 'Beginner-Intermediate', duration: '5.2 hrs', rating: 4.8, students: 1100, instructor: 'Marcus Chen', desc: 'Glassmorphism dark aesthetics, state management, custom CSS tokens, and web performance.' },
+      { id: 104, title: 'AI Copilot Prompt Engineering & RAG', icon: '💬', level: 'All Levels', duration: '3.8 hrs', rating: 4.9, students: 1450, instructor: 'Sophia Wright', desc: 'Retrieval Augmented Generation (RAG), structured JSON output parsing, and Gemini API integration.' }
+    ];
 
- <div className="glass-panel" style={{ padding: '20px', background: 'rgba(255,255,255,0.01)' }}>
- <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 'bold', textTransform: 'uppercase' }}>Avg Time to Hire</span>
- <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#fff', marginTop: '6px' }}>
- {analyticsTimeToHire?.average_time_to_hire_days || 15.2} <span style={{ fontSize: '14px', fontWeight: 'normal', color: 'var(--text-muted)' }}>days</span>
- </div>
- <div style={{ fontSize: '11px', color: 'var(--accent-cyan)', marginTop: '4px' }}>Avg duration from apply to offer</div>
- </div>
+    const certificates = [
+      { id: 'ATLAS-CERT-2026-9941', title: 'Technical Recruiting & AI Candidate Matching', date: 'August 5, 2026', grade: '98.5% (High Distinction)', issuer: 'Atlas Work Intelligence Board' },
+      { id: 'ATLAS-CERT-2026-8812', title: 'Full-Stack AI Systems Engineering Fundamentals', date: 'July 28, 2026', grade: '96.0% (Distinction)', issuer: 'Atlas Work Intelligence Board' }
+    ];
 
- <div className="glass-panel" style={{ padding: '20px', background: 'rgba(255,255,255,0.01)' }}>
- <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 'bold', textTransform: 'uppercase' }}>Active Job Openings</span>
- <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#fff', marginTop: '6px' }}>
- {jobs.filter(j => j.is_active).length}
- </div>
- <div style={{ fontSize: '11px', color: '#a0a0a0', marginTop: '4px' }}>Currently published job listings</div>
- </div>
+    const leaderboard = [
+      { rank: 1, name: 'Gaurav Patkotwar', title: 'Lead AI Engineer', xp: '14,850 XP', courses: 14, badge: '🏆 MASTER' },
+      { rank: 2, name: 'Sarah Jenkins', title: 'Principal Recruiter', xp: '12,400 XP', courses: 11, badge: '⚡ EXPERT' },
+      { rank: 3, name: 'David Kim', title: 'DevOps Architect', xp: '11,150 XP', courses: 9, badge: '⚡ EXPERT' },
+      { rank: 4, name: 'Elena Rostova', title: 'Data Scientist', xp: '9,800 XP', courses: 8, badge: '🌟 ADVANCED' },
+      { rank: 5, name: 'Marcus Chen', title: 'Frontend Specialist', xp: '8,950 XP', courses: 7, badge: '🌟 ADVANCED' }
+    ];
 
- <div className="glass-panel" style={{ padding: '20px', background: 'rgba(255,255,255,0.01)' }}>
- <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 'bold', textTransform: 'uppercase' }}>Pipeline Velocity</span>
- <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#fff', marginTop: '6px' }}>
- 94.8%
- </div>
- <div style={{ fontSize: '11px', color: '#10b981', marginTop: '4px' }}> SLA target completion rate</div>
- </div>
- </div>
+    const toggleEnroll = (id: number) => {
+      if (enrolledCourses.includes(id)) {
+        setEnrolledCourses(enrolledCourses.filter(i => i !== id));
+      } else {
+        setEnrolledCourses([...enrolledCourses, id]);
+      }
+    };
 
- {/* Graphs Grid */}
- <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '24px', alignItems: 'start' }}>
- {/* Funnel Chart */}
- {(() => {
- const applied = analyticsThroughput?.applied || 0;
- const screening = analyticsThroughput?.screening || 0;
- const interviewing = analyticsThroughput?.interviewing || 0;
- const offered = analyticsThroughput?.offered || 0;
- 
- const stages = [
- { label: 'Applied', count: applied, color: 'var(--accent-cyan)' },
- { label: 'Screening', count: screening, color: 'var(--accent-gold)' },
- { label: 'Interviewing', count: interviewing, color: '#a0a0a0' },
- { label: 'Offered', count: offered, color: '#10b981' }
- ];
+    return (
+      <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        
+        {/* HERO BANNER */}
+        <div className="glass-panel" style={{ padding: '28px 32px', background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(30, 41, 59, 0.7))', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '20px' }}>
+          <div>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '4px 12px', background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.25)', borderRadius: '20px', color: '#f59e0b', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', tracking: '0.05em', marginBottom: '10px' }}>
+              <span>🎓 ATLAS ACADEMY</span>
+              <span>•</span>
+              <span>AI & Engineering Certifications</span>
+            </div>
+            <h1 style={{ fontSize: '28px', fontWeight: 800, color: '#fff', margin: '0 0 6px 0', letterSpacing: '-0.02em' }}>
+              Atlas Academy
+            </h1>
+            <p style={{ color: 'var(--text-muted)', fontSize: '14px', margin: 0, maxWidth: '640px' }}>
+              Master Full-Stack AI Systems, DevOps Container Automation, Data Analytics, and AI Technical Recruiting through interactive paths and blockchain-verified certificates.
+            </p>
+          </div>
 
- const maxCount = Math.max(...stages.map(s => s.count), 1);
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <div style={{ padding: '12px 20px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '14px', textAlign: 'center' }}>
+              <div style={{ fontSize: '20px', fontWeight: 800, color: '#f59e0b' }}>12</div>
+              <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600 }}>Active Paths</div>
+            </div>
+            <div style={{ padding: '12px 20px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '14px', textAlign: 'center' }}>
+              <div style={{ fontSize: '20px', fontWeight: 800, color: '#10b981' }}>1,480</div>
+              <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600 }}>Certificates Issued</div>
+            </div>
+            <div style={{ padding: '12px 20px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '14px', textAlign: 'center' }}>
+              <div style={{ fontSize: '20px', fontWeight: 800, color: '#38bdf8' }}>98.4%</div>
+              <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600 }}>Skill Mastery</div>
+            </div>
+          </div>
+        </div>
 
- return (
- <div className="glass-panel" style={{ padding: '24px', background: 'rgba(255,255,255,0.01)' }}>
- <h3 style={{ fontSize: '16px', color: '#fff', marginBottom: '20px', fontWeight: 600 }}>Candidate Recruitment Funnel</h3>
- <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
- {stages.map((st, idx) => {
- const widthPercent = (st.count / maxCount) * 100;
- const convRate = idx === 0 ? 100 : stages[idx - 1].count > 0 ? Math.round((st.count / stages[idx - 1].count) * 100) : 0;
- return (
- <div key={st.label}>
- <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '6px' }}>
- <span style={{ color: '#fff', fontWeight: 500 }}>{st.label}</span>
- <span style={{ color: 'var(--text-muted)' }}>
- <strong>{st.count}</strong> candidates {idx > 0 && `(${convRate}% step conversion)`}
- </span>
- </div>
- <div style={{ height: '24px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', overflow: 'hidden', display: 'flex', alignItems: 'center', padding: '0 4px', border: '1px solid var(--border-glass)' }}>
- <div 
- style={{ 
- width: `${Math.max(5, widthPercent)}%`, 
- height: '16px', 
- background: `linear-gradient(90deg, ${st.color}88, ${st.color})`, 
- borderRadius: '8px',
- transition: 'width 1s ease-in-out'
- }} 
- />
- </div>
- </div>
- );
- })}
- </div>
- </div>
- );
- })()}
+        {/* ACADEMY TOOLBAR TABS */}
+        <div style={{ display: 'flex', gap: '8px', background: 'rgba(15, 23, 42, 0.6)', padding: '4px', borderRadius: '14px', border: '1px solid rgba(255, 255, 255, 0.08)', width: 'fit-content' }}>
+          <button
+            onClick={() => setAcademyTab('paths')}
+            style={{ padding: '8px 18px', borderRadius: '10px', fontSize: '13px', fontWeight: 700, border: 'none', cursor: 'pointer', transition: 'all 0.2s', background: academyTab === 'paths' ? 'linear-gradient(135deg, #f59e0b, #d97706)' : 'transparent', color: academyTab === 'paths' ? '#fff' : 'var(--text-muted)' }}
+          >
+            🎓 Learning Paths ({learningPaths.length})
+          </button>
+          <button
+            onClick={() => setAcademyTab('courses')}
+            style={{ padding: '8px 18px', borderRadius: '10px', fontSize: '13px', fontWeight: 700, border: 'none', cursor: 'pointer', transition: 'all 0.2s', background: academyTab === 'courses' ? 'linear-gradient(135deg, #38bdf8, #0284c7)' : 'transparent', color: academyTab === 'courses' ? '#fff' : 'var(--text-muted)' }}
+          >
+            📚 Interactive Courses ({courses.length})
+          </button>
+          <button
+            onClick={() => setAcademyTab('certificates')}
+            style={{ padding: '8px 18px', borderRadius: '10px', fontSize: '13px', fontWeight: 700, border: 'none', cursor: 'pointer', transition: 'all 0.2s', background: academyTab === 'certificates' ? 'linear-gradient(135deg, #10b981, #059669)' : 'transparent', color: academyTab === 'certificates' ? '#fff' : 'var(--text-muted)' }}
+          >
+            📜 Certificate Vault ({certificates.length})
+          </button>
+          <button
+            onClick={() => setAcademyTab('leaderboard')}
+            style={{ padding: '8px 18px', borderRadius: '10px', fontSize: '13px', fontWeight: 700, border: 'none', cursor: 'pointer', transition: 'all 0.2s', background: academyTab === 'leaderboard' ? 'linear-gradient(135deg, #a855f7, #7e22ce)' : 'transparent', color: academyTab === 'leaderboard' ? '#fff' : 'var(--text-muted)' }}
+          >
+            🏆 Leaderboard
+          </button>
+        </div>
 
- {/* Time to Hire stage chart */}
- {(() => {
- const steps = [
- { label: 'Screening', days: analyticsTimeToHire?.by_stage?.screening || 3.2, color: 'var(--accent-cyan)' },
- { label: 'Tech Code', days: analyticsTimeToHire?.by_stage?.tech_code || 5.4, color: 'var(--accent-gold)' },
- { label: 'Mgr Interview', days: analyticsTimeToHire?.by_stage?.mgr_interview || 4.1, color: '#a0a0a0' },
- { label: 'Offer Prep', days: analyticsTimeToHire?.by_stage?.offer_prep || 2.5, color: '#10b981' }
- ];
+        {/* TAB 1: LEARNING PATHS */}
+        {academyTab === 'paths' && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '20px' }}>
+            {learningPaths.map((path) => {
+              const isEnrolled = enrolledCourses.includes(path.id);
 
- const maxDays = Math.max(...steps.map(s => s.days), 1);
- const chartHeight = 180;
- 
- return (
- <div className="glass-panel" style={{ padding: '24px', background: 'rgba(255,255,255,0.01)' }}>
- <h3 style={{ fontSize: '16px', color: '#fff', marginBottom: '20px', fontWeight: 600 }}>Average Days Spent by Stage</h3>
- <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'flex-end', height: `${chartHeight}px`, borderBottom: '1px solid var(--border-glass)', paddingBottom: '10px' }}>
- {steps.map(st => {
- const barHeight = (st.days / maxDays) * (chartHeight - 40);
- return (
- <div key={st.label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '60px' }}>
- <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '6px' }}>{st.days}d</span>
- <div 
- style={{ 
- width: '32px', 
- height: `${Math.max(10, barHeight)}px`, 
- background: `linear-gradient(0deg, ${st.color}88, ${st.color})`, 
- borderRadius: '6px 6px 0 0',
- transition: 'height 1s ease-in-out'
- }} 
- />
- <span style={{ fontSize: '10px', color: '#fff', marginTop: '8px', textAlign: 'center', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden', width: '100%' }} title={st.label}>
- {st.label}
- </span>
- </div>
- );
- })}
- </div>
- </div>
- );
- })()}
- </div>
- </div>
- )}
+              return (
+                <div
+                  key={path.id}
+                  className="glass-panel"
+                  style={{
+                    padding: '24px',
+                    borderRadius: '16px',
+                    background: 'linear-gradient(180deg, rgba(30, 41, 59, 0.5) 0%, rgba(15, 23, 42, 0.8) 100%)',
+                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justify: 'space-between',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                      <div style={{ fontSize: '32px', width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(245, 158, 11, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(245, 158, 11, 0.2)' }}>
+                        {path.icon}
+                      </div>
+                      <span style={{ fontSize: '10px', fontWeight: 800, padding: '4px 10px', borderRadius: '20px', background: path.badge === 'CERTIFIED' ? 'rgba(34,197,94,0.15)' : 'rgba(245,158,11,0.15)', color: path.badge === 'CERTIFIED' ? '#22c55e' : '#f59e0b', border: `1px solid ${path.badge === 'CERTIFIED' ? 'rgba(34,197,94,0.3)' : 'rgba(245,158,11,0.3)'}` }}>
+                        {path.badge}
+                      </span>
+                    </div>
 
- {/* TAB 9: COMMUNITY DISCUSSION BOARD & WHISTLEBLOWER NEWS */}
+                    <h3 style={{ fontSize: '17px', fontWeight: 700, color: '#fff', margin: '0 0 8px 0', lineHeight: 1.3 }}>
+                      {path.title}
+                    </h3>
+
+                    <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: 1.5, margin: '0 0 16px 0' }}>
+                      {path.desc}
+                    </p>
+
+                    <div style={{ display: 'flex', gap: '12px', fontSize: '12px', color: 'var(--text-dim)', marginBottom: '16px' }}>
+                      <span>⏱️ {path.duration}</span>
+                      <span>•</span>
+                      <span>📖 {path.modules} Modules</span>
+                      <span>•</span>
+                      <span>👥 {path.enrolled} Students</span>
+                    </div>
+
+                    {/* Progress Bar if enrolled */}
+                    {isEnrolled && (
+                      <div style={{ marginBottom: '16px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px' }}>
+                          <span>Course Progress</span>
+                          <span style={{ color: '#f59e0b', fontWeight: 700 }}>{path.progress}%</span>
+                        </div>
+                        <div style={{ height: '6px', background: 'rgba(255,255,255,0.06)', borderRadius: '3px', overflow: 'hidden' }}>
+                          <div style={{ width: `${path.progress}%`, height: '100%', background: 'linear-gradient(90deg, #f59e0b, #10b981)', borderRadius: '3px' }}></div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <button
+                      onClick={() => setSelectedCourse(path)}
+                      style={{ flex: 1, padding: '9px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '10px', color: '#fff', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
+                    >
+                      Syllabus & Info
+                    </button>
+                    
+                    <button
+                      onClick={() => toggleEnroll(path.id)}
+                      style={{ flex: 1.2, padding: '9px', background: isEnrolled ? 'linear-gradient(135deg, #10b981, #059669)' : 'linear-gradient(135deg, #f59e0b, #d97706)', border: 'none', borderRadius: '10px', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}
+                    >
+                      {isEnrolled ? (path.progress === 100 ? 'View Certificate' : 'Continue Track') : 'Enroll Track'}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* TAB 2: INTERACTIVE COURSES */}
+        {academyTab === 'courses' && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
+            {courses.map((c) => (
+              <div key={c.id} className="glass-panel" style={{ padding: '20px', borderRadius: '16px', background: 'rgba(30, 41, 59, 0.4)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                  <div style={{ fontSize: '28px' }}>{c.icon}</div>
+                  <span style={{ fontSize: '11px', color: '#38bdf8', background: 'rgba(56, 189, 248, 0.1)', padding: '3px 8px', borderRadius: '10px', fontWeight: 600 }}>⭐ {c.rating} ({c.students} reviews)</span>
+                </div>
+                <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#fff', marginBottom: '6px' }}>{c.title}</h3>
+                <p style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.4', marginBottom: '14px' }}>{c.desc}</p>
+                <div style={{ fontSize: '11px', color: 'var(--text-dim)', marginBottom: '14px' }}>Instructor: <strong style={{ color: '#fff' }}>{c.instructor}</strong> • {c.duration}</div>
+                <button onClick={() => setSelectedCourse(c)} style={{ width: '100%', padding: '8px', background: 'linear-gradient(135deg, #38bdf8, #0284c7)', border: 'none', borderRadius: '8px', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>
+                  Start Interactive Lab
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* TAB 3: CERTIFICATE VAULT */}
+        {academyTab === 'certificates' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <h2 style={{ fontSize: '18px', color: '#fff', fontWeight: 700, margin: 0 }}>Verified Credentials ({certificates.length})</h2>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))', gap: '20px' }}>
+              {certificates.map((cert) => (
+                <div key={cert.id} className="glass-panel" style={{ padding: '24px', borderRadius: '16px', background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.05), rgba(16, 185, 129, 0.02))', border: '1px solid rgba(34, 197, 94, 0.25)', position: 'relative' }}>
+                  <div style={{ fontSize: '10px', fontWeight: 800, color: '#22c55e', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>VERIFIED CREDENTIAL</div>
+                  <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#fff', marginBottom: '6px' }}>{cert.title}</h3>
+                  <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '14px' }}>Issued on {cert.date} • Score: <strong style={{ color: '#22c55e' }}>{cert.grade}</strong></div>
+                  
+                  <div style={{ background: 'rgba(0,0,0,0.3)', padding: '10px 14px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.08)', fontSize: '11px', color: 'var(--text-dim)', marginBottom: '16px', display: 'flex', justifyContent: 'space-between' }}>
+                    <span>Verification ID:</span>
+                    <span style={{ color: '#38bdf8', fontWeight: 700, fontFamily: 'monospace' }}>{cert.id}</span>
+                  </div>
+
+                  <button onClick={() => setViewCertificate(cert)} style={{ width: '100%', padding: '10px', background: 'linear-gradient(135deg, #10b981, #059669)', border: 'none', borderRadius: '10px', color: '#fff', fontWeight: 700, fontSize: '13px', cursor: 'pointer' }}>
+                    View Official Certificate & Badge
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* TAB 4: LEADERBOARD */}
+        {academyTab === 'leaderboard' && (
+          <div className="glass-panel" style={{ padding: '24px', borderRadius: '16px' }}>
+            <h2 style={{ fontSize: '18px', color: '#fff', fontWeight: 700, marginBottom: '16px' }}>🏆 Global Skills & XP Leaderboard</h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {leaderboard.map((user) => (
+                <div key={user.rank} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px', background: user.rank === 1 ? 'rgba(245, 158, 11, 0.1)' : 'rgba(255,255,255,0.02)', border: `1px solid ${user.rank === 1 ? 'rgba(245, 158, 11, 0.3)' : 'rgba(255,255,255,0.06)'}`, borderRadius: '12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                    <div style={{ fontSize: '16px', fontWeight: 800, width: '28px', color: user.rank === 1 ? '#f59e0b' : 'var(--text-muted)' }}>#{user.rank}</div>
+                    <div>
+                      <div style={{ fontSize: '14px', fontWeight: 700, color: '#fff' }}>{user.name}</div>
+                      <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{user.title} • {user.courses} Courses Completed</div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                    <span style={{ fontSize: '11px', fontWeight: 700, padding: '3px 8px', borderRadius: '8px', background: 'rgba(168,85,247,0.15)', color: '#c084fc' }}>{user.badge}</span>
+                    <span style={{ fontSize: '16px', fontWeight: 800, color: '#f59e0b' }}>{user.xp}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* MODAL: COURSE SYLLABUS & ENROLLMENT */}
+        {selectedCourse && (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+            <div className="glass-panel" style={{ width: '100%', maxWidth: '520px', padding: '28px', borderRadius: '20px', background: '#0f172a', border: '1px solid rgba(245,158,11,0.3)', position: 'relative' }}>
+              <button onClick={() => setSelectedCourse(null)} style={{ position: 'absolute', top: '16px', right: '16px', background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '20px', cursor: 'pointer' }}>✕</button>
+
+              <div style={{ fontSize: '40px', marginBottom: '12px' }}>{selectedCourse.icon || '🎓'}</div>
+              <h2 style={{ fontSize: '22px', fontWeight: 800, color: '#fff', margin: '0 0 6px 0' }}>{selectedCourse.title}</h2>
+              <div style={{ fontSize: '12px', color: '#f59e0b', fontWeight: 600, marginBottom: '14px' }}>Level: {selectedCourse.level || 'Professional'} • Duration: {selectedCourse.duration}</div>
+
+              <p style={{ color: 'var(--text-muted)', fontSize: '13px', lineHeight: '1.6', marginBottom: '20px' }}>
+                {selectedCourse.desc}
+              </p>
+
+              <div style={{ background: 'rgba(255,255,255,0.03)', padding: '14px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.08)', marginBottom: '20px' }}>
+                <div style={{ fontSize: '12px', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>Key Curriculum Modules:</div>
+                <div style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <div>✓ Module 1: Core Architecture & Setup Fundamentals</div>
+                  <div>✓ Module 2: Interactive Hands-On Code Labs & Exercises</div>
+                  <div>✓ Module 3: Advanced Optimization & Production Deployment</div>
+                  <div>✓ Module 4: Final Capstone Assessment & Certificate Exam</div>
+                </div>
+              </div>
+
+              <button
+                onClick={() => { toggleEnroll(selectedCourse.id); setSelectedCourse(null); }}
+                style={{ width: '100%', padding: '12px', background: 'linear-gradient(135deg, #f59e0b, #d97706)', border: 'none', borderRadius: '12px', color: '#fff', fontWeight: 800, fontSize: '14px', cursor: 'pointer' }}
+              >
+                {enrolledCourses.includes(selectedCourse.id) ? 'Resume Track' : 'Enroll Now (Free Access)'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL: OFFICIAL CERTIFICATE DISPLAY */}
+        {viewCertificate && (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(10px)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+            <div className="glass-panel" style={{ width: '100%', maxWidth: '600px', padding: '36px', borderRadius: '24px', background: 'linear-gradient(135deg, #09090b, #18181b)', border: '2px solid #f59e0b', textAlign: 'center', position: 'relative' }}>
+              <button onClick={() => setViewCertificate(null)} style={{ position: 'absolute', top: '16px', right: '16px', background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '20px', cursor: 'pointer' }}>✕</button>
+
+              <div style={{ fontSize: '12px', fontWeight: 800, color: '#f59e0b', letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: '8px' }}>OFFICIAL CERTIFICATE OF MASTERY</div>
+              <div style={{ fontSize: '28px', fontWeight: 900, color: '#fff', letterSpacing: '-0.02em', marginBottom: '20px' }}>ATLAS ACADEMY</div>
+
+              <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '8px' }}>This is to certify that</div>
+              <div style={{ fontSize: '24px', fontWeight: 800, color: '#38bdf8', marginBottom: '16px', textDecoration: 'underline' }}>Gaurav Patkotwar</div>
+
+              <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '8px' }}>has successfully completed all coursework, labs, and capstone exams for</div>
+              <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#fff', marginBottom: '20px' }}>{viewCertificate.title}</h3>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', background: 'rgba(255,255,255,0.04)', padding: '12px 20px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', fontSize: '12px', color: 'var(--text-muted)', marginBottom: '24px' }}>
+                <div>Date: <strong style={{ color: '#fff' }}>{viewCertificate.date}</strong></div>
+                <div>Grade: <strong style={{ color: '#22c55e' }}>{viewCertificate.grade}</strong></div>
+                <div>ID: <strong style={{ color: '#38bdf8', fontFamily: 'monospace' }}>{viewCertificate.id}</strong></div>
+              </div>
+
+              <button onClick={() => alert(`Certificate ${viewCertificate.id} saved as PDF!`)} style={{ padding: '12px 28px', background: 'linear-gradient(135deg, #f59e0b, #d97706)', border: 'none', borderRadius: '12px', color: '#fff', fontWeight: 800, fontSize: '14px', cursor: 'pointer' }}>
+                📥 Download Official Verified PDF Certificate
+              </button>
+            </div>
+          </div>
+        )}
+
+      </div>
+    );
+  })()}
+
+  {/* TAB 9: COMMUNITY DISCUSSION BOARD & WHISTLEBLOWER NEWS */}
  {activeTab === 'community' && (
  <div className="animate-fade-in" style={{ display: 'flex', height: 'calc(100vh - 140px)', gap: 0, borderRadius: '20px', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.40)', border: '1px solid rgba(255,255,255,0.14)' }}>
 
