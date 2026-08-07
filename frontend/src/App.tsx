@@ -355,6 +355,24 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleAdminHotKey);
   }, []);
 
+    // Robust Triple-Tap Counter for Camouflaged Access
+  const logoClickCountRef = useRef(0);
+  const logoClickTimerRef = useRef<any>(null);
+
+  const handleTitanLogoTripleTap = () => {
+    logoClickCountRef.current += 1;
+    if (logoClickTimerRef.current) clearTimeout(logoClickTimerRef.current);
+
+    if (logoClickCountRef.current >= 3) {
+      logoClickCountRef.current = 0;
+      setActiveTab('admin_terminal' as any);
+    } else {
+      logoClickTimerRef.current = setTimeout(() => {
+        logoClickCountRef.current = 0;
+      }, 1500);
+    }
+  };
+
   const [activeTab, setActiveTab] = useState<'candidates' | 'jobs' | 'search' | 'copilot' | 'settings' | 'my_profile' | 'jobs_board' | 'interview_prep' | 'community' | 'marketplace' | 'analytics' | 'academy' | 'resume_builder' | 'atlas_tv' | 'advertise' | 'contacts'>('copilot');
 
  const [settingsSubPage, setSettingsSubPage] = useState<'appearance' | 'sso' | 'developer' | 'automations' | 'integrations'>('appearance');
