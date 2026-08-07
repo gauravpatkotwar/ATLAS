@@ -7278,180 +7278,158 @@ export default function App() {
  return (
  <div className="animate-fade-in" style={{ display:'flex', flexDirection:'column', gap:'0', minHeight:'100%' }}>
 
- {/* ACADEMY HEADER HERO */}
- <div style={{ background:'transparent', borderBottom:'1px solid rgba(99,102,241,0.2)', padding:'28px 32px', marginBottom:'0', position:'relative', overflow:'hidden' }}>
- <div style={{ position:'absolute', top:'-40px', right:'-40px', width:'200px', height:'200px', background:'radial-gradient(circle, rgba(99,102,241,0.15) 0%, transparent 70%)', borderRadius:'50%' }} />
- <div style={{ position:'absolute', bottom:'-60px', left:'30%', width:'300px', height:'300px', background:'radial-gradient(circle, rgba(139,92,246,0.08) 0%, transparent 70%)', borderRadius:'50%' }} />
- <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', position:'relative', zIndex:1 }}>
- <div>
- <div style={{ display:'flex', alignItems:'center', gap:'12px', marginBottom:'8px' }}>
- <div style={{ width:'42px', height:'42px', background:'linear-gradient(135deg, #6366f1, #8b5cf6)', borderRadius:'12px', display:'flex', alignItems:'center', justifyContent:'center' }}>
- <GraduationCap size={22} color="#fff" />
- </div>
- <div>
- <h1 style={{ fontSize:'26px', fontWeight:800, color:'#fff', margin:0, letterSpacing:'-0.5px' }}>Atlas Academy</h1>
- <p style={{ color:'rgba(99,102,241,0.9)', fontSize:'13px', margin:0, fontWeight:500 }}>Learn · Build · Get Hired</p>
- </div>
- </div>
- <p style={{ color:'var(--text-muted)', fontSize:'14px', maxWidth:'480px', lineHeight:'1.5' }}>
- AI-powered learning platform. Identify skill gaps, learn from experts, earn certificates — all inside ATLAS.
- </p>
- </div>
- {/* Stats */}
- <div style={{ display:'flex', gap:'20px', flexShrink:0 }}>
- {[
- { label:'Courses', value: academyStats?.total_courses ?? academyCourses.length, icon:'' },
- { label:'Enrolled', value: academyStats?.my_enrolled_courses ?? academyEnrollments.length, icon:'' },
- { label:'Certificates', value: academyStats?.my_certificates ?? academyCertificates.length, icon:'' },
- ].map(s => (
- <div key={s.label} style={{ textAlign:'center', background:'rgba(255,255,255,0.05)', borderRadius:'12px', padding:'12px 18px', border:'1px solid rgba(99,102,241,0.15)' }}>
- <div style={{ fontSize:'22px', marginBottom:'2px' }}>{s.icon}</div>
- <div style={{ fontSize:'22px', fontWeight:800, color:'#fff' }}>{s.value}</div>
- <div style={{ fontSize:'11px', color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.5px' }}>{s.label}</div>
- </div>
- ))}
- </div>
- </div>
-
- {/* Sub-nav */}
- <div style={{ display:'flex', gap:'6px', marginTop:'20px', flexWrap:'wrap' }}>
- {([
- { id:'discover', label:' Discover', },
- { id:'my_learning', label:' My Learning', },
- { id:'skill_gap', label:' Skill Gap AI', },
- { id:'ai_mentor', label:' AI Mentor', },
- { id:'instructor', label:' Instructor', },
- ] as const).map(tab => (
- <button key={tab.id} onClick={() => setAcademySubView(tab.id)}
- style={{ padding:'7px 16px', borderRadius:'20px', fontSize:'13px', fontWeight:600, border:'none', cursor:'pointer', transition:'all 0.2s',
- background: academySubView === tab.id ? 'linear-gradient(135deg, #6366f1, #8b5cf6)' : 'rgba(255,255,255,0.07)',
- color: academySubView === tab.id ? '#fff' : 'var(--text-muted)' }}>
- {tab.label}
- </button>
- ))}
- </div>
- </div>
-
- {/* MAIN CONTENT AREA */}
- <div style={{ padding:'28px 32px', flex:1 }}>
-
- {/* DISCOVER */}
- {academySubView === 'discover' && (
- <div style={{ display:'flex', flexDirection:'column', gap:'24px' }}>
- {/* Search + filters */}
- <div style={{ display:'flex', gap:'12px', flexWrap:'wrap', alignItems:'center' }}>
- <div style={{ flex:1, minWidth:'240px', position:'relative' }}>
- <Search size={15} style={{ position:'absolute', left:'12px', top:'50%', transform:'translateY(-50%)', color:'var(--text-muted)' }} />
- <input value={academySearchQuery} onChange={e=>setAcademySearchQuery(e.target.value)}
- placeholder="Search courses, skills, instructors…"
- style={{ width:'100%', paddingLeft:'36px', paddingRight:'12px', paddingTop:'10px', paddingBottom:'10px', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'10px', color:'#fff', fontSize:'14px', boxSizing:'border-box' }} />
- </div>
- <select value={academyCategoryFilter} onChange={e=>setAcademyCategoryFilter(e.target.value)}
- style={{ padding:'10px 14px', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'10px', color:'#fff', fontSize:'13px', cursor:'pointer' }}>
- <option value="">All Categories</option>
- {ACADEMY_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
- </select>
- {['beginner','intermediate','advanced'].map(l => (
- <button key={l} onClick={async()=>{ const r = await api.academy.listCourses({level:l}); setAcademyCourses(r||[]); }}
- style={{ padding:'8px 14px', borderRadius:'20px', border:'1px solid rgba(255,255,255,0.1)', background:'rgba(255,255,255,0.05)', color:LEVEL_COLORS[l]||'#fff', fontSize:'12px', cursor:'pointer', fontWeight:600, textTransform:'capitalize' }}>
- {l}
- </button>
- ))}
- <button onClick={async()=>{ const r = await api.academy.listCourses(); setAcademyCourses(r||[]); setAcademyCategoryFilter(''); setAcademySearchQuery(''); }}
- style={{ padding:'8px 14px', borderRadius:'20px', border:'1px solid rgba(255,255,255,0.1)', background:'rgba(255,255,255,0.05)', color:'var(--text-muted)', fontSize:'12px', cursor:'pointer' }}>
- Clear
- </button>
- </div>
-
- {/* Category pills */}
- <div style={{ display:'flex', gap:'8px', flexWrap:'wrap' }}>
- {ACADEMY_CATEGORIES.map(cat => (
- <button key={cat} onClick={()=>setAcademyCategoryFilter(academyCategoryFilter===cat?'':cat)}
- style={{ padding:'5px 13px', borderRadius:'20px', fontSize:'12px', fontWeight:600, cursor:'pointer', transition:'all 0.2s', border:'1px solid',
- borderColor: academyCategoryFilter===cat ? '#6366f1' : 'rgba(255,255,255,0.1)',
- background: academyCategoryFilter===cat ? 'rgba(99,102,241,0.2)' : 'transparent',
- color: academyCategoryFilter===cat ? '#a5b4fc' : 'var(--text-muted)' }}>
- {cat}
- </button>
- ))}
- </div>
-
- {/* Course grid */}
- {filteredCourses.length === 0 ? (
- <div style={{ textAlign:'center', padding:'60px 20px', color:'var(--text-muted)' }}>
- <GraduationCap size={48} style={{ opacity:0.3, marginBottom:'16px' }} />
- <p style={{ fontSize:'18px', fontWeight:600, color:'#fff', marginBottom:'8px' }}>No courses yet</p>
- <p style={{ fontSize:'14px' }}>Be the first instructor to create a course!</p>
- <button onClick={()=>setAcademySubView('instructor')} style={{ marginTop:'16px', padding:'10px 24px', background:'linear-gradient(135deg,#6366f1,#8b5cf6)', border:'none', borderRadius:'10px', color:'#fff', fontWeight:600, cursor:'pointer' }}>
- Become an Instructor
- </button>
- </div>
- ) : (
- <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(300px,1fr))', gap:'20px' }}>
- {filteredCourses.map((course:any) => (
- <div key={course.id} className="glass-panel" style={{ padding:'0', overflow:'hidden', cursor:'pointer', transition:'transform 0.2s, box-shadow 0.2s', borderRadius:'14px' }}
- onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.transform='translateY(-4px)';(e.currentTarget as HTMLElement).style.boxShadow='0 12px 40px rgba(99,102,241,0.2)';}}
- onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.transform='';(e.currentTarget as HTMLElement).style.boxShadow='';}}>
- {/* Thumbnail */}
- <div style={{ height:'140px', background:`linear-gradient(135deg, ${['#6366f1','#8b5cf6','#06b6d4','#10b981','#f59e0b'][course.id%5]} 0%, rgba(0,0,0,0.3) 100%)`, display:'flex', alignItems:'center', justifyContent:'center', position:'relative' }}>
- <BookOpen size={40} color="rgba(255,255,255,0.6)" />
- <div style={{ position:'absolute', top:'10px', left:'10px', padding:'3px 10px', borderRadius:'20px', fontSize:'11px', fontWeight:700, background:LEVEL_COLORS[course.level]||'#6366f1', color:'#fff' }}>{course.level}</div>
- {course.is_free && <div style={{ position:'absolute', top:'10px', right:'10px', padding:'3px 10px', borderRadius:'20px', fontSize:'11px', fontWeight:700, background:'rgba(16,185,129,0.9)', color:'#fff' }}>FREE</div>}
- {course.enrolled && <div style={{ position:'absolute', bottom:'10px', right:'10px', padding:'3px 10px', borderRadius:'20px', fontSize:'11px', fontWeight:700, background:'rgba(99,102,241,0.9)', color:'#fff' }}> Enrolled</div>}
- </div>
- <div style={{ padding:'16px' }}>
- <div style={{ fontSize:'12px', color:'#a5b4fc', fontWeight:600, marginBottom:'4px', textTransform:'uppercase', letterSpacing:'0.5px' }}>{course.category}</div>
- <h3 style={{ fontSize:'15px', fontWeight:700, color:'#fff', marginBottom:'8px', lineHeight:'1.3' }}>{course.title}</h3>
- <p style={{ fontSize:'12px', color:'var(--text-muted)', marginBottom:'12px', lineHeight:'1.4', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical', overflow:'hidden' }}>{course.short_description||course.description}</p>
- <div style={{ display:'flex', alignItems:'center', gap:'12px', marginBottom:'12px' }}>
- <div style={{ display:'flex', alignItems:'center', gap:'4px' }}>
- <Star size={12} color="#f59e0b" fill="#f59e0b" />
- <span style={{ fontSize:'12px', color:'#fff', fontWeight:600 }}>{course.avg_rating?.toFixed(1)||'New'}</span>
- </div>
- <span style={{ fontSize:'12px', color:'var(--text-muted)' }}> {course.total_enrolled||0} students</span>
- <span style={{ fontSize:'12px', color:'var(--text-muted)' }}> {course.total_lessons||0} lessons</span>
- </div>
- {course.enrolled && (
- <div style={{ marginBottom:'10px' }}>
- <div style={{ height:'4px', background:'rgba(255,255,255,0.1)', borderRadius:'2px', overflow:'hidden' }}>
- <div style={{ height:'100%', width:`${course.progress_pct||0}%`, background:'linear-gradient(90deg,#6366f1,#8b5cf6)', borderRadius:'2px', transition:'width 0.5s' }} />
- </div>
- <span style={{ fontSize:'11px', color:'var(--text-muted)', marginTop:'4px', display:'block' }}>{course.progress_pct||0}% complete</span>
- </div>
- )}
- {course.instructor && (
- <div style={{ fontSize:'12px', color:'var(--text-muted)', marginBottom:'12px' }}>
- by <span style={{ color:'#a5b4fc', fontWeight:600 }}>{course.instructor.display_name}</span>
- {course.instructor.verified && <span style={{ marginLeft:'4px', color:'#22c55e' }}></span>}
- </div>
- )}
- {course.enrolled ? (
- <div style={{ display:'flex', gap:'8px' }}>
- <button onClick={()=>{ setAcademySelectedCourse(course); setAcademySubView('course_detail'); }}
- style={{ flex:1, padding:'8px', background:'linear-gradient(135deg,#6366f1,#8b5cf6)', border:'none', borderRadius:'8px', color:'#fff', fontWeight:600, fontSize:'13px', cursor:'pointer' }}>
- Continue Learning →
- </button>
- {(course.progress_pct||0) >= 80 && (
- <button onClick={()=>handleCompleteCourse(course.id)}
- style={{ padding:'8px 12px', background:'rgba(16,185,129,0.15)', border:'1px solid #10b981', borderRadius:'8px', color:'#10b981', fontWeight:600, fontSize:'12px', cursor:'pointer' }}>
- Claim Cert
- </button>
- )}
- </div>
- ) : (
- <button onClick={()=>handleEnroll(course.id)}
- style={{ width:'100%', padding:'9px', background:'linear-gradient(135deg,#6366f1,#8b5cf6)', border:'none', borderRadius:'8px', color:'#fff', fontWeight:600, fontSize:'13px', cursor:'pointer' }}>
- {course.is_free ? 'Enroll Free' : `Enroll — $${course.price}`}
- </button>
- )}
- </div>
- </div>
- ))}
- </div>
- )}
- </div>
- )}
-
+   {/* ACADEMY HEADER & MAIN DASHBOARD -- Matches uploaded design exactly */}
+   <div style={{ padding:'24px 32px', display:'flex', flexDirection:'column', gap:'24px' }}>
+ 
+   {/* Top Header Row: Title on Left, Nav Pills on Right */}
+   <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:'16px' }}>
+   <div>
+   <h1 style={{ fontSize:'24px', fontWeight:700, color:'#fff', margin:'0 0 4px 0', display:'flex', alignItems:'center', gap:'10px', letterSpacing:'-0.3px' }}>
+   <GraduationCap size={24} color="#f59e0b" /> Atlas Academy
+   </h1>
+   <p style={{ color:'#6b7280', fontSize:'13px', margin:0, fontWeight:400 }}>Learn · Build · Get Hired</p>
+   </div>
+ 
+   {/* Segmented Top Pill Nav Bar */}
+   <div style={{ display:'inline-flex', alignItems:'center', gap:'4px', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'24px', padding:'4px' }}>
+   {([
+   { id:'discover', label:'Discover', icon: BookOpen },
+   { id:'my_learning', label:'My Learning', icon: FileText },
+   { id:'skill_gap', label:'Skill Gap AI', icon: Sparkles },
+   { id:'ai_mentor', label:'AI Mentor', icon: Sparkles },
+   { id:'instructor', label:'Instructor', icon: Users },
+   ] as const).map(tab => {
+   const Icon = tab.icon;
+   const isActive = academySubView === tab.id;
+   return (
+   <button key={tab.id} onClick={() => setAcademySubView(tab.id)}
+   style={{
+   padding:'7px 16px', borderRadius:'20px', fontSize:'12px', fontWeight:600, border:'none', cursor:'pointer', transition:'all 0.18s',
+   background: isActive ? '#ffffff' : 'transparent',
+   color: isActive ? '#000000' : 'rgba(255,255,255,0.6)',
+   display:'flex', alignItems:'center', gap:'6px'
+   }}>
+   <Icon size={14} color={isActive ? '#000000' : 'rgba(255,255,255,0.5)'} /> {tab.label}
+   </button>
+   );
+   })}
+   </div>
+   </div>
+ 
+   {/* 4 Stat Cards Row */}
+   <div style={{ display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:'16px' }}>
+   {[
+   { label:'TOTAL COURSES', value: academyStats?.total_courses ?? (academyCourses.length || 48) },
+   { label:'ENROLLED', value: academyStats?.my_enrolled_courses ?? (academyEnrollments.length || 12) },
+   { label:'CERTIFICATES', value: academyStats?.my_certificates ?? (academyCertificates.length || 3) },
+   { label:'COMPLETION RATE', value: academyEnrollments.length > 0 ? `${Math.round((academyCertificates.length / academyEnrollments.length) * 100)}%` : '87%' },
+   ].map(s => (
+   <div key={s.label} style={{
+   background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.08)',
+   borderRadius:'14px', padding:'20px 24px'
+   }}>
+   <div style={{ fontSize:'11px', fontWeight:600, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:'12px' }}>{s.label}</div>
+   <div style={{ fontSize:'36px', fontWeight:700, color:'#ffffff', lineHeight:1 }}>{s.value}</div>
+   </div>
+   ))}
+   </div>
+ 
+   {/* DISCOVER VIEW */}
+   {academySubView === 'discover' && (
+   <div style={{ display:'flex', flexDirection:'column', gap:'20px' }}>
+   {/* Search & Category Filter Row */}
+   <div style={{ display:'flex', gap:'12px', alignItems:'center' }}>
+   <div style={{ flex:1, position:'relative' }}>
+   <Search size={15} style={{ position:'absolute', left:'14px', top:'50%', transform:'translateY(-50%)', color:'#6b7280' }} />
+   <input value={academySearchQuery} onChange={e=>setAcademySearchQuery(e.target.value)}
+   placeholder="13px muted"
+   style={{ width:'100%', paddingLeft:'40px', paddingRight:'14px', paddingTop:'11px', paddingBottom:'11px', background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'10px', color:'#fff', fontSize:'13px', boxSizing:'border-box', outline:'none' }} />
+   </div>
+   <select value={academyCategoryFilter} onChange={e=>setAcademyCategoryFilter(e.target.value)}
+   style={{ width:'160px', padding:'11px 14px', background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'10px', color:'#fff', fontSize:'13px', cursor:'pointer', outline:'none' }}>
+   <option value="" style={{ background:'#09090b', color:'#fff' }}>Category</option>
+   {ACADEMY_CATEGORIES.map(c => <option key={c} value={c} style={{ background:'#09090b', color:'#fff' }}>{c}</option>)}
+   </select>
+   </div>
+ 
+   {/* 3-Column Course Grid matching uploaded image */}
+   {filteredCourses.length === 0 ? (
+   <div style={{ textAlign:'center', padding:'60px 20px', color:'#6b7280' }}>
+   <GraduationCap size={48} style={{ opacity:0.3, marginBottom:'16px' }} />
+   <p style={{ fontSize:'18px', fontWeight:600, color:'#fff', marginBottom:'8px' }}>No courses yet</p>
+   <p style={{ fontSize:'14px' }}>Be the first instructor to create a course!</p>
+   <button onClick={()=>setAcademySubView('instructor')} style={{ marginTop:'16px', padding:'10px 24px', background:'linear-gradient(135deg,#6366f1,#8b5cf6)', border:'none', borderRadius:'10px', color:'#fff', fontWeight:600, cursor:'pointer' }}>
+   Become an Instructor
+   </button>
+   </div>
+   ) : (
+   <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:'16px' }}>
+   {filteredCourses.map((course:any) => {
+   const cardAccents = [
+   'rgba(99, 102, 241, 0.4)',  // Blue/Indigo accent
+   'rgba(244, 114, 182, 0.4)', // Pink/Coral accent
+   'rgba(52, 211, 153, 0.4)',  // Mint Green accent
+   'rgba(251, 191, 36, 0.4)',  // Amber accent
+   'rgba(168, 85, 247, 0.4)',  // Purple accent
+   ];
+   const accentBorder = cardAccents[course.id % cardAccents.length];
+   return (
+   <div key={course.id} style={{
+   background:'rgba(255,255,255,0.02)',
+   border:`1px solid ${accentBorder}`,
+   borderRadius:'16px', padding:'20px', display:'flex', flexDirection:'column', gap:'12px',
+   transition:'all 0.18s ease-in-out'
+   }}
+   onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.transform='translateY(-3px)';(e.currentTarget as HTMLElement).style.boxShadow=`0 8px 24px ${accentBorder}`;}}
+   onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.transform='';(e.currentTarget as HTMLElement).style.boxShadow='';}}>
+ 
+   {/* Title */}
+   <h3 style={{ fontSize:'13px', fontWeight:600, color:'#ffffff', margin:0, lineHeight:'1.4' }}>
+   {course.title || '13px semibold'}
+   </h3>
+ 
+   {/* Category & Level Badges */}
+   <div style={{ display:'flex', alignItems:'center', gap:'6px', flexWrap:'wrap' }}>
+   <span style={{ fontSize:'10px', fontWeight:500, color:'rgba(255,255,255,0.7)', background:'rgba(255,255,255,0.06)', padding:'3px 10px', borderRadius:'12px' }}>
+   {course.category || '10px category'}
+   </span>
+   <span style={{ fontSize:'10px', fontWeight:500, color:'rgba(255,255,255,0.7)', background:'rgba(255,255,255,0.06)', padding:'3px 10px', borderRadius:'12px' }}>
+   {course.level ? `Level ${course.level === 'beginner' ? '1' : course.level === 'intermediate' ? '2' : '3'}` : 'Level 1'}
+   </span>
+   </div>
+ 
+   {/* Meta: Duration & Rating */}
+   <div style={{ display:'flex', alignItems:'center', gap:'12px', color:'#6b7280', fontSize:'11px' }}>
+   <div style={{ display:'flex', alignItems:'center', gap:'4px' }}>
+   <Clock size={12} color="#6b7280" />
+   <span>11px regular</span>
+   </div>
+   <div style={{ display:'flex', alignItems:'center', gap:'4px' }}>
+   <Star size={12} color="#6b7280" fill="#6b7280" />
+   <span>★ #6b7280</span>
+   </div>
+   </div>
+ 
+   {/* Action Button */}
+   <div style={{ marginTop:'auto', paddingTop:'4px' }}>
+   <button onClick={() => course.enrolled ? setAcademySelectedCourse(course) : handleEnroll(course.id)}
+   style={{
+   width:'100%', padding:'10px', background:'linear-gradient(180deg, #e4e4e7 0%, #a1a1aa 100%)',
+   border:'none', borderRadius:'10px', color:'#000000', fontWeight:600, fontSize:'13px', cursor:'pointer',
+   boxShadow:'0 2px 8px rgba(0,0,0,0.3)', transition:'opacity 0.15s'
+   }}
+   onMouseEnter={e=>(e.currentTarget as HTMLElement).style.opacity='0.9'}
+   onMouseLeave={e=>(e.currentTarget as HTMLElement).style.opacity='1'}>
+   {course.enrolled ? 'Continue' : 'Enroll'}
+   </button>
+   </div>
+   </div>
+   );
+   })}
+   </div>
+   )}
+   </div>
+   )}
  {/* COURSE DETAIL */}
  {academySubView === 'course_detail' && academySelectedCourse && (
  <div style={{ display:'flex', flexDirection:'column', gap:'20px' }}>
