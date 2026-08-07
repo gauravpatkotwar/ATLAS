@@ -3458,11 +3458,12 @@ export default function App() {
  style={{ 
  position: 'fixed', 
  left: '20px', 
- top: '20px', 
+ top: '50%', 
+ transform: 'translateY(-50%)', 
  display: 'flex', 
  flexDirection: 'column', 
- gap: '10px', 
- padding: '16px 12px', 
+ gap: '20px', 
+ padding: '24px 12px', 
  zIndex: 1000, 
  borderRadius: '32px', 
  background: 'rgba(10, 10, 12, 0.45)', 
@@ -3480,8 +3481,6 @@ export default function App() {
  >
  <AtlasNovaLogo size={24} />
  </button>
- {/* Divider below Nova */}
- <div style={{ width: '28px', height: '1px', background: 'var(--border-glass)', alignSelf: 'center', marginBottom: '4px' }} />
 
  <button 
  onClick={() => setShowMeetChoiceModal(true)}
