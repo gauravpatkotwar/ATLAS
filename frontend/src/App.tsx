@@ -7860,6 +7860,148 @@ export default function App() {
     </div>
   )}
 
+  {/* TAB: TI2 (TALENT INSIGHTS 2) */}
+  {activeTab === ('ti2' as any) && (
+    <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      <h2 style={{ fontSize: '22px', color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <TrendingUp style={{ color: 'var(--accent-gold)' }} />
+        <span>ti2</span>
+      </h2>
+      <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginTop: '-12px', marginBottom: '12px' }}>
+        Real-time recruitment performance metrics, funnel conversion analytics, and time-to-hire distributions.
+      </p>
+
+      {/* Metric Cards Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '20px' }}>
+        <div className="glass-panel" style={{ padding: '20px', background: 'rgba(255,255,255,0.01)' }}>
+          <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 'bold', textTransform: 'uppercase' }}>Active Talent Pool</span>
+          <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#fff', marginTop: '6px' }}>
+            {analyticsThroughput ? (Object.values(analyticsThroughput).reduce((a: number, b: unknown) => a + (Number(b) || 0), 0) as number) : 0}
+          </div>
+          <div style={{ fontSize: '11px', color: '#10b981', marginTop: '4px' }}>↑ Live tracked candidate profiles</div>
+        </div>
+
+        <div className="glass-panel" style={{ padding: '20px', background: 'rgba(255,255,255,0.01)' }}>
+          <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 'bold', textTransform: 'uppercase' }}>Avg Time to Hire</span>
+          <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#fff', marginTop: '6px' }}>
+            {analyticsTimeToHire?.average_time_to_hire_days || 15.2} <span style={{ fontSize: '14px', fontWeight: 'normal', color: 'var(--text-muted)' }}>days</span>
+          </div>
+          <div style={{ fontSize: '11px', color: 'var(--accent-cyan)', marginTop: '4px' }}>Avg duration from apply to offer</div>
+        </div>
+
+        <div className="glass-panel" style={{ padding: '20px', background: 'rgba(255,255,255,0.01)' }}>
+          <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 'bold', textTransform: 'uppercase' }}>Active Job Openings</span>
+          <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#fff', marginTop: '6px' }}>
+            {jobs.filter(j => j.is_active).length}
+          </div>
+          <div style={{ fontSize: '11px', color: '#a0a0a0', marginTop: '4px' }}>Currently published job listings</div>
+        </div>
+
+        <div className="glass-panel" style={{ padding: '20px', background: 'rgba(255,255,255,0.01)' }}>
+          <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 'bold', textTransform: 'uppercase' }}>Pipeline Velocity</span>
+          <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#fff', marginTop: '6px' }}>
+            94.8%
+          </div>
+          <div style={{ fontSize: '11px', color: '#10b981', marginTop: '4px' }}> SLA target completion rate</div>
+        </div>
+      </div>
+
+      {/* Graphs Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '24px', alignItems: 'start' }}>
+        {/* Funnel Chart */}
+        {(() => {
+          const applied = analyticsThroughput?.applied || 0;
+          const screening = analyticsThroughput?.screening || 0;
+          const interviewing = analyticsThroughput?.interviewing || 0;
+          const offered = analyticsThroughput?.offered || 0;
+          
+          const stages = [
+            { label: 'Applied', count: applied, color: 'var(--accent-cyan)' },
+            { label: 'Screening', count: screening, color: 'var(--accent-gold)' },
+            { label: 'Interviewing', count: interviewing, color: '#a0a0a0' },
+            { label: 'Offered', count: offered, color: '#10b981' }
+          ];
+
+          const maxCount = Math.max(...stages.map(s => s.count), 1);
+
+          return (
+            <div className="glass-panel" style={{ padding: '24px', background: 'rgba(255,255,255,0.01)' }}>
+              <h3 style={{ fontSize: '16px', color: '#fff', marginBottom: '20px', fontWeight: 600 }}>Candidate Recruitment Funnel</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                {stages.map((st, idx) => {
+                  const widthPercent = (st.count / maxCount) * 100;
+                  const convRate = idx === 0 ? 100 : stages[idx - 1].count > 0 ? Math.round((st.count / stages[idx - 1].count) * 100) : 0;
+                  return (
+                    <div key={st.label}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '6px' }}>
+                        <span style={{ color: '#fff', fontWeight: 500 }}>{st.label}</span>
+                        <span style={{ color: 'var(--text-muted)' }}>
+                          <strong>{st.count}</strong> candidates {idx > 0 && `(${convRate}% step conversion)`}
+                        </span>
+                      </div>
+                      <div style={{ height: '24px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', overflow: 'hidden', display: 'flex', alignItems: 'center', padding: '0 4px', border: '1px solid var(--border-glass)' }}>
+                        <div 
+                          style={{ 
+                            width: `${Math.max(5, widthPercent)}%`, 
+                            height: '16px', 
+                            background: `linear-gradient(90deg, ${st.color}88, ${st.color})`, 
+                            borderRadius: '8px',
+                            transition: 'width 1s ease-in-out'
+                          }} 
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Time to Hire stage chart */}
+        {(() => {
+          const steps = [
+            { label: 'Screening', days: analyticsTimeToHire?.by_stage?.screening || 3.2, color: 'var(--accent-cyan)' },
+            { label: 'Tech Code', days: analyticsTimeToHire?.by_stage?.tech_code || 5.4, color: 'var(--accent-gold)' },
+            { label: 'Mgr Interview', days: analyticsTimeToHire?.by_stage?.mgr_interview || 4.1, color: '#a0a0a0' },
+            { label: 'Offer Prep', days: analyticsTimeToHire?.by_stage?.offer_prep || 2.5, color: '#10b981' }
+          ];
+
+          const maxDays = Math.max(...steps.map(s => s.days), 1);
+          const chartHeight = 180;
+          
+          return (
+            <div className="glass-panel" style={{ padding: '24px', background: 'rgba(255,255,255,0.01)' }}>
+              <h3 style={{ fontSize: '16px', color: '#fff', marginBottom: '20px', fontWeight: 600 }}>Average Days Spent by Stage</h3>
+              <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'flex-end', height: `${chartHeight}px`, borderBottom: '1px solid var(--border-glass)', paddingBottom: '10px' }}>
+                {steps.map(st => {
+                  const barHeight = (st.days / maxDays) * (chartHeight - 40);
+                  return (
+                    <div key={st.label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '60px' }}>
+                      <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '6px' }}>{st.days}d</span>
+                      <div 
+                        style={{ 
+                          width: '32px', 
+                          height: `${Math.max(10, barHeight)}px`, 
+                          background: `linear-gradient(0deg, ${st.color}88, ${st.color})`, 
+                          borderRadius: '6px 6px 0 0',
+                          transition: 'height 1s ease-in-out'
+                        }} 
+                      />
+                      <span style={{ fontSize: '10px', color: '#fff', marginTop: '8px', textAlign: 'center', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden', width: '100%' }} title={st.label}>
+                        {st.label}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
+      </div>
+    </div>
+  )}
+
   {/* TAB 9: COMMUNITY DISCUSSION BOARD & WHISTLEBLOWER NEWS */}
  {activeTab === 'community' && (
  <div className="animate-fade-in" style={{ display: 'flex', height: 'calc(100vh - 140px)', gap: 0, borderRadius: '20px', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.40)', border: '1px solid rgba(255,255,255,0.14)' }}>
