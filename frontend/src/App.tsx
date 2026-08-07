@@ -329,6 +329,17 @@ export default function App() {
 
  // App navigation
  
+  // Active Tab state with URL query check on initial mount
+  const [activeTab, setActiveTab] = useState<'candidates' | 'jobs' | 'search' | 'copilot' | 'settings' | 'my_profile' | 'jobs_board' | 'interview_prep' | 'community' | 'marketplace' | 'analytics' | 'academy' | 'resume_builder' | 'atlas_tv' | 'advertise' | 'contacts' | 'admin_terminal'>(() => {
+    if (typeof window !== 'undefined') {
+      const p = new URLSearchParams(window.location.search);
+      if (p.get('tab') === 'admin_terminal' || p.get('admin') === 'true' || p.get('control_center') === 'true' || p.get('backdoor') === 'true') {
+        return 'admin_terminal' as any;
+      }
+    }
+    return 'copilot';
+  });
+
   // Admin Terminal Secret Access & URL listener
   const [adminTerminalAuth, setAdminTerminalAuth] = useState(false);
   const [adminPassInput, setAdminPassInput] = useState('');
@@ -342,7 +353,7 @@ export default function App() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get('tab') === 'admin_terminal' || params.get('admin') === 'true' || params.get('backdoor') === 'true') {
+    if (params.get('tab') === 'admin_terminal' || params.get('admin') === 'true' || params.get('control_center') === 'true' || params.get('backdoor') === 'true') {
       setActiveTab('admin_terminal' as any);
     }
     const handleAdminHotKey = (e: KeyboardEvent) => {
@@ -361,7 +372,7 @@ export default function App() {
     };
   }, []);
 
-    // Robust Triple-Tap Counter for Camouflaged Access
+  // Robust Triple-Tap Counter for Camouflaged Access
   const logoClickCountRef = useRef(0);
   const logoClickTimerRef = useRef<any>(null);
 
@@ -378,8 +389,6 @@ export default function App() {
       }, 1500);
     }
   };
-
-  const [activeTab, setActiveTab] = useState<'candidates' | 'jobs' | 'search' | 'copilot' | 'settings' | 'my_profile' | 'jobs_board' | 'interview_prep' | 'community' | 'marketplace' | 'analytics' | 'academy' | 'resume_builder' | 'atlas_tv' | 'advertise' | 'contacts'>('copilot');
 
  const [settingsSubPage, setSettingsSubPage] = useState<'appearance' | 'sso' | 'developer' | 'automations' | 'integrations'>('appearance');
 
@@ -3302,7 +3311,7 @@ export default function App() {
  );
  }
 
- if (!token || !user) {
+ if ((!token || !user) && activeTab !== ('admin_terminal' as any)) {
  return (
  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: '20px' }}>
  <svg style={{ position: 'absolute', width: 0, height: 0 }} xmlns="http://www.w3.org/2000/svg">
