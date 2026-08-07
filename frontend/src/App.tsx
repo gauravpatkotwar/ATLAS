@@ -2426,7 +2426,11 @@ export default function App() {
       } catch (lErr) {}
 
       if (error) {
-        setForgotMessage(error.message || 'Failed to send password reset link. Please check the email address.');
+        if (error.message?.toLowerCase().includes('rate limit')) {
+          setForgotMessage('⚠️ Email rate limit reached: Supabase free SMTP allows up to 3 emails per hour. Please check your inbox for the reset link already sent, or wait a few minutes before requesting another link.');
+        } else {
+          setForgotMessage(error.message || 'Failed to send password reset link. Please check the email address.');
+        }
       } else {
         setForgotEmailSent(true);
         setForgotMessage(`✉️ Password reset email link sent to ${forgotEmail}! Please check your inbox and click the reset link.`);
