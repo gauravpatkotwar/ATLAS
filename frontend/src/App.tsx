@@ -3570,21 +3570,12 @@ export default function App() {
  </button>
 
  <button 
- onClick={() => setActiveTab('ti2' as any)}
- className={activeTab === ('ti2' as any) ? 'btn-primary' : 'btn-secondary'} 
- style={{ width: '40px', height: '40px', borderRadius: '50%', padding: 0, justifyContent: 'center', background: activeTab === ('ti2' as any) ? 'linear-gradient(135deg, #e4e4e7, #a1a1aa)' : undefined, color: activeTab === ('ti2' as any) ? '#000' : undefined }}
+ onClick={() => setActiveTab('academy')}
+ className={(activeTab === 'academy' || activeTab === ('ti2' as any)) ? 'btn-primary' : 'btn-secondary'} 
+ style={{ width: '40px', height: '40px', borderRadius: '50%', padding: 0, justifyContent: 'center', background: (activeTab === 'academy' || activeTab === ('ti2' as any)) ? 'linear-gradient(135deg, #e4e4e7, #a1a1aa)' : undefined, color: (activeTab === 'academy' || activeTab === ('ti2' as any)) ? '#000' : undefined }}
  title="Atlas Academy"
  >
  <GraduationCap size={18} style={{ color: 'var(--accent-gold)' }} />
- </button>
-
- <button 
- onClick={() => setActiveTab('academy')}
- className={activeTab === 'academy' ? 'btn-primary' : 'btn-secondary'} 
- style={{ width: '40px', height: '40px', borderRadius: '50%', padding: 0, justifyContent: 'center', background: activeTab === 'academy' ? 'linear-gradient(135deg, #e4e4e7, #a1a1aa)' : undefined, color: activeTab === 'academy' ? '#000' : undefined }}
- title="Atlas Academy"
- >
- <GraduationCap size={18} />
  </button>
 
  <button 
@@ -7974,7 +7965,7 @@ Candidate Match Breakdown:
   )}
 
     {/* TAB: TI2 (ATLAS ACADEMY & CERTIFICATIONS) */}
-  {activeTab === ('ti2' as any) && (() => {
+  {(activeTab === 'academy' || activeTab === ('ti2' as any)) && (() => {
     const [academyTab, setAcademyTab] = useState<'paths' | 'courses' | 'certificates' | 'sandbox' | 'playbooks' | 'leaderboard'>('paths');
     const [sandboxQuery, setSandboxQuery] = useState('Rank top candidate profiles for Senior Full-Stack AI Engineer with 5+ years FastAPI experience');
     const [sandboxOutput, setSandboxOutput] = useState<string | null>(null);
