@@ -6532,7 +6532,7 @@ export default function App() {
   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(0,255,102,0.2)', paddingBottom: '12px' }}>
   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
   <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#00ff66', boxShadow: '0 0 10px #00ff66', animation: 'pulse 1.5s infinite' }} />
-  <span style={{ fontSize: '20px', fontWeight: 800, color: '#fff', letterSpacing: '-0.3px' }}>Atlas Command Center</span>
+  <span style={{ fontSize: '20px', fontWeight: 800, color: '#fff', letterSpacing: '-0.3px' }}>Atlas Command Control Center</span>
   <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', background: 'rgba(0,255,102,0.1)', padding: '3px 10px', borderRadius: '12px', border: '1px solid rgba(0,255,102,0.2)' }}>MISSION CONTROL</span>
   </div>
   <div style={{ display: 'flex', gap: '10px' }}>
@@ -6550,7 +6550,7 @@ export default function App() {
   <Shield size={24} color="#00ff66" />
   </div>
   <h3 style={{ fontSize: '18px', fontWeight: 700, color: '#fff', margin: '0 0 8px 0' }}>Superadmin Passcode</h3>
-  <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', margin: '0 0 20px 0' }}>Authenticate with Admin Passphrase or Creator Key to access Atlas Command Center.</p>
+  <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', margin: '0 0 20px 0' }}>Authenticate with Admin Passphrase or Creator Key to access Atlas Command Control Center.</p>
   <input
   type="password"
   placeholder="Enter Creator Key / Passcode"

@@ -46,7 +46,7 @@ async def require_superadmin(current_user: User = Depends(get_current_user)) -> 
     if user_role not in ["superadmin", "creator", "admin"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access Denied: Atlas Command Center requires Superadmin privileges."
+            detail="Access Denied: Atlas Command Control Center requires Superadmin privileges."
         )
     return current_user
 
@@ -337,7 +337,7 @@ async def execute_command(
         # 24. HELP
         elif domain == "help":
             output_data = {
-                "Atlas Command Center": "All 24 Operational Domains Active",
+                "Atlas Command Control Center": "All 24 Operational Domains Active",
                 "Domains": [
                     "system", "company", "user", "ai", "brain", "candidate", "job", "billing",
                     "storage", "queue", "db", "monitoring", "security", "feature", "deploy",
