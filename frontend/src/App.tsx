@@ -3564,7 +3564,7 @@ export default function App() {
  onClick={() => setActiveTab('analytics')}
  className={activeTab === 'analytics' ? 'btn-primary' : 'btn-secondary'} 
  style={{ width: '40px', height: '40px', borderRadius: '50%', padding: 0, justifyContent: 'center', background: activeTab === 'analytics' ? 'linear-gradient(135deg, #e4e4e7, #a1a1aa)' : undefined, color: activeTab === 'analytics' ? '#000' : undefined }}
- title="BI Analytics"
+ title="Talent Insights"
  >
  <TrendingUp size={18} />
  </button>
@@ -3753,7 +3753,7 @@ export default function App() {
  className={activeTab === 'analytics' ? 'btn-primary lining-settings' : 'btn-secondary lining-settings'} 
  style={{ padding: '10px 16px', fontSize: '14px', borderRadius: '30px' }}
  >
- <GraduationCap size={16} style={{ color: "var(--accent-gold)" }} /> Atlas Academy
+ <TrendingUp size={16} /> Talent Insights
  </button>
  <button 
  onClick={() => setActiveTab('settings')}
@@ -7723,7 +7723,7 @@ export default function App() {
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       <h2 style={{ fontSize: '22px', color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
         <TrendingUp style={{ color: 'var(--accent-cyan)' }} />
-        <span>Workspace BI Analytics</span>
+        <span>Talent Insights</span>
       </h2>
       <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginTop: '-12px', marginBottom: '12px' }}>
         Real-time recruitment performance metrics, funnel conversion analytics, and time-to-hire distributions.
