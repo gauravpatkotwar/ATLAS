@@ -4,30 +4,63 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Atlas Control Center</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700&family=Share+Tech+Mono&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      background-color: #000000;
-      color: #e5e7eb;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
-      padding: 20px;
+      background-color: #08080a;
+      color: #e2e8f0;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      padding: 24px 28px;
       min-height: 100vh;
       display: flex;
       flex-direction: column;
     }
+
+    /* Header & Branding with Outfit Modern Tech Font */
     header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding-bottom: 14px;
-      border-bottom: 1px solid #222;
-      margin-bottom: 16px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid rgba(203, 213, 225, 0.15);
+      margin-bottom: 20px;
     }
-    h1 { font-size: 18px; font-weight: 600; color: #fff; }
-    .nav-links a { color: #888; text-decoration: none; font-size: 13px; margin-left: 14px; }
-    .nav-links a:hover { color: #fff; }
+    .header-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 22px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 50%, #94a3b8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: -0.5px;
+    }
+    .header-tag {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 11px;
+      font-weight: 400;
+      color: #94a3b8;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(203, 213, 225, 0.2);
+      padding: 4px 10px;
+      border-radius: 20px;
+      margin-left: 12px;
+      letter-spacing: 0.5px;
+    }
+    .nav-actions a {
+      font-family: 'Inter', sans-serif;
+      color: #cbd5e1;
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 500;
+      margin-left: 16px;
+      transition: color 0.2s;
+    }
+    .nav-actions a:hover { color: #ffffff; }
 
-    /* Auth Form */
+    /* Auth Screen - Matte Black & Silver Gradient */
     .auth-container {
       flex: 1;
       display: flex;
@@ -35,175 +68,283 @@
       justify-content: center;
     }
     .auth-card {
-      background: #111;
-      border: 1px solid #333;
-      border-radius: 8px;
-      padding: 28px;
+      background: #111116;
+      border: 1px solid transparent;
+      border-image: linear-gradient(135deg, #ffffff 0%, #64748b 100%) 1;
+      border-radius: 12px;
+      padding: 38px 34px;
       width: 100%;
-      max-width: 360px;
+      max-width: 380px;
       text-align: center;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);
     }
-    .auth-card h2 { font-size: 16px; color: #fff; margin-bottom: 12px; }
+    .auth-card h2 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 20px;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 8px;
+    }
+    .auth-card p {
+      font-size: 12px;
+      color: #94a3b8;
+      margin-bottom: 20px;
+    }
     .auth-input {
       width: 100%;
-      padding: 10px;
-      background: #000;
-      border: 1px solid #444;
-      border-radius: 6px;
-      color: #00ff66;
-      font-family: monospace;
-      font-size: 13px;
-      margin-bottom: 14px;
+      padding: 12px 14px;
+      background: #050507;
+      border: 1px solid rgba(203, 213, 225, 0.25);
+      border-radius: 8px;
+      color: #ffffff;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 14px;
+      margin-bottom: 16px;
       outline: none;
+      transition: border 0.2s;
+      letter-spacing: 1px;
+    }
+    .auth-input:focus {
+      border-color: #cbd5e1;
     }
     .auth-btn {
       width: 100%;
-      padding: 10px;
-      background: #00ff66;
+      padding: 12px;
+      background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 50%, #94a3b8 100%);
       border: none;
-      border-radius: 6px;
-      color: #000;
-      font-weight: 600;
-      font-size: 13px;
+      border-radius: 8px;
+      color: #0f172a;
+      font-family: 'Outfit', sans-serif;
+      font-weight: 700;
+      font-size: 14px;
       cursor: pointer;
+      box-shadow: 0 4px 14px rgba(255, 255, 255, 0.15);
+      transition: opacity 0.2s;
+      letter-spacing: 0.5px;
     }
+    .auth-btn:hover { opacity: 0.9; }
 
-    /* Main Console Grid */
-    .stats-bar {
-      display: flex;
-      gap: 12px;
-      flex-wrap: wrap;
-      margin-bottom: 16px;
-      background: #111;
-      padding: 10px 14px;
-      border-radius: 6px;
-      border: 1px solid #222;
-      font-size: 12px;
-    }
-    .stat-item { display: flex; gap: 6px; }
-    .stat-lbl { color: #666; }
-    .stat-val { color: #00ff66; font-weight: 600; }
-
-    .console-body {
+    /* Main Console View */
+    .stats-banner {
       display: grid;
-      grid-template-columns: 240px 1fr;
-      gap: 16px;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .stat-box {
+      background: #111116;
+      border: 1px solid rgba(203, 213, 225, 0.12);
+      border-radius: 10px;
+      padding: 14px 16px;
+      position: relative;
+      overflow: hidden;
+    }
+    .stat-box::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, #ffffff, #64748b);
+    }
+    .stat-label {
+      font-family: 'Outfit', sans-serif;
+      font-size: 11px;
+      font-weight: 600;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+    .stat-value {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 20px;
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    .console-workspace {
+      display: grid;
+      grid-template-columns: 270px 1fr;
+      gap: 18px;
       flex: 1;
     }
 
-    .modules-sidebar {
-      background: #111;
-      border: 1px solid #222;
-      border-radius: 6px;
-      padding: 12px;
+    /* Modules Sidebar */
+    .sidebar-tree {
+      background: #111116;
+      border: 1px solid rgba(203, 213, 225, 0.12);
+      border-radius: 10px;
+      padding: 16px;
       overflow-y: auto;
-      max-height: 600px;
-      font-size: 12px;
+      max-height: 620px;
     }
-    .module-group { margin-bottom: 10px; }
-    .module-name { color: #aaa; font-weight: 600; margin-bottom: 4px; }
-    .cmd-btn {
-      background: #222;
-      border: 1px solid #333;
-      color: #00ff66;
-      padding: 3px 8px;
-      border-radius: 4px;
+    .module-card {
+      margin-bottom: 14px;
+    }
+    .module-header {
+      font-family: 'Outfit', sans-serif;
+      font-size: 12px;
+      font-weight: 700;
+      color: #e2e8f0;
+      margin-bottom: 6px;
+      letter-spacing: -0.2px;
+    }
+    .cmd-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+    .silver-btn {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(203, 213, 225, 0.18);
+      color: #cbd5e1;
+      padding: 4px 9px;
+      border-radius: 5px;
       font-size: 11px;
       cursor: pointer;
-      margin: 2px 2px 2px 0;
-      font-family: monospace;
+      font-family: 'Share Tech Mono', monospace;
+      transition: all 0.2s;
     }
-    .cmd-btn:hover { background: #333; color: #fff; }
+    .silver-btn:hover {
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(148, 163, 184, 0.15) 100%);
+      color: #ffffff;
+      border-color: rgba(255, 255, 255, 0.4);
+    }
 
-    .terminal-panel {
+    /* Terminal Output & Command Input */
+    .terminal-container {
       display: flex;
       flex-direction: column;
+      gap: 12px;
+    }
+    .terminal-screen {
+      flex: 1;
+      background: #050507;
+      border: 1px solid rgba(203, 213, 225, 0.18);
+      border-radius: 10px;
+      padding: 18px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 13px;
+      overflow-y: auto;
+      max-height: 540px;
+      min-height: 440px;
+      box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.9);
+      line-height: 1.5;
+    }
+    .cmd-history-entry {
+      margin-bottom: 12px;
+    }
+    .prompt-text {
+      color: #ffffff;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .response-block {
+      color: #cbd5e1;
+      background: rgba(255, 255, 255, 0.02);
+      border-left: 2px solid #94a3b8;
+      padding: 8px 12px;
+      border-radius: 0 6px 6px 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .cli-bar {
+      display: flex;
       gap: 10px;
     }
-    .terminal-out {
+    .cli-field {
       flex: 1;
-      background: #050505;
-      border: 1px solid #222;
-      border-radius: 6px;
-      padding: 14px;
-      font-family: monospace;
-      font-size: 12px;
-      overflow-y: auto;
-      max-height: 520px;
-      min-height: 420px;
-    }
-    .cmd-line { color: #00ff66; margin-top: 8px; font-weight: bold; }
-    .cmd-res { color: #ddd; white-space: pre-wrap; margin-left: 8px; margin-bottom: 8px; }
-
-    .cmd-form { display: flex; gap: 8px; }
-    .cli-input {
-      flex: 1;
-      background: #111;
-      border: 1px solid #333;
-      border-radius: 6px;
-      padding: 9px 12px;
-      color: #00ff66;
-      font-family: monospace;
-      font-size: 12px;
+      background: #111116;
+      border: 1px solid rgba(203, 213, 225, 0.25);
+      border-radius: 8px;
+      padding: 11px 14px;
+      color: #ffffff;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 13px;
       outline: none;
     }
-    .exec-btn {
-      background: #00ff66;
+    .cli-field:focus { border-color: #cbd5e1; }
+    .send-btn {
+      padding: 0 22px;
+      background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 50%, #94a3b8 100%);
       border: none;
-      color: #000;
-      padding: 0 16px;
-      border-radius: 6px;
-      font-weight: 600;
-      font-size: 12px;
+      border-radius: 8px;
+      color: #0f172a;
+      font-family: 'Outfit', sans-serif;
+      font-weight: 700;
+      font-size: 13px;
       cursor: pointer;
+      transition: opacity 0.2s;
+      letter-spacing: 0.5px;
     }
+    .send-btn:hover { opacity: 0.9; }
   </style>
 </head>
 <body>
 
+  <!-- Header -->
   <header>
-    <h1>Atlas Control Center</h1>
-    <div class="nav-links">
-      <a href="#" onclick="clearLogs(); return false;">Clear Output</a>
-      <a href="/">Back to SaaS</a>
+    <div style="display: flex; align-items: center;">
+      <span class="header-title">Atlas Control Center</span>
+      <span class="header-tag">MATTE SILVER OPERATIONAL CONSOLE</span>
+    </div>
+    <div class="nav-actions">
+      <a href="#" onclick="clearTerminal(); return false;">Clear Output</a>
+      <a href="/">Exit to ATLAS</a>
     </div>
   </header>
 
-  <!-- Passcode Auth -->
+  <!-- Creator Passcode Lock -->
   <div id="auth-view" class="auth-container">
     <div class="auth-card">
       <h2>Creator Authentication</h2>
-      <input type="password" id="key-input" class="auth-input" placeholder="Enter Creator Key" />
-      <button onclick="login()" class="auth-btn">Unlock Console</button>
+      <p>Enter your Creator Passcode to access system management.</p>
+      <input type="password" id="key-input" class="auth-input" placeholder="Passcode (G42672840$p)" />
+      <button onclick="login()" class="auth-btn">Unlock Mission Control</button>
     </div>
   </div>
 
   <!-- Main Console -->
   <div id="main-view" style="display: none; flex-direction: column; flex: 1;">
-    <!-- Stats Strip -->
-    <div class="stats-bar">
-      <div class="stat-item"><span class="stat-lbl">Users:</span><span class="stat-val" id="s-users">1,280</span></div>
-      <div class="stat-item"><span class="stat-lbl">Companies:</span><span class="stat-val" id="s-companies">14</span></div>
-      <div class="stat-item"><span class="stat-lbl">AI Reqs:</span><span class="stat-val">18/s</span></div>
-      <div class="stat-item"><span class="stat-lbl">Latency:</span><span class="stat-val">34ms</span></div>
-      <div class="stat-item"><span class="stat-lbl">Health:</span><span class="stat-val">100% OK</span></div>
+    <!-- Stats Banner -->
+    <div class="stats-banner">
+      <div class="stat-box">
+        <div class="stat-label">Total Users</div>
+        <div class="stat-value" id="s-users">1,280</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">Active Companies</div>
+        <div class="stat-value" id="s-companies">14</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">AI Latency</div>
+        <div class="stat-value">34ms</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">Queue Depth</div>
+        <div class="stat-value">3</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">System Health</div>
+        <div class="stat-value" style="color: #4ade80;">100% OK</div>
+      </div>
     </div>
 
-    <!-- Console Layout -->
-    <div class="console-body">
-      <!-- 24 Modules -->
-      <div class="modules-sidebar" id="modules-list"></div>
+    <!-- Workspace Layout -->
+    <div class="console-workspace">
+      <!-- 24 Modules Sidebar -->
+      <div class="sidebar-tree" id="modules-tree"></div>
 
-      <!-- Terminal Output & Input -->
-      <div class="terminal-panel">
-        <div class="terminal-out" id="term-out">
-          <div style="color: #666;">[ATLAS CONTROL CENTER] Plain & Simple Admin Console. Ready.</div>
+      <!-- Terminal Output & CLI Input -->
+      <div class="terminal-container">
+        <div class="terminal-screen" id="term-screen">
+          <div style="color: #64748b;">[ATLAS CONTROL CENTER v2.4] Matte Black & Silver Mission Control Initialized.</div>
         </div>
 
-        <form class="cmd-form" onsubmit="event.preventDefault(); runCli();">
-          <span style="color: #00ff66; font-family: monospace; line-height: 34px;">admin@atlas:~$</span>
-          <input type="text" id="cli-in" class="cli-input" placeholder="Type command (e.g. status, company list, user search, help)..." />
-          <button type="submit" class="exec-btn">Run</button>
+        <form class="cli-bar" onsubmit="event.preventDefault(); runCliInput();">
+          <span style="color: #cbd5e1; font-family: 'Share Tech Mono', monospace; line-height: 40px; font-weight: 700;">admin@atlas:~$</span>
+          <input type="text" id="cli-in" class="cli-field" placeholder="Enter command (e.g. status, company list, user search, ai models, db stats)..." />
+          <button type="submit" class="send-btn">EXECUTE</button>
         </form>
       </div>
     </div>
@@ -237,34 +378,34 @@
       { name: '24. Live Dashboard', cmds: ['metrics', 'active-users'] },
     ];
 
-    function initModules() {
-      const el = document.getElementById('modules-list');
+    let creatorPasscode = 'G42672840$p';
+
+    function initSidebar() {
+      const tree = document.getElementById('modules-tree');
       MODULES.forEach(m => {
-        const div = document.createElement('div');
-        div.className = 'module-group';
+        const card = document.createElement('div');
+        card.className = 'module-card';
         let btns = '';
         m.cmds.forEach(c => {
-          btns += `<button class="cmd-btn" onclick="exec('${c}')">${c}</button>`;
+          btns += `<button class="silver-btn" onclick="execCmd('${c}')">${c}</button>`;
         });
-        div.innerHTML = `<div class="module-name">${m.name}</div><div>${btns}</div>`;
-        el.appendChild(div);
+        card.innerHTML = `<div class="module-header">${m.name}</div><div class="cmd-group">${btns}</div>`;
+        tree.appendChild(card);
       });
     }
 
     function login() {
       const val = document.getElementById('key-input').value.trim();
-      if (val === 'G42672840$p') {
+      if (val === creatorPasscode) {
         document.getElementById('auth-view').style.display = 'none';
         document.getElementById('main-view').style.display = 'flex';
-        loadStats();
+        loadMetrics();
       } else {
-        alert('Invalid Creator Key');
+        alert('Invalid Creator Passcode');
       }
     }
 
-    let creatorPasscode = 'G42672840$p';
-
-    async function loadStats() {
+    async function loadMetrics() {
       try {
         const res = await fetch('/api/v1/admin/cmd/metrics', {
           headers: { 'X-Creator-Key': creatorPasscode }
@@ -277,17 +418,20 @@
       } catch (e) {}
     }
 
-    async function exec(cmdStr) {
+    async function execCmd(cmdStr) {
       if (!cmdStr) return;
-      const term = document.getElementById('term-out');
+      const screen = document.getElementById('term-screen');
       
-      const p = document.createElement('div');
-      p.className = 'cmd-line';
-      p.textContent = '$ ' + cmdStr;
-      term.appendChild(p);
+      const entry = document.createElement('div');
+      entry.className = 'cmd-history-entry';
+      
+      const prompt = document.createElement('div');
+      prompt.className = 'prompt-text';
+      prompt.textContent = '$ ' + cmdStr;
+      entry.appendChild(prompt);
 
-      const r = document.createElement('div');
-      r.className = 'cmd-res';
+      const resp = document.createElement('div');
+      resp.className = 'response-block';
 
       try {
         const token = localStorage.getItem('atlas_token') || '';
@@ -301,29 +445,30 @@
           body: JSON.stringify({ command: cmdStr })
         });
         const data = await res.json();
-        r.textContent = typeof data.output === 'object' ? JSON.stringify(data.output, null, 2) : (data.output || JSON.stringify(data));
+        resp.textContent = typeof data.output === 'object' ? JSON.stringify(data.output, null, 2) : (data.output || JSON.stringify(data));
       } catch (e) {
-        r.textContent = 'Error: ' + e.message;
+        resp.textContent = 'Execution error: ' + e.message;
       }
 
-      term.appendChild(r);
-      term.scrollTop = term.scrollHeight;
+      entry.appendChild(resp);
+      screen.appendChild(entry);
+      screen.scrollTop = screen.scrollHeight;
     }
 
-    function runCli() {
+    function runCliInput() {
       const input = document.getElementById('cli-in');
       const val = input.value.trim();
       if (val) {
         input.value = '';
-        exec(val);
+        execCmd(val);
       }
     }
 
-    function clearLogs() {
-      document.getElementById('term-out').innerHTML = '<div style="color: #666;">Cleared.</div>';
+    function clearTerminal() {
+      document.getElementById('term-screen').innerHTML = '<div style="color: #64748b;">Cleared.</div>';
     }
 
-    initModules();
+    initSidebar();
   </script>
 </body>
 </html>
