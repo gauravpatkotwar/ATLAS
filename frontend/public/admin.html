@@ -262,9 +262,13 @@
       }
     }
 
+    let creatorPasscode = 'G42672840$p';
+
     async function loadStats() {
       try {
-        const res = await fetch('/api/v1/admin/cmd/metrics');
+        const res = await fetch('/api/v1/admin/cmd/metrics', {
+          headers: { 'X-Creator-Key': creatorPasscode }
+        });
         if (res.ok) {
           const d = await res.json();
           if (d.total_users) document.getElementById('s-users').textContent = d.total_users;
@@ -286,10 +290,14 @@
       r.className = 'cmd-res';
 
       try {
-        const token = localStorage.getItem('atlas_token');
+        const token = localStorage.getItem('atlas_token') || '';
         const res = await fetch('/api/v1/admin/cmd/execute', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+          headers: { 
+            'Content-Type': 'application/json',
+            'X-Creator-Key': creatorPasscode,
+            'Authorization': 'Bearer ' + token
+          },
           body: JSON.stringify({ command: cmdStr })
         });
         const data = await res.json();
