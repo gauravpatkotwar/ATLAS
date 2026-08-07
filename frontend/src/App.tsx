@@ -346,13 +346,19 @@ export default function App() {
       setActiveTab('admin_terminal' as any);
     }
     const handleAdminHotKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'k') {
+      const isK = e.key === 'k' || e.key === 'K' || e.code === 'KeyK';
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && isK) {
         e.preventDefault();
+        e.stopPropagation();
         setActiveTab(prev => prev === ('admin_terminal' as any) ? 'copilot' : ('admin_terminal' as any));
       }
     };
-    window.addEventListener('keydown', handleAdminHotKey);
-    return () => window.removeEventListener('keydown', handleAdminHotKey);
+    window.addEventListener('keydown', handleAdminHotKey, true);
+    document.addEventListener('keydown', handleAdminHotKey, true);
+    return () => {
+      window.removeEventListener('keydown', handleAdminHotKey, true);
+      document.removeEventListener('keydown', handleAdminHotKey, true);
+    };
   }, []);
 
     // Robust Triple-Tap Counter for Camouflaged Access
