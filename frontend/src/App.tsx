@@ -392,7 +392,7 @@ export default function App() {
  const [myAtlasInfo, setMyAtlasInfo] = useState<any>(null);
  const [contactBook, setContactBook] = useState<any[]>([]);
  const [contactsView, setContactsView] = useState<'diary' | 'add' | 'chat' | 'saved_me'>('diary');
- const [contactAddInput, setContactAddInput] = useState('');
+ const [contactAddInput, setContactAddInput] = useState('ATL-');
  const [contactLookupResult, setContactLookupResult] = useState<any>(null);
  const [contactLookupLoading, setContactLookupLoading] = useState(false);
  const [contactNickname, setContactNickname] = useState('');
@@ -6921,7 +6921,7 @@ export default function App() {
         const res = await api.contacts.add(contactLookupResult.atlas_no, contactNickname);
         alert(res.message);
         setContactLookupResult(null);
-        setContactAddInput('');
+        setContactAddInput('ATL-');
         setContactNickname('');
         setContactsView('diary');
         const bk = await api.contacts.book();
@@ -7095,7 +7095,14 @@ export default function App() {
                 <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '20px' }}>Enter the user's 5-digit Atlas Phone Number (e.g. ATL-48291)</p>
 
                 <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
-                  <input value={contactAddInput} onChange={e => setContactAddInput(e.target.value)} placeholder="e.g. ATL-48291"
+                  <input value={contactAddInput} onChange={e => {
+                    let val = e.target.value.toUpperCase();
+                    if (!val.startsWith('ATL-')) {
+                      const digits = val.replace(/[^0-9]/g, '');
+                      val = 'ATL-' + digits;
+                    }
+                    setContactAddInput(val);
+                  }} placeholder="e.g. ATL-48291"
                     style={{ flex: 1, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '11px 14px', fontSize: '14px', color: '#fff', outline: 'none', fontFamily: 'monospace', textTransform: 'uppercase' }}
                     onKeyDown={e => e.key === 'Enter' && handleLookup()}
                   />
