@@ -3429,7 +3429,7 @@ export default function App() {
  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
  {[{ email: 'recruiter.billing@gmail.com', name: 'Recruiter Billing', initial: 'R', grad: 'linear-gradient(135deg,#6c3de8,#9b5de5)' }, { email: 'gaurav.founder@company.com', name: 'Gaurav Founder', initial: 'G', grad: 'linear-gradient(135deg,#00b4d8,#0077b6)' }].map(acc => (
  <div key={acc.email} onClick={() => handleGoogleLogin(acc.email)}
- style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 14px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '14px', cursor: 'pointer', transition: 'all 0.2s ease' }}
+ style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 14px', background: 'rgba(255,255,255,0.06)', border: 'none', borderRadius: '14px', cursor: 'pointer', transition: 'all 0.2s ease' }}
  onMouseEnter={e => { e.currentTarget.style.background='rgba(255,255,255,0.12)'; e.currentTarget.style.borderColor='rgba(255,255,255,0.25)'; }}
  onMouseLeave={e => { e.currentTarget.style.background='rgba(255,255,255,0.06)'; e.currentTarget.style.borderColor='rgba(255,255,255,0.12)'; }}>
  <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: acc.grad, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '15px', fontWeight: 700, flexShrink: 0 }}>{acc.initial}</div>
@@ -4421,7 +4421,7 @@ export default function App() {
  <input className="input-field" type="text" value={edu.year} placeholder="2023" onChange={e => { const ed = [...resumeForm.education]; ed[i] = { ...ed[i], year: e.target.value }; setResumeForm((f: any) => ({ ...f, education: ed })); }} style={{ fontSize: '13px', padding: '9px 12px' }} />
  </div>
  <button type="button" onClick={() => setResumeForm((f: any) => ({ ...f, education: f.education.filter((_: any, idx: number) => idx !== i) }))}
- style={{ background: 'none', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '8px', color: 'rgba(255,255,255,0.35)', cursor: 'pointer', fontSize: '16px', height: '38px', width: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+ style={{ background: 'none', border: 'none', borderRadius: '8px', color: 'rgba(255,255,255,0.35)', cursor: 'pointer', fontSize: '16px', height: '38px', width: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
  </div>
  ))}
  </div>
@@ -5587,7 +5587,7 @@ export default function App() {
  {/* Theme Mode — Dark Only */}
  <div>
  <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: '12px', marginBottom: '8px', fontWeight: 'bold' }}>UI Theme</label>
- <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '12px' }}>
+ <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', background: 'rgba(255,255,255,0.06)', border: 'none', borderRadius: '12px' }}>
  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--accent-gold)', boxShadow: '0 0 6px var(--accent-purple)' }} />
  <span style={{ fontSize: '13px', color: '#fff', fontWeight: 500 }}>Titan Dark</span>
  <span style={{ marginLeft: 'auto', fontSize: '11px', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.08)', padding: '2px 8px', borderRadius: '20px' }}>Active</span>
@@ -6194,7 +6194,7 @@ export default function App() {
  const channelColor = TV_CHANNELS.find(c => c.id === tvChannel)?.color || '#e11d48';
 
   return (
-  <div style={{ display:'flex', flexDirection:'column', gap:'20px', padding:'24px 32px', height:'calc(100vh - 60px)', overflowY:'auto', background:'transparent' }}>
+  <div style={{ display:'flex', flexDirection:'column', gap:'20px', padding:'20px 24px', width:'100%', maxWidth:'100%', height:'calc(100vh - 60px)', overflowY:'auto', background:'transparent' }}>
  
   {/* Top Header Row: Title on Left, Segmented Channel Nav Pills on Right */}
   <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:'16px' }}>
@@ -6207,7 +6207,7 @@ export default function App() {
   </div>
  
   {/* Segmented Top Channel Nav Pills */}
-  <div style={{ display:'inline-flex', alignItems:'center', gap:'4px', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'24px', padding:'4px', overflowX:'auto', maxWidth:'650px', scrollbarWidth:'none' }}>
+  <div style={{ display:'inline-flex', alignItems:'center', gap:'4px', background:'rgba(255,255,255,0.04)', border:'none', borderRadius:'24px', padding:'4px', overflowX:'auto', maxWidth:'650px', scrollbarWidth:'none' }}>
   {TV_CHANNELS.map(ch => {
   const isActive = tvChannel === ch.id;
   return (
@@ -6233,7 +6233,7 @@ export default function App() {
   { label:'XP EARNED', value: '+45 XP' },
   ].map(s => (
   <div key={s.label} style={{
-  background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.08)',
+  background:'rgba(255,255,255,0.03)', border:'none',
   borderRadius:'14px', padding:'20px 24px'
   }}>
   <div style={{ fontSize:'11px', fontWeight:600, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:'12px' }}>{s.label}</div>
@@ -6248,7 +6248,7 @@ export default function App() {
   <input value={tvSearchQuery} onChange={e=>setTvSearchQuery(e.target.value)}
   onKeyDown={async e => { if (e.key === 'Enter' && tvSearchQuery.trim()) { try { const r = await api.tv.search(tvSearchQuery); setTvVideos(r?.videos || []); if (r?.videos?.length) setTvCurrentVideo(r.videos[0]); } catch {} } }}
   placeholder="Search videos, tech stacks, or topics... (Press Enter)"
-  style={{ width:'100%', paddingLeft:'40px', paddingRight:'14px', paddingTop:'11px', paddingBottom:'11px', background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'10px', color:'#fff', fontSize:'13px', boxSizing:'border-box', outline:'none' }} />
+  style={{ width:'100%', paddingLeft:'40px', paddingRight:'14px', paddingTop:'11px', paddingBottom:'11px', background:'rgba(255,255,255,0.03)', border:'none', borderRadius:'10px', color:'#fff', fontSize:'13px', boxSizing:'border-box', outline:'none' }} />
   </div>
   {/* Main Content: Dual-Column Layout Matching Screenshot 2 Exactly */}
   <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '20px', alignItems: 'start' }}>
@@ -6260,12 +6260,12 @@ export default function App() {
   {/* 2-Column Integrated Main Video Card */}
   <div style={{
   background: 'rgba(255,255,255,0.02)',
-  border: `1px solid ${channelColor}66`,
+  border: 'none',
   borderRadius: '16px', padding: '16px', display: 'flex', gap: '20px', flexWrap: 'wrap',
-  boxShadow: `0 4px 20px ${channelColor}15`
+  boxShadow: 'none'
   }}>
   {/* Video Player (Left 58% width) */}
-  <div style={{ flex: '1 1 340px', minWidth: '280px', position: 'relative', paddingTop: '32%', background: '#000', borderRadius: '12px', overflow: 'hidden' }}>
+  <div style={{ flex: '1 1 340px', minWidth: '280px', position: 'relative', paddingTop: '56.25%', background: '#000', borderRadius: '12px', overflow: 'hidden' }}>
   <iframe
   key={tvCurrentVideo.youtube_id}
   src={`https://www.youtube.com/embed/${tvCurrentVideo.youtube_id}?autoplay=1&rel=0&modestbranding=1`}
@@ -6304,14 +6304,14 @@ export default function App() {
   <div style={{ display: 'flex', gap: '10px' }}>
   <button onClick={() => toggleBookmark(tvCurrentVideo.id)}
   style={{
-  padding: '8px 16px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '10px', color: tvBookmarks.includes(tvCurrentVideo.id) ? '#f59e0b' : '#fff', fontWeight: 600, fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px'
+  padding: '8px 16px', background: 'rgba(255,255,255,0.06)', border: 'none', borderRadius: '10px', color: tvBookmarks.includes(tvCurrentVideo.id) ? '#f59e0b' : '#fff', fontWeight: 600, fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px'
   }}>
   {tvBookmarks.includes(tvCurrentVideo.id) ? <BookmarkCheck size={14} /> : <Bookmark size={14} />}
   {tvBookmarks.includes(tvCurrentVideo.id) ? 'Saved' : 'Save'}
   </button>
   <a href={`https://www.youtube.com/watch?v=${tvCurrentVideo.youtube_id}`} target="_blank" rel="noopener noreferrer"
   style={{
-  padding: '8px 16px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '10px', color: '#fff', fontWeight: 600, fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', textDecoration: 'none'
+  padding: '8px 16px', background: 'rgba(255,255,255,0.06)', border: 'none', borderRadius: '10px', color: '#fff', fontWeight: 600, fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', textDecoration: 'none'
   }}>
   <ExternalLink size={14} /> YouTube
   </a>
@@ -7256,7 +7256,7 @@ export default function App() {
    </div>
  
    {/* Segmented Top Pill Nav Bar */}
-   <div style={{ display:'inline-flex', alignItems:'center', gap:'4px', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'24px', padding:'4px' }}>
+   <div style={{ display:'inline-flex', alignItems:'center', gap:'4px', background:'rgba(255,255,255,0.04)', border:'none', borderRadius:'24px', padding:'4px' }}>
    {([
    { id:'discover', label:'Discover', icon: BookOpen },
    { id:'my_learning', label:'My Learning', icon: FileText },
@@ -7290,7 +7290,7 @@ export default function App() {
    { label:'COMPLETION RATE', value: academyEnrollments.length > 0 ? `${Math.round((academyCertificates.length / academyEnrollments.length) * 100)}%` : '87%' },
    ].map(s => (
    <div key={s.label} style={{
-   background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.08)',
+   background:'rgba(255,255,255,0.03)', border:'none',
    borderRadius:'14px', padding:'20px 24px'
    }}>
    <div style={{ fontSize:'11px', fontWeight:600, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:'12px' }}>{s.label}</div>
@@ -7308,10 +7308,10 @@ export default function App() {
    <Search size={15} style={{ position:'absolute', left:'14px', top:'50%', transform:'translateY(-50%)', color:'#6b7280' }} />
    <input value={academySearchQuery} onChange={e=>setAcademySearchQuery(e.target.value)}
    placeholder="13px muted"
-   style={{ width:'100%', paddingLeft:'40px', paddingRight:'14px', paddingTop:'11px', paddingBottom:'11px', background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'10px', color:'#fff', fontSize:'13px', boxSizing:'border-box', outline:'none' }} />
+   style={{ width:'100%', paddingLeft:'40px', paddingRight:'14px', paddingTop:'11px', paddingBottom:'11px', background:'rgba(255,255,255,0.03)', border:'none', borderRadius:'10px', color:'#fff', fontSize:'13px', boxSizing:'border-box', outline:'none' }} />
    </div>
    <select value={academyCategoryFilter} onChange={e=>setAcademyCategoryFilter(e.target.value)}
-   style={{ width:'160px', padding:'11px 14px', background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'10px', color:'#fff', fontSize:'13px', cursor:'pointer', outline:'none' }}>
+   style={{ width:'160px', padding:'11px 14px', background:'rgba(255,255,255,0.03)', border:'none', borderRadius:'10px', color:'#fff', fontSize:'13px', cursor:'pointer', outline:'none' }}>
    <option value="" style={{ background:'#09090b', color:'#fff' }}>Category</option>
    {ACADEMY_CATEGORIES.map(c => <option key={c} value={c} style={{ background:'#09090b', color:'#fff' }}>{c}</option>)}
    </select>
@@ -9509,7 +9509,7 @@ export default function App() {
           </div>
 
           {/* Video Streams Canvas Area */}
-          <div style={{ position: 'relative', width: '100%', height: '320px', background: '#000000', borderRadius: '16px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.12)' }}>
+          <div style={{ position: 'relative', width: '100%', height: '320px', background: '#000000', borderRadius: '16px', overflow: 'hidden', border: 'none' }}>
             {/* Live Message Toast Popup */}
             {lastCallMessageToast && !showCallChat && (
               <div className="animate-fade-in" style={{ position: 'absolute', top: '14px', left: '14px', right: '14px', background: 'rgba(9,9,11,0.92)', border: '1px solid rgba(255,255,255,0.25)', borderRadius: '12px', padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', zIndex: 20, backdropFilter: 'blur(12px)', boxShadow: '0 8px 24px rgba(0,0,0,0.9)' }}>
@@ -9564,7 +9564,7 @@ export default function App() {
 
           {/* IN-CALL MESSAGE BOARD DRAWER */}
           {showCallChat && (
-            <div style={{ width: '100%', height: '220px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '16px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <div style={{ width: '100%', height: '220px', background: 'rgba(255,255,255,0.03)', border: 'none', borderRadius: '16px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
               {/* Message Board Header */}
               <div style={{ padding: '10px 16px', background: 'rgba(255,255,255,0.05)', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 700, color: '#ffffff' }}>
