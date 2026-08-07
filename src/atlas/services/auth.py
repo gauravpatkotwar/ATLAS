@@ -152,7 +152,7 @@ class AuthService:
 
         token = secrets.token_urlsafe(32)
         user.reset_password_token = token
-        user.reset_token_expires = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=1)
+        user.reset_token_expires = (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=1)).replace(tzinfo=None)
         self.db.add(user)
         await self.db.commit()
         logger.info(f"Password reset token generated for {user.email}")
@@ -171,12 +171,11 @@ class AuthService:
         if not user:
             return False
 
-        now = datetime.datetime.now(datetime.timezone.utc)
+        now = datetime.datetime.utcnow()
         expires = user.reset_token_expires
         if expires:
-            # Make expires timezone-aware if it isn't
-            if expires.tzinfo is None:
-                expires = expires.replace(tzinfo=datetime.timezone.utc)
+            if expires.tzinfo is not None:
+                expires = expires.replace(tzinfo=None)
             if now > expires:
                 return False
 
