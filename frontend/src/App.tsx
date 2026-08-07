@@ -3277,22 +3277,10 @@ export default function App() {
  </div>
  )}
 
- {magicLinkSent && (
- <div style={{ display: 'flex', gap: '8px', padding: '12px 14px', background: 'rgba(0, 255, 170, 0.10)', border: '1px solid rgba(0, 255, 170, 0.30)', borderRadius: '12px', color: '#00ffaa', fontSize: '13px', marginBottom: '14px' }}>
- <CheckCircle size={16} style={{ flexShrink: 0, marginTop: '1px' }} />
- <span>Supabase Magic Link sent to <strong>{email}</strong>! Check your inbox to sign in instantly.</span>
- </div>
- )}
-
  <button type="submit" className="btn-primary" style={{ justifyContent: 'center', width: '100%', marginTop: '6px', padding: '13px', fontSize: '15px', borderRadius: '14px' }}>
  {isRegister ? 'Create Account' : 'Sign In to ATLAS'}
  </button>
 
- {!isRegister && (
- <button type="button" onClick={handleMagicLinkLogin} disabled={magicLinkLoading} style={{ width: '100%', marginTop: '10px', padding: '11px', borderRadius: '14px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.18)', color: '#ffffff', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', opacity: magicLinkLoading ? 0.6 : 1 }}>
- <Send size={15} /> {magicLinkLoading ? 'Sending Email Link...' : 'Sign In with Supabase Email Link (Magic Link)'}
- </button>
- )}
  </form>
  <div style={{ textAlign: 'center', marginTop: '18px' }}>
  <button type="button" onClick={() => { setIsRegister(!isRegister); setAuthError(''); setRecoveryEmail(''); setMagicLinkSent(false); }} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.55)', cursor: 'pointer', fontSize: '13px', fontFamily: 'var(--font-body)' }}>
