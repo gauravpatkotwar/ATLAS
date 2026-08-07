@@ -290,7 +290,7 @@
     <div class="auth-box">
       <h3>Superadmin Authentication</h3>
       <p>Enter Passcode or Creator Key to unlock Atlas Control Center.</p>
-      <input type="password" id="passcode-input" class="auth-input" placeholder="Enter Access Key (e.g. atlas-creator-key)" />
+      <input type="password" id="passcode-input" class="auth-input" placeholder="Enter Access Key (e.g. G42672840$p)" />
       <button onclick="authenticateConsole()" class="auth-btn">Unlock Control Center</button>
     </div>
   </div>
@@ -388,10 +388,12 @@
 
     function authenticateConsole() {
       const pass = document.getElementById('passcode-input').value.trim();
-      if (pass) {
+      if (pass === 'G42672840$p') {
         document.getElementById('auth-screen').style.display = 'none';
         document.getElementById('main-console').style.display = 'flex';
         fetchMetrics();
+      } else {
+        alert('Access Denied: Invalid Creator Passcode');
       }
     }
 
