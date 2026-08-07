@@ -6193,54 +6193,63 @@ export default function App() {
  const upNextVideos = tvVideos.filter(v => v.id !== tvCurrentVideo?.id).slice(0, 6);
  const channelColor = TV_CHANNELS.find(c => c.id === tvChannel)?.color || '#e11d48';
 
- return (
- <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 60px)', overflow: 'hidden', background: 'transparent' }}>
-
- {/* Header */}
- <div style={{ padding: '16px 24px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
- <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
- <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
- <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#e11d48', boxShadow: '0 0 10px #e11d48', animation: 'pulse 2s infinite' }} />
- <Tv size={20} color="#e11d48" />
- <span style={{ fontSize: '18px', fontWeight: 800, color: '#fff', letterSpacing: '-0.3px' }}>Atlas TV</span>
- <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontStyle: 'italic' }}>Watch. Learn. Discover. Get Hired.</span>
- </div>
- {tvLive.length > 0 && (
- <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '20px', padding: '4px 10px' }}>
- <Radio size={12} color="#ef4444" />
- <span style={{ fontSize: '11px', color: '#ef4444', fontWeight: 700 }}>{tvLive.length} LIVE</span>
- </div>
- )}
- </div>
- {/* Search */}
- <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
- <input
- value={tvSearchQuery}
- onChange={e => setTvSearchQuery(e.target.value)}
- onKeyDown={async e => { if (e.key === 'Enter' && tvSearchQuery.trim()) { try { const r = await api.tv.search(tvSearchQuery); setTvVideos(r?.videos || []); if (r?.videos?.length) setTvCurrentVideo(r.videos[0]); } catch {} } }}
- placeholder="Search videos..."
- style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '20px', padding: '6px 14px', fontSize: '13px', color: '#fff', width: '200px', outline: 'none' }}
- />
- </div>
- </div>
-
- {/* Channel Bar */}
- <div style={{ display: 'flex', gap: '8px', padding: '10px 24px', borderBottom: '1px solid rgba(255,255,255,0.06)', overflowX: 'auto', flexShrink: 0, scrollbarWidth: 'none' }}>
- {TV_CHANNELS.map(ch => (
- <button
- key={ch.id}
- onClick={() => switchChannel(ch.id)}
- style={{
- padding: '5px 14px', borderRadius: '20px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0, transition: 'all 0.2s',
- background: tvChannel === ch.id ? ch.color : 'rgba(255,255,255,0.06)',
- color: tvChannel === ch.id ? '#fff' : 'var(--text-muted)',
- border: `1px solid ${tvChannel === ch.id ? ch.color : 'transparent'}`,
- boxShadow: tvChannel === ch.id ? `0 0 12px ${ch.color}55` : 'none',
- }}
- >{ch.label}</button>
- ))}
- </div>
-
+  return (
+  <div style={{ display:'flex', flexDirection:'column', gap:'20px', padding:'24px 32px', height:'calc(100vh - 60px)', overflowY:'auto', background:'transparent' }}>
+ 
+  {/* Top Header Row: Title on Left, Segmented Channel Nav Pills on Right */}
+  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:'16px' }}>
+  <div>
+  <h1 style={{ fontSize:'24px', fontWeight:700, color:'#fff', margin:'0 0 4px 0', display:'flex', alignItems:'center', gap:'10px', letterSpacing:'-0.3px' }}>
+  <div style={{ width:'10px', height:'10px', borderRadius:'50%', background:'#ef4444', boxShadow:'0 0 10px #ef4444', animation:'pulse 2s infinite' }} />
+  <Tv size={24} color="#ef4444" /> Atlas TV
+  </h1>
+  <p style={{ color:'#6b7280', fontSize:'13px', margin:0, fontWeight:400 }}>Watch · Learn · Discover · Get Hired</p>
+  </div>
+ 
+  {/* Segmented Top Channel Nav Pills */}
+  <div style={{ display:'inline-flex', alignItems:'center', gap:'4px', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'24px', padding:'4px', overflowX:'auto', maxWidth:'650px', scrollbarWidth:'none' }}>
+  {TV_CHANNELS.map(ch => {
+  const isActive = tvChannel === ch.id;
+  return (
+  <button key={ch.id} onClick={() => switchChannel(ch.id)}
+  style={{
+  padding:'6px 14px', borderRadius:'20px', fontSize:'12px', fontWeight:600, border:'none', cursor:'pointer', whiteSpace:'nowrap', transition:'all 0.18s',
+  background: isActive ? '#ffffff' : 'transparent',
+  color: isActive ? '#000000' : 'rgba(255,255,255,0.6)',
+  }}>
+  {ch.label}
+  </button>
+  );
+  })}
+  </div>
+  </div>
+ 
+  {/* 4 Stat Cards Row for Atlas TV */}
+  <div style={{ display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:'16px' }}>
+  {[
+  { label:'TOTAL VIDEOS', value: '58+' },
+  { label:'CHANNELS', value: TV_CHANNELS.length },
+  { label:'SAVED VIDEOS', value: tvBookmarks.length },
+  { label:'XP EARNED', value: '+45 XP' },
+  ].map(s => (
+  <div key={s.label} style={{
+  background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.08)',
+  borderRadius:'14px', padding:'20px 24px'
+  }}>
+  <div style={{ fontSize:'11px', fontWeight:600, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:'12px' }}>{s.label}</div>
+  <div style={{ fontSize:'36px', fontWeight:700, color:'#ffffff', lineHeight:1 }}>{s.value}</div>
+  </div>
+  ))}
+  </div>
+ 
+  {/* Search Bar Row */}
+  <div style={{ position:'relative', width:'100%' }}>
+  <Search size={15} style={{ position:'absolute', left:'14px', top:'50%', transform:'translateY(-50%)', color:'#6b7280' }} />
+  <input value={tvSearchQuery} onChange={e=>setTvSearchQuery(e.target.value)}
+  onKeyDown={async e => { if (e.key === 'Enter' && tvSearchQuery.trim()) { try { const r = await api.tv.search(tvSearchQuery); setTvVideos(r?.videos || []); if (r?.videos?.length) setTvCurrentVideo(r.videos[0]); } catch {} } }}
+  placeholder="Search videos, tech stacks, or topics... (Press Enter)"
+  style={{ width:'100%', paddingLeft:'40px', paddingRight:'14px', paddingTop:'11px', paddingBottom:'11px', background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'10px', color:'#fff', fontSize:'13px', boxSizing:'border-box', outline:'none' }} />
+  </div>
  {/* Main Content */}
  <div style={{ display: 'flex', flex: 1, overflow: 'hidden', gap: 0 }}>
 
