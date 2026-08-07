@@ -3588,18 +3588,6 @@ export default function App() {
  </h1>
  </div>
  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-    {myAtlasInfo?.atlas_no && (
-      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(6,182,212,0.15)', border: '1px solid rgba(6,182,212,0.4)', padding: '5px 12px', borderRadius: '16px' }}>
-        <span style={{ fontSize: '10px', color: '#06b6d4', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Atlas No:</span>
-        <span style={{ fontSize: '12px', fontWeight: 900, color: '#fff', fontFamily: 'monospace' }}>{myAtlasInfo.atlas_no}</span>
-        <button onClick={() => { navigator.clipboard.writeText(myAtlasInfo.atlas_no); alert(`Copied Atlas Phone Number ${myAtlasInfo.atlas_no} to clipboard!`); }} title="Copy My Atlas Phone Number" style={{ background: 'none', border: 'none', color: '#06b6d4', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', marginLeft: '2px' }}>
-          <Copy size={12} />
-        </button>
-      </div>
-    )}
-    <span style={{ fontSize: '13px', color: 'var(--text-muted)', padding: '6px 12px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-glass)', borderRadius: '20px' }}>
-      {selectedMode === 'for_hire' ? 'Candidate Mode' : 'Recruiter Mode'}: {user.email}
-    </span>
  <button onClick={handleLogout} className="btn-secondary" style={{ padding: '8px 12px', fontSize: '12px' }}>
  <LogOut size={14} />
  <span>Sign Out</span>
