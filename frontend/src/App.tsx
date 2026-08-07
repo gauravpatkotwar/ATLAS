@@ -3458,12 +3458,11 @@ export default function App() {
  style={{ 
  position: 'fixed', 
  left: '20px', 
- top: '50%', 
- transform: 'translateY(-50%)', 
+ top: '20px', 
  display: 'flex', 
  flexDirection: 'column', 
- gap: '20px', 
- padding: '24px 12px', 
+ gap: '10px', 
+ padding: '16px 12px', 
  zIndex: 1000, 
  borderRadius: '32px', 
  background: 'rgba(10, 10, 12, 0.45)', 
@@ -3472,6 +3471,18 @@ export default function App() {
  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)' 
  }}
  >
+ {/* Nova — top of sidebar */}
+ <button
+ onClick={() => setActiveTab('copilot')}
+ className={activeTab === 'copilot' ? 'btn-primary lining-copilot' : 'btn-secondary'}
+ style={{ width: '46px', height: '46px', borderRadius: '50%', padding: 0, justifyContent: 'center', flexShrink: 0 }}
+ title="Ask Nova"
+ >
+ <AtlasNovaLogo size={24} />
+ </button>
+ {/* Divider below Nova */}
+ <div style={{ width: '28px', height: '1px', background: 'var(--border-glass)', alignSelf: 'center', marginBottom: '4px' }} />
+
  <button 
  onClick={() => setShowMeetChoiceModal(true)}
  className="btn-secondary" 
@@ -3553,16 +3564,6 @@ export default function App() {
  {contactsUnreadCount > 0 && (
    <span style={{ position: 'absolute', top: '-2px', right: '-2px', background: '#ef4444', color: '#fff', borderRadius: '10px', fontSize: '9px', fontWeight: 800, padding: '1px 5px' }}>{contactsUnreadCount}</span>
  )}
- </button>
-
-
- <button 
- onClick={() => setActiveTab('copilot')}
- className={activeTab === 'copilot' ? 'btn-primary lining-copilot' : 'btn-secondary'} 
- style={{ width: '46px', height: '46px', borderRadius: '50%', padding: 0, justifyContent: 'center' }}
- title="Ask Nova"
- >
- <AtlasNovaLogo size={24} />
  </button>
  </div>
  {/* Top Header — full-width, positioned absolutely over the sidebar too */}
