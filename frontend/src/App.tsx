@@ -522,12 +522,18 @@ export default function App() {
  const [loadedVoiceName, setLoadedVoiceName] = useState<string>('');
  const [recognitionInstance, setRecognitionInstance] = useState<any>(null);
 
- // WebRTC Calling states
+ // WebRTC Calling & In-Call Message Board states
  const [activeCall, setActiveCall] = useState<any | null>(null); // { candidateId: number, status: 'calling' | 'ringing' | 'connected', role: 'caller' | 'receiver', peerName: string }
  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
  const [micMuted, setMicMuted] = useState<boolean>(false);
  const [videoDisabled, setVideoDisabled] = useState<boolean>(false);
  const [incomingCall, setIncomingCall] = useState<any | null>(null); // Incoming call details from poll
+ const [callMessages, setCallMessages] = useState<Array<{ id: number; sender: string; text: string; timestamp: string; isMe: boolean }>>([]);
+ const [callInput, setCallInput] = useState<string>('');
+ const [showCallChat, setShowCallChat] = useState<boolean>(false);
+ const [unreadCallMsgCount, setUnreadCallMsgCount] = useState<number>(0);
+ const [lastCallMessageToast, setLastCallMessageToast] = useState<{ sender: string; text: string } | null>(null);
+ const callChatEndRef = useRef<HTMLDivElement>(null);
  const localVideoRef = useRef<HTMLVideoElement>(null);
  const remoteVideoRef = useRef<HTMLVideoElement>(null);
  const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
@@ -1213,10 +1219,27 @@ export default function App() {
 
         for (const sig of res.signals) {
           if (sig.id > lastAfterId) lastAfterId = sig.id;
+          const parsedData = typeof sig.data === 'string' ? JSON.parse(sig.data) : sig.data;
+
+          if (sig.signal_type === 'chat_message' || sig.signal_type === 'chat' || sig.type === 'chat_message' || sig.type === 'chat') {
+            const incomingText = parsedData.text || parsedData.message || (typeof parsedData === 'string' ? parsedData : '');
+            if (incomingText) {
+              const newMsg = {
+                id: sig.id || Date.now(),
+                sender: parsedData.sender || activeCall?.peerName || activeCall?.calling_name || 'Contact',
+                text: incomingText,
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                isMe: false
+              };
+              setCallMessages((prev: any) => [...prev, newMsg]);
+              setLastCallMessageToast({ sender: newMsg.sender, text: newMsg.text });
+              setUnreadCallMsgCount((prev: number) => prev + 1);
+            }
+            continue;
+          }
+
           const targetPc = peerConnectionRef.current;
           if (!targetPc) continue;
-
-          const parsedData = typeof sig.data === 'string' ? JSON.parse(sig.data) : sig.data;
 
           if (sig.type === 'offer') {
             if (localStream) {
@@ -1379,8 +1402,34 @@ export default function App() {
     setRemoteStream(null);
     setActiveCall(null);
     setIncomingCall(null);
+    setCallMessages([]);
+    setCallInput('');
+    setShowCallChat(false);
+    setUnreadCallMsgCount(0);
+    setLastCallMessageToast(null);
     if ((window as any)._activeCallPoll) {
       clearInterval((window as any)._activeCallPoll);
+    }
+  };
+
+  const handleSendCallMessage = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!callInput.trim() || !activeCall?.call_id) return;
+    const text = callInput.trim();
+    setCallInput('');
+    const myName = user?.name || user?.email || 'Me';
+    const myMsg = {
+      id: Date.now(),
+      sender: myName,
+      text,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      isMe: true
+    };
+    setCallMessages(prev => [...prev, myMsg]);
+    try {
+      await api.contacts.sendSignal(activeCall.call_id, 'chat_message', { text, sender: myName });
+    } catch (err) {
+      console.error("Failed to send call signal message:", err);
     }
   };
 
@@ -9522,7 +9571,25 @@ export default function App() {
           </div>
 
           {/* Video Streams Canvas Area */}
-          <div style={{ position: 'relative', width: '100%', height: '360px', background: '#000000', borderRadius: '16px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.12)' }}>
+          <div style={{ position: 'relative', width: '100%', height: '320px', background: '#000000', borderRadius: '16px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.12)' }}>
+            {/* Live Message Toast Popup */}
+            {lastCallMessageToast && !showCallChat && (
+              <div className="animate-fade-in" style={{ position: 'absolute', top: '14px', left: '14px', right: '14px', background: 'rgba(9,9,11,0.92)', border: '1px solid rgba(255,255,255,0.25)', borderRadius: '12px', padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', zIndex: 20, backdropFilter: 'blur(12px)', boxShadow: '0 8px 24px rgba(0,0,0,0.9)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', overflow: 'hidden' }}>
+                  <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <MessageSquare size={14} color="#ffffff" />
+                  </div>
+                  <div style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>{lastCallMessageToast.sender}</div>
+                    <div style={{ fontSize: '13px', color: '#ffffff', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{lastCallMessageToast.text}</div>
+                  </div>
+                </div>
+                <button onClick={() => { setShowCallChat(true); setUnreadCallMsgCount(0); setLastCallMessageToast(null); }} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '8px', color: '#ffffff', fontSize: '11px', fontWeight: 600, padding: '6px 10px', cursor: 'pointer', flexShrink: 0, marginLeft: '8px' }}>
+                  Open Board
+                </button>
+              </div>
+            )}
+
             {isCallConnected && !videoDisabled ? (
               // Remote/Loopback stream video
               <video 
@@ -9532,8 +9599,6 @@ export default function App() {
                 playsInline 
                 style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
               />
-
-
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', color: '#94a3b8' }}>
                 <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'linear-gradient(135deg, #18181b 0%, #09090b 100%)', border: '1px solid #cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px', boxShadow: '0 0 24px rgba(255,255,255,0.12)' }}>
@@ -9559,8 +9624,60 @@ export default function App() {
             )}
           </div>
 
+          {/* IN-CALL MESSAGE BOARD DRAWER */}
+          {showCallChat && (
+            <div style={{ width: '100%', height: '220px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '16px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+              {/* Message Board Header */}
+              <div style={{ padding: '10px 16px', background: 'rgba(255,255,255,0.05)', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 700, color: '#ffffff' }}>
+                  <MessageSquare size={15} color="#ffffff" />
+                  <span>Call Message Board</span>
+                  <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', fontWeight: 500 }}>({callMessages.length} messages)</span>
+                </div>
+                <button onClick={() => setShowCallChat(false)} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', fontSize: '12px' }}>
+                  ✕ Close
+                </button>
+              </div>
+
+              {/* Message List */}
+              <div style={{ flex: 1, padding: '12px 16px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {callMessages.length === 0 ? (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'rgba(255,255,255,0.35)', fontSize: '12px' }}>
+                    💬 No messages sent in this call yet. Type a message below!
+                  </div>
+                ) : (
+                  callMessages.map((msg, idx) => (
+                    <div key={msg.id || idx} style={{ display: 'flex', flexDirection: 'column', alignItems: msg.isMe ? 'flex-end' : 'flex-start' }}>
+                      <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', marginBottom: '2px' }}>
+                        {msg.sender} • {msg.timestamp}
+                      </div>
+                      <div style={{ maxWidth: '80%', padding: '8px 12px', borderRadius: msg.isMe ? '14px 14px 2px 14px' : '14px 14px 14px 2px', background: msg.isMe ? 'linear-gradient(135deg, #ffffff 0%, #e2e8f0 100%)' : 'rgba(255,255,255,0.12)', color: msg.isMe ? '#09090b' : '#ffffff', fontSize: '13px', border: msg.isMe ? 'none' : '1px solid rgba(255,255,255,0.15)', wordBreak: 'break-word', fontWeight: msg.isMe ? 600 : 400 }}>
+                        {msg.text}
+                      </div>
+                    </div>
+                  ))
+                )}
+                <div ref={callChatEndRef} />
+              </div>
+
+              {/* Message Input Form */}
+              <form onSubmit={handleSendCallMessage} style={{ padding: '8px 12px', background: 'rgba(0,0,0,0.5)', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', gap: '8px' }}>
+                <input 
+                  type="text" 
+                  value={callInput} 
+                  onChange={e => setCallInput(e.target.value)} 
+                  placeholder="Type a message on call board..." 
+                  style={{ flex: 1, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '10px', padding: '8px 12px', color: '#ffffff', fontSize: '13px', outline: 'none' }} 
+                />
+                <button type="submit" disabled={!callInput.trim()} style={{ padding: '8px 14px', borderRadius: '10px', background: callInput.trim() ? '#ffffff' : 'rgba(255,255,255,0.1)', color: callInput.trim() ? '#09090b' : 'rgba(255,255,255,0.3)', border: 'none', cursor: callInput.trim() ? 'pointer' : 'default', fontWeight: 700, fontSize: '13px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <Send size={14} /> Send
+                </button>
+              </form>
+            </div>
+          )}
+
           {/* Calling control deck actions */}
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', marginTop: '10px' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', marginTop: '6px' }}>
             <button 
               onClick={handleToggleMic} 
               style={{ width: '48px', height: '48px', borderRadius: '50%', border: '1px solid rgba(255,255,255,0.25)', background: micMuted ? 'rgba(255,255,255,0.1)' : 'linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%)', color: micMuted ? '#ffffff' : '#09090b', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s ease', boxShadow: '0 4px 14px rgba(0,0,0,0.5)' }}
@@ -9575,6 +9692,26 @@ export default function App() {
               title={videoDisabled ? "Enable Video" : "Disable Video"}
             >
               {videoDisabled ? <VideoOff size={20} color="#ffffff" /> : <Video size={20} color="#09090b" />}
+            </button>
+
+            {/* In-Call Message Board Toggle Button */}
+            <button 
+              onClick={() => {
+                setShowCallChat(!showCallChat);
+                if (!showCallChat) {
+                  setUnreadCallMsgCount(0);
+                  setLastCallMessageToast(null);
+                }
+              }} 
+              style={{ position: 'relative', width: '48px', height: '48px', borderRadius: '50%', border: '1px solid rgba(255,255,255,0.25)', background: showCallChat ? 'linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%)' : 'rgba(255,255,255,0.1)', color: showCallChat ? '#09090b' : '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s ease', boxShadow: '0 4px 14px rgba(0,0,0,0.5)' }}
+              title="Call Message Board"
+            >
+              <MessageSquare size={20} color={showCallChat ? '#09090b' : '#ffffff'} />
+              {unreadCallMsgCount > 0 && !showCallChat && (
+                <span style={{ position: 'absolute', top: '-4px', right: '-4px', background: '#ef4444', color: '#ffffff', borderRadius: '50%', width: '20px', height: '20px', fontSize: '11px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #09090b' }}>
+                  {unreadCallMsgCount}
+                </span>
+              )}
             </button>
 
             <button 
