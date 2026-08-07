@@ -2397,47 +2397,67 @@ export default function App() {
     }
   };
 
- const handleForgotPassword = async (e: React.FormEvent) => {
- e.preventDefault();
- setForgotLoading(true);
- setForgotMessage('');
- try {
- const res = await api.auth.forgotPassword(forgotEmail);
- setForgotMessage(res.message);
- if (res.reset_token) {
- setResetToken(res.reset_token);
- }
- setShowResetForm(true);
- } catch (err: any) {
- setForgotMessage(err.message || 'Something went wrong. Please try again.');
- } finally {
- setForgotLoading(false);
- }
- };
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setForgotLoading(true);
+    setForgotMessage('');
+    try {
+      let supaSent = false;
+      try {
+        const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail.trim(), {
+          redirectTo: `${window.location.origin}?resetPassword=true`,
+        });
+        if (!error) {
+          supaSent = true;
+        }
+      } catch (sErr) {}
 
- const handleResetPassword = async (e: React.FormEvent) => {
- e.preventDefault();
- if (newPassword !== confirmPassword) {
- setForgotMessage('Passwords do not match.');
- return;
- }
- if (newPassword.length < 6) {
- setForgotMessage('Password must be at least 6 characters.');
- return;
- }
- setResetLoading(true);
- setForgotMessage('');
- try {
- const tokenToUse = resetTokenInput.trim() || resetToken;
- await api.auth.resetPassword(tokenToUse, newPassword);
- setResetSuccess(true);
- setForgotMessage('Password reset successfully! You can now sign in.');
- } catch (err: any) {
- setForgotMessage(err.message || 'Invalid or expired token. Please try again.');
- } finally {
- setResetLoading(false);
- }
- };
+      const res = await api.auth.forgotPassword(forgotEmail.trim());
+      if (res.reset_token) {
+        setResetToken(res.reset_token);
+      }
+      
+      if (supaSent) {
+        setForgotMessage(`✉️ Password reset email link sent to ${forgotEmail}! Please check your inbox to reset your password.`);
+      } else {
+        setForgotMessage(res.message || 'Password reset link sent to your email. Check your inbox.');
+      }
+      setShowResetForm(true);
+    } catch (err: any) {
+      setForgotMessage(err.message || 'Something went wrong. Please try again.');
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPassword !== confirmPassword) {
+      setForgotMessage('Passwords do not match.');
+      return;
+    }
+    if (newPassword.length < 6) {
+      setForgotMessage('Password must be at least 6 characters.');
+      return;
+    }
+    setResetLoading(true);
+    setForgotMessage('');
+    try {
+      try {
+        await supabase.auth.updateUser({ password: newPassword });
+      } catch (sErr) {}
+
+      const tokenToUse = resetTokenInput.trim() || resetToken;
+      await api.auth.resetPassword(tokenToUse, newPassword);
+      
+      setResetSuccess(true);
+      setForgotMessage('Password reset successfully! You can now sign in with your new password.');
+    } catch (err: any) {
+      setForgotMessage(err.message || 'Invalid or expired token. Please try again.');
+    } finally {
+      setResetLoading(false);
+    }
+  };
 
  const handleLogout = () => {
  if (window.speechSynthesis) {
@@ -3273,7 +3293,7 @@ export default function App() {
  </div>
  <h3 style={{ fontSize: '20px', fontWeight: 700, color: '#ffffff', marginBottom: '6px' }}>{resetSuccess ? 'Password Reset!' : showResetForm ? 'Set New Password' : 'Forgot Password'}</h3>
  <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.50)' }}>
- {resetSuccess ? 'Your password has been updated. Sign in with your new password.' : showResetForm ? 'Enter your reset token and choose a new password.' : 'Enter your primary or recovery email. We\'ll generate a reset token for you.'}
+ {resetSuccess ? 'Your password has been updated. Sign in with your new password.' : showResetForm ? 'Enter your reset token and choose a new password.' : 'Enter your primary or recovery email address. We\'ll send a password reset link to your inbox.'}
  </p>
  </div>
 
@@ -3283,7 +3303,7 @@ export default function App() {
  {forgotMessage}
  {resetToken && !showResetForm && (
  <div style={{ marginTop: '12px', padding: '10px', background: 'rgba(255,255,255,0.08)', borderRadius: '8px', fontFamily: 'var(--font-mono)', fontSize: '11px', wordBreak: 'break-all', color: '#ffffff', border: '1px solid rgba(255,255,255,0.15)' }}>
- <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.45)', marginBottom: '4px', fontFamily: 'var(--font-body)' }}>RESET TOKEN (valid 1 hour):</div>
+ <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.45)', marginBottom: '4px', fontFamily: 'var(--font-body)' }}>BACKUP RESET TOKEN (valid 1 hour):</div>
  {resetToken}
  </div>
  )}
@@ -3298,7 +3318,7 @@ export default function App() {
  <input type="email" required className="input-field" value={forgotEmail} onChange={e => setForgotEmail(e.target.value)} placeholder="your@email.com" />
  </div>
  <button type="submit" disabled={forgotLoading} className="btn-primary" style={{ justifyContent: 'center', padding: '13px', borderRadius: '14px', fontSize: '14px', opacity: forgotLoading ? 0.6 : 1 }}>
- {forgotLoading ? 'Generating Token...' : 'Generate Reset Token'}
+ {forgotLoading ? 'Sending Email Link...' : 'Send Password Reset Email Link'}
  </button>
  {resetToken && (
  <button type="button" onClick={() => setShowResetForm(true)} style={{ background: 'none', border: '1px solid rgba(255,255,255,0.20)', borderRadius: '12px', color: '#ffffff', cursor: 'pointer', fontSize: '13px', fontFamily: 'var(--font-body)', padding: '11px', textAlign: 'center' }}>
