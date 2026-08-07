@@ -3483,8 +3483,8 @@ export default function App() {
 
  <button 
  onClick={() => setActiveTab('community')}
- className={activeTab === 'community' ? 'btn-primary lining-settings' : 'btn-secondary'} 
- style={{ width: '40px', height: '40px', borderRadius: '50%', padding: 0, justifyContent: 'center' }}
+ className={activeTab === 'community' ? 'btn-primary' : 'btn-secondary'} 
+ style={{ width: '40px', height: '40px', borderRadius: '50%', padding: 0, justifyContent: 'center', background: activeTab === 'community' ? 'linear-gradient(135deg, #e4e4e7, #a1a1aa)' : undefined, color: activeTab === 'community' ? '#000' : undefined }}
  title="Atlas Community Board"
  >
  <MessageSquare size={18} />
@@ -3492,8 +3492,8 @@ export default function App() {
 
  <button 
  onClick={() => setActiveTab('analytics')}
- className={activeTab === 'analytics' ? 'btn-primary lining-settings' : 'btn-secondary'} 
- style={{ width: '40px', height: '40px', borderRadius: '50%', padding: 0, justifyContent: 'center' }}
+ className={activeTab === 'analytics' ? 'btn-primary' : 'btn-secondary'} 
+ style={{ width: '40px', height: '40px', borderRadius: '50%', padding: 0, justifyContent: 'center', background: activeTab === 'analytics' ? 'linear-gradient(135deg, #e4e4e7, #a1a1aa)' : undefined, color: activeTab === 'analytics' ? '#000' : undefined }}
  title="BI Analytics"
  >
  <TrendingUp size={18} />
@@ -3502,7 +3502,7 @@ export default function App() {
  <button 
  onClick={() => setActiveTab('academy')}
  className={activeTab === 'academy' ? 'btn-primary' : 'btn-secondary'} 
- style={{ width: '40px', height: '40px', borderRadius: '50%', padding: 0, justifyContent: 'center', background: activeTab === 'academy' ? 'linear-gradient(135deg, #6366f1, #8b5cf6)' : undefined }}
+ style={{ width: '40px', height: '40px', borderRadius: '50%', padding: 0, justifyContent: 'center', background: activeTab === 'academy' ? 'linear-gradient(135deg, #e4e4e7, #a1a1aa)' : undefined, color: activeTab === 'academy' ? '#000' : undefined }}
  title="Atlas Academy"
  >
  <GraduationCap size={18} />
@@ -3511,7 +3511,7 @@ export default function App() {
  <button 
  onClick={async () => { setActiveTab('atlas_tv'); try { const feed = await api.tv.feed('all'); setTvVideos(feed?.videos || []); if (!tvCurrentVideo && feed?.videos?.length) setTvCurrentVideo(feed.videos[0]); const live = await api.tv.live(); setTvLive(live || []); const bm = await api.tv.bookmarks(); setTvBookmarks((bm||[]).map((b:any) => b.video_id)); } catch(e) { try { await api.tv.seed(); const feed = await api.tv.feed('all'); setTvVideos(feed?.videos || []); if (feed?.videos?.length) setTvCurrentVideo(feed.videos[0]); } catch {} } }}
  className={activeTab === 'atlas_tv' ? 'btn-primary' : 'btn-secondary'} 
- style={{ width: '40px', height: '40px', borderRadius: '50%', padding: 0, justifyContent: 'center', background: activeTab === 'atlas_tv' ? 'linear-gradient(135deg, #e11d48, #be123c)' : undefined }}
+ style={{ width: '40px', height: '40px', borderRadius: '50%', padding: 0, justifyContent: 'center', background: activeTab === 'atlas_tv' ? 'linear-gradient(135deg, #e4e4e7, #a1a1aa)' : undefined, color: activeTab === 'atlas_tv' ? '#000' : undefined }}
  title="Atlas TV"
  >
  <Tv size={18} />
@@ -3520,7 +3520,7 @@ export default function App() {
  <button
  onClick={async () => { setActiveTab('advertise' as any); setAdvStep('packages'); try { const pkgs = await api.advertise.packages(); setAdvPackages(pkgs?.packages || []); } catch {} }}
  className={activeTab === 'advertise' ? 'btn-primary' : 'btn-secondary'}
- style={{ width: '40px', height: '40px', borderRadius: '50%', padding: 0, justifyContent: 'center', background: activeTab === 'advertise' ? 'linear-gradient(135deg, #f59e0b, #d97706)' : undefined }}
+ style={{ width: '40px', height: '40px', borderRadius: '50%', padding: 0, justifyContent: 'center', background: activeTab === 'advertise' ? 'linear-gradient(135deg, #e4e4e7, #a1a1aa)' : undefined, color: activeTab === 'advertise' ? '#000' : undefined }}
  title="Advertise with Atlas"
  >
  <DollarSign size={18} />
@@ -3529,7 +3529,7 @@ export default function App() {
  <button 
  onClick={() => setActiveTab('resume_builder')}
  className={activeTab === 'resume_builder' ? 'btn-primary' : 'btn-secondary'} 
- style={{ width: '40px', height: '40px', borderRadius: '50%', padding: 0, justifyContent: 'center', background: activeTab === 'resume_builder' ? 'linear-gradient(135deg, #10b981, #059669)' : undefined }}
+ style={{ width: '40px', height: '40px', borderRadius: '50%', padding: 0, justifyContent: 'center', background: activeTab === 'resume_builder' ? 'linear-gradient(135deg, #e4e4e7, #a1a1aa)' : undefined, color: activeTab === 'resume_builder' ? '#000' : undefined }}
  title="Career Hub"
  >
  <FileText size={18} />
@@ -3546,7 +3546,7 @@ export default function App() {
    } catch {}
  }}
  className={activeTab === 'contacts' ? 'btn-primary' : 'btn-secondary'} 
- style={{ width: '40px', height: '40px', borderRadius: '50%', padding: 0, justifyContent: 'center', background: activeTab === 'contacts' ? 'linear-gradient(135deg, #06b6d4, #0891b2)' : undefined, position: 'relative' }}
+ style={{ width: '40px', height: '40px', borderRadius: '50%', padding: 0, justifyContent: 'center', background: activeTab === 'contacts' ? 'linear-gradient(135deg, #e4e4e7, #a1a1aa)' : undefined, color: activeTab === 'contacts' ? '#000' : undefined, position: 'relative' }}
  title="Atlas Contacts & Video Calls"
  >
  <Phone size={18} />
