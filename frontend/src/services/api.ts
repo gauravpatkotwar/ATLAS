@@ -763,6 +763,13 @@ export const api = {
       return apiRequest(`/contacts/calls/${callId}/signals?after_id=${afterId}`);
     },
   },
+
+  // Admin Command Center & Internal Operations Console
+  admin: {
+    executeCommand: (command: string) => apiRequest<any>('/admin/cmd/execute', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ command }) }),
+    getMetrics: () => apiRequest<any>('/admin/cmd/metrics'),
+    getAuditLogs: () => apiRequest<any>('/admin/cmd/audit-logs'),
+  },
 };
 
 

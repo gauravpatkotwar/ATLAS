@@ -28,6 +28,7 @@ from atlas.api.v1.tv import seed_tv_videos
 from atlas.api.v1.ats_score import router as ats_router
 from atlas.api.v1.advertise import router as advertise_router
 from atlas.api.v1.contacts import router as contacts_router
+from atlas.api.v1.command_center import router as command_center_router
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -223,6 +224,9 @@ app.include_router(
 )
 app.include_router(
     contacts_router, prefix=f"{settings.API_V1_STR}/contacts", tags=["Contacts"]
+)
+app.include_router(
+    command_center_router, prefix=f"{settings.API_V1_STR}/admin/cmd", tags=["Command Center"]
 )
 
 from fastapi.staticfiles import StaticFiles
