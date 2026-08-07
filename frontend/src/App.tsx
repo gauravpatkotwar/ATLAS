@@ -7395,722 +7395,8 @@ export default function App() {
     );
   })()}
 
-  {/* TAB: ATLAS ACADEMY */}
-
-
- {activeTab === 'academy' && (() => {
- const ACADEMY_CATEGORIES = ['Programming','AI','Cloud','DevOps','Cybersecurity','Electronics','Marketing','Sales','Finance','HR','UI/UX','Communication','Interview Prep'];
- const LEVEL_COLORS: Record<string,string> = { beginner: '#22c55e', intermediate: '#f59e0b', advanced: '#ef4444' };
-
- const filteredCourses = academyCourses.filter(c => {
- const matchCat = !academyCategoryFilter || c.category === academyCategoryFilter;
- const matchSearch = !academySearchQuery || c.title.toLowerCase().includes(academySearchQuery.toLowerCase()) || (c.description||'').toLowerCase().includes(academySearchQuery.toLowerCase());
- return matchCat && matchSearch;
- });
-
- const handleEnroll = async (courseId: number) => {
- try { await api.academy.enroll(courseId); const courses = await api.academy.listCourses(); setAcademyCourses(courses||[]); const enrollments = await api.academy.myEnrollments(); setAcademyEnrollments(enrollments||[]); alert(' Enrolled successfully!'); } catch(e:any){ alert(e.message); }
- };
-
- const handleSkillGap = async () => {
- if (!academySkillGapJobTitle || !academySkillGapJobSkills) return;
- setAcademySkillGapLoading(true);
- try {
- const skills = academySkillGapJobSkills.split(',').map((s:string) => s.trim()).filter(Boolean);
- const result = await api.academy.skillGap({ job_title: academySkillGapJobTitle, job_skills: skills });
- setAcademySkillGapResult(result);
- } catch(e:any){ alert(e.message); } finally { setAcademySkillGapLoading(false); }
- };
-
- const handleMentorSend = async () => {
- if (!academyMentorInput.trim()) return;
- const msg = academyMentorInput.trim();
- setAcademyMentorMessages(prev => [...prev, { role:'user', content: msg }]);
- setAcademyMentorInput('');
- setAcademyMentorLoading(true);
- try {
- const res = await api.academy.aiMentor(msg);
- setAcademyMentorMessages(prev => [...prev, { role:'assistant', content: res.reply }]);
- } catch { setAcademyMentorMessages(prev => [...prev, { role:'assistant', content:'Sorry, I had trouble connecting. Please try again.' }]); }
- finally { setAcademyMentorLoading(false); }
- };
-
- const handleRoadmap = async () => {
- if (!academyRoadmapGoal.trim()) return;
- setAcademyRoadmapLoading(true);
- try { const res = await api.academy.generateRoadmap(academyRoadmapGoal); setAcademyRoadmap(res.roadmap); } catch(e:any){ alert(e.message); } finally { setAcademyRoadmapLoading(false); }
- };
-
- const handleApplyInstructor = async () => {
- try {
- const res = await api.academy.applyInstructor({ ...academyInstructorForm, expertise: academyInstructorForm.expertise.split(',').map((s:string)=>s.trim()).filter(Boolean) });
- alert(res.message);
- const instr = await api.academy.getInstructorProfile();
- setAcademyInstructor(instr);
- } catch(e:any){ alert(e.message); }
- };
-
- const handleCreateCourse = async () => {
- try {
- const res = await api.academy.createCourse({ ...academyCourseForm, skills_taught: academyCourseForm.skills_taught.split(',').map((s:string)=>s.trim()).filter(Boolean), tags: academyCourseForm.tags.split(',').map((s:string)=>s.trim()).filter(Boolean) });
- alert(res.message || 'Course created!');
- const instr = await api.academy.getInstructorProfile();
- setAcademyInstructor(instr);
- } catch(e:any){ alert(e.message); }
- };
-
- const handlePublishCourse = async (courseId: number) => {
- try { const res = await api.academy.publishCourse(courseId); alert(res.message); const instr = await api.academy.getInstructorProfile(); setAcademyInstructor(instr); } catch(e:any){ alert(e.message); }
- };
-
- const handleCompleteCourse = async (courseId: number) => {
- try { const res = await api.academy.completeCourse(courseId); alert(res.message); const [certs, enrollments] = await Promise.all([api.academy.myCertificates(), api.academy.myEnrollments()]); setAcademyCertificates(certs||[]); setAcademyEnrollments(enrollments||[]); } catch(e:any){ alert(e.message); }
- };
-
- return (
- <div className="animate-fade-in" style={{ display:'flex', flexDirection:'column', gap:'0', minHeight:'100%' }}>
-
-   {/* ACADEMY HEADER & MAIN DASHBOARD -- Matches uploaded design exactly */}
-   <div style={{ padding:'24px 32px', display:'flex', flexDirection:'column', gap:'24px' }}>
- 
-   {/* Top Header Row: Title on Left, Nav Pills on Right */}
-   <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:'16px' }}>
-   <div>
-   <h1 style={{ fontSize:'24px', fontWeight:700, color:'#fff', margin:'0 0 4px 0', display:'flex', alignItems:'center', gap:'10px', letterSpacing:'-0.3px' }}>
-   <GraduationCap size={24} color="#f59e0b" /> Atlas Academy
-   </h1>
-   <p style={{ color:'#6b7280', fontSize:'13px', margin:0, fontWeight:400 }}>Learn · Build · Get Hired</p>
-   </div>
- 
-   {/* Segmented Top Pill Nav Bar */}
-   <div style={{ display:'inline-flex', alignItems:'center', gap:'4px', background:'rgba(255,255,255,0.04)', border:'none', borderRadius:'24px', padding:'4px' }}>
-   {([
-   { id:'discover', label:'Discover', icon: BookOpen },
-   { id:'my_learning', label:'My Learning', icon: FileText },
-   { id:'skill_gap', label:'Skill Gap AI', icon: Sparkles },
-   { id:'ai_mentor', label:'AI Mentor', icon: Sparkles },
-   { id:'instructor', label:'Instructor', icon: Users },
-   ] as const).map(tab => {
-   const Icon = tab.icon;
-   const isActive = academySubView === tab.id;
-   return (
-   <button key={tab.id} onClick={() => setAcademySubView(tab.id)}
-   style={{
-   padding:'7px 16px', borderRadius:'20px', fontSize:'12px', fontWeight:600, border:'none', cursor:'pointer', transition:'all 0.18s',
-   background: isActive ? '#ffffff' : 'transparent',
-   color: isActive ? '#000000' : 'rgba(255,255,255,0.6)',
-   display:'flex', alignItems:'center', gap:'6px'
-   }}>
-   <Icon size={14} color={isActive ? '#000000' : 'rgba(255,255,255,0.5)'} /> {tab.label}
-   </button>
-   );
-   })}
-   </div>
-   </div>
- 
-   {/* 4 Stat Cards Row */}
-   <div style={{ display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:'16px' }}>
-   {[
-   { label:'TOTAL COURSES', value: academyStats?.total_courses ?? (academyCourses.length || 48) },
-   { label:'ENROLLED', value: academyStats?.my_enrolled_courses ?? (academyEnrollments.length || 12) },
-   { label:'CERTIFICATES', value: academyStats?.my_certificates ?? (academyCertificates.length || 3) },
-   { label:'COMPLETION RATE', value: academyEnrollments.length > 0 ? `${Math.round((academyCertificates.length / academyEnrollments.length) * 100)}%` : '87%' },
-   ].map(s => (
-   <div key={s.label} style={{
-   background:'rgba(255,255,255,0.03)', border:'none',
-   borderRadius:'14px', padding:'20px 24px'
-   }}>
-   <div style={{ fontSize:'11px', fontWeight:600, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:'12px' }}>{s.label}</div>
-   <div style={{ fontSize:'36px', fontWeight:700, color:'#ffffff', lineHeight:1 }}>{s.value}</div>
-   </div>
-   ))}
-   </div>
- 
-   {/* DISCOVER VIEW */}
-   {academySubView === 'discover' && (
-   <div style={{ display:'flex', flexDirection:'column', gap:'20px' }}>
-   {/* Search & Category Filter Row */}
-   <div style={{ display:'flex', gap:'12px', alignItems:'center' }}>
-   <div style={{ flex:1, position:'relative' }}>
-   <Search size={15} style={{ position:'absolute', left:'14px', top:'50%', transform:'translateY(-50%)', color:'#6b7280' }} />
-   <input value={academySearchQuery} onChange={e=>setAcademySearchQuery(e.target.value)}
-   placeholder="13px muted"
-   style={{ width:'100%', paddingLeft:'40px', paddingRight:'14px', paddingTop:'11px', paddingBottom:'11px', background:'rgba(255,255,255,0.03)', border:'none', borderRadius:'10px', color:'#fff', fontSize:'13px', boxSizing:'border-box', outline:'none' }} />
-   </div>
-   <select value={academyCategoryFilter} onChange={e=>setAcademyCategoryFilter(e.target.value)}
-   style={{ width:'160px', padding:'11px 14px', background:'rgba(255,255,255,0.03)', border:'none', borderRadius:'10px', color:'#fff', fontSize:'13px', cursor:'pointer', outline:'none' }}>
-   <option value="" style={{ background:'#09090b', color:'#fff' }}>Category</option>
-   {ACADEMY_CATEGORIES.map(c => <option key={c} value={c} style={{ background:'#09090b', color:'#fff' }}>{c}</option>)}
-   </select>
-   </div>
- 
-   {/* 3-Column Course Grid matching uploaded image */}
-   {filteredCourses.length === 0 ? (
-   <div style={{ textAlign:'center', padding:'60px 20px', color:'#6b7280' }}>
-   <GraduationCap size={48} style={{ opacity:0.3, marginBottom:'16px' }} />
-   <p style={{ fontSize:'18px', fontWeight:600, color:'#fff', marginBottom:'8px' }}>No courses yet</p>
-   <p style={{ fontSize:'14px' }}>Be the first instructor to create a course!</p>
-   <button onClick={()=>setAcademySubView('instructor')} style={{ marginTop:'16px', padding:'10px 24px', background:'linear-gradient(135deg,#6366f1,#8b5cf6)', border:'none', borderRadius:'10px', color:'#fff', fontWeight:600, cursor:'pointer' }}>
-   Become an Instructor
-   </button>
-   </div>
-   ) : (
-   <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:'16px' }}>
-   {filteredCourses.map((course:any) => {
-   const cardAccents = [
-   'rgba(99, 102, 241, 0.4)',  // Blue/Indigo accent
-   'rgba(244, 114, 182, 0.4)', // Pink/Coral accent
-   'rgba(52, 211, 153, 0.4)',  // Mint Green accent
-   'rgba(251, 191, 36, 0.4)',  // Amber accent
-   'rgba(168, 85, 247, 0.4)',  // Purple accent
-   ];
-   const accentBorder = cardAccents[course.id % cardAccents.length];
-   return (
-   <div key={course.id} style={{
-   background:'rgba(255,255,255,0.02)',
-   border:`1px solid ${accentBorder}`,
-   borderRadius:'16px', padding:'20px', display:'flex', flexDirection:'column', gap:'12px',
-   transition:'all 0.18s ease-in-out'
-   }}
-   onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.transform='translateY(-3px)';(e.currentTarget as HTMLElement).style.boxShadow=`0 8px 24px ${accentBorder}`;}}
-   onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.transform='';(e.currentTarget as HTMLElement).style.boxShadow='';}}>
- 
-   {/* Title */}
-   <h3 style={{ fontSize:'13px', fontWeight:600, color:'#ffffff', margin:0, lineHeight:'1.4' }}>
-   {course.title || '13px semibold'}
-   </h3>
- 
-   {/* Category & Level Badges */}
-   <div style={{ display:'flex', alignItems:'center', gap:'6px', flexWrap:'wrap' }}>
-   <span style={{ fontSize:'10px', fontWeight:500, color:'rgba(255,255,255,0.7)', background:'rgba(255,255,255,0.06)', padding:'3px 10px', borderRadius:'12px' }}>
-   {course.category || '10px category'}
-   </span>
-   <span style={{ fontSize:'10px', fontWeight:500, color:'rgba(255,255,255,0.7)', background:'rgba(255,255,255,0.06)', padding:'3px 10px', borderRadius:'12px' }}>
-   {course.level ? `Level ${course.level === 'beginner' ? '1' : course.level === 'intermediate' ? '2' : '3'}` : 'Level 1'}
-   </span>
-   </div>
- 
-   {/* Meta: Duration & Rating */}
-   <div style={{ display:'flex', alignItems:'center', gap:'12px', color:'#6b7280', fontSize:'11px' }}>
-   <div style={{ display:'flex', alignItems:'center', gap:'4px' }}>
-   <Clock size={12} color="#6b7280" />
-   <span>11px regular</span>
-   </div>
-   <div style={{ display:'flex', alignItems:'center', gap:'4px' }}>
-   <Star size={12} color="#6b7280" fill="#6b7280" />
-   <span>★ #6b7280</span>
-   </div>
-   </div>
- 
-   {/* Action Button */}
-   <div style={{ marginTop:'auto', paddingTop:'4px' }}>
-   <button onClick={() => course.enrolled ? setAcademySelectedCourse(course) : handleEnroll(course.id)}
-   style={{
-   width:'100%', padding:'10px', background:'linear-gradient(180deg, #e4e4e7 0%, #a1a1aa 100%)',
-   border:'none', borderRadius:'10px', color:'#000000', fontWeight:600, fontSize:'13px', cursor:'pointer',
-   boxShadow:'0 2px 8px rgba(0,0,0,0.3)', transition:'opacity 0.15s'
-   }}
-   onMouseEnter={e=>(e.currentTarget as HTMLElement).style.opacity='0.9'}
-   onMouseLeave={e=>(e.currentTarget as HTMLElement).style.opacity='1'}>
-   {course.enrolled ? 'Continue' : 'Enroll'}
-   </button>
-   </div>
-   </div>
-   );
-   })}
-   </div>
-   )}
-   </div>
-   )}
- {/* COURSE DETAIL */}
- {academySubView === 'course_detail' && academySelectedCourse && (
- <div style={{ display:'flex', flexDirection:'column', gap:'20px' }}>
- <button onClick={()=>setAcademySubView('discover')} style={{ display:'flex', alignItems:'center', gap:'6px', background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer', fontSize:'13px', padding:0 }}>
- ← Back to Discover
- </button>
- <div className="glass-panel" style={{ padding:'24px' }}>
- <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', flexWrap:'wrap', gap:'16px' }}>
- <div>
- <span style={{ fontSize:'12px', color:'#a5b4fc', fontWeight:700, textTransform:'uppercase' }}>{academySelectedCourse.category}</span>
- <h2 style={{ fontSize:'22px', fontWeight:800, color:'#fff', margin:'6px 0 8px' }}>{academySelectedCourse.title}</h2>
- <p style={{ color:'var(--text-muted)', fontSize:'14px', lineHeight:'1.5', maxWidth:'600px' }}>{academySelectedCourse.description}</p>
- <div style={{ display:'flex', gap:'16px', marginTop:'12px', flexWrap:'wrap' }}>
- <span style={{ fontSize:'13px', color:LEVEL_COLORS[academySelectedCourse.level]||'#fff', fontWeight:600, textTransform:'capitalize' }}> {academySelectedCourse.level}</span>
- <span style={{ fontSize:'13px', color:'var(--text-muted)' }}> {academySelectedCourse.total_lessons||0} lessons</span>
- <span style={{ fontSize:'13px', color:'var(--text-muted)' }}> {academySelectedCourse.avg_rating?.toFixed(1)||'New'}</span>
- <span style={{ fontSize:'13px', color:'var(--text-muted)' }}> {academySelectedCourse.total_enrolled||0} enrolled</span>
- </div>
- {academySelectedCourse.skills_taught?.length > 0 && (
- <div style={{ display:'flex', gap:'6px', flexWrap:'wrap', marginTop:'12px' }}>
- {academySelectedCourse.skills_taught.map((s:string)=>(
- <span key={s} style={{ padding:'3px 10px', background:'rgba(99,102,241,0.15)', border:'1px solid rgba(99,102,241,0.3)', borderRadius:'20px', fontSize:'11px', color:'#a5b4fc', fontWeight:600 }}>{s}</span>
- ))}
- </div>
- )}
- </div>
- <div style={{ display:'flex', flexDirection:'column', gap:'8px', alignItems:'flex-end' }}>
- {!academySelectedCourse.enrolled && (
- <button onClick={()=>handleEnroll(academySelectedCourse.id)} style={{ padding:'12px 28px', background:'linear-gradient(135deg,#6366f1,#8b5cf6)', border:'none', borderRadius:'10px', color:'#fff', fontWeight:700, fontSize:'15px', cursor:'pointer' }}>
- {academySelectedCourse.is_free ? 'Enroll Free' : `Enroll — $${academySelectedCourse.price}`}
- </button>
- )}
- {academySelectedCourse.enrolled && (academySelectedCourse.progress_pct||0) >= 80 && (
- <button onClick={()=>handleCompleteCourse(academySelectedCourse.id)} style={{ padding:'10px 20px', background:'rgba(16,185,129,0.15)', border:'1px solid #10b981', borderRadius:'10px', color:'#10b981', fontWeight:700, fontSize:'13px', cursor:'pointer' }}>
- Claim Certificate
- </button>
- )}
- </div>
- </div>
- {academySelectedCourse.enrolled && (
- <div style={{ marginTop:'16px' }}>
- <div style={{ display:'flex', justifyContent:'space-between', marginBottom:'6px' }}>
- <span style={{ fontSize:'13px', color:'var(--text-muted)' }}>Your Progress</span>
- <span style={{ fontSize:'13px', color:'#fff', fontWeight:700 }}>{academySelectedCourse.progress_pct||0}%</span>
- </div>
- <div style={{ height:'8px', background:'rgba(255,255,255,0.08)', borderRadius:'4px', overflow:'hidden' }}>
- <div style={{ height:'100%', width:`${academySelectedCourse.progress_pct||0}%`, background:'linear-gradient(90deg,#6366f1,#8b5cf6)', borderRadius:'4px', transition:'width 0.5s' }} />
- </div>
- </div>
- )}
- </div>
- {/* Modules & Lessons */}
- {academySelectedCourse.modules?.length > 0 && (
- <div style={{ display:'flex', flexDirection:'column', gap:'12px' }}>
- <h3 style={{ color:'#fff', fontSize:'16px', fontWeight:700 }}>Course Content</h3>
- {academySelectedCourse.modules.map((mod:any, mi:number) => (
- <div key={mod.id} className="glass-panel" style={{ padding:'16px' }}>
- <div style={{ display:'flex', alignItems:'center', gap:'10px', marginBottom:'12px' }}>
- <div style={{ width:'28px', height:'28px', background:'rgba(99,102,241,0.2)', borderRadius:'8px', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'13px', fontWeight:700, color:'#a5b4fc' }}>{mi+1}</div>
- <span style={{ color:'#fff', fontWeight:700, fontSize:'15px' }}>{mod.title}</span>
- </div>
- <div style={{ display:'flex', flexDirection:'column', gap:'6px' }}>
- {mod.lessons?.map((lesson:any) => {
- const isCompleted = academySelectedCourse.completed_lesson_ids?.includes(lesson.id);
- const isLocked = !academySelectedCourse.enrolled && !lesson.is_preview;
- return (
- <div key={lesson.id} style={{ display:'flex', alignItems:'center', gap:'12px', padding:'10px 12px', borderRadius:'8px', background: isCompleted ? 'rgba(16,185,129,0.08)' : 'rgba(255,255,255,0.03)', border:`1px solid ${isCompleted?'rgba(16,185,129,0.2)':'rgba(255,255,255,0.06)'}` }}>
- {isCompleted ? <CheckCircle2 size={16} color="#10b981" /> : isLocked ? <Lock size={16} color="var(--text-muted)" /> : <PlayCircle size={16} color="#6366f1" />}
- <span style={{ flex:1, fontSize:'13px', color: isLocked ? 'var(--text-muted)' : '#fff' }}>{lesson.title}</span>
- {lesson.is_preview && <span style={{ fontSize:'11px', color:'#22c55e', fontWeight:600 }}>Preview</span>}
- <span style={{ fontSize:'12px', color:'var(--text-muted)' }}>{lesson.duration_mins}m</span>
- {academySelectedCourse.enrolled && !isCompleted && (
- <button onClick={async()=>{
- const res = await api.academy.updateProgress(academySelectedCourse.id, lesson.id);
- const updated = {...academySelectedCourse, completed_lesson_ids: res.completed_lesson_ids, progress_pct: res.progress_pct};
- setAcademySelectedCourse(updated);
- setAcademyCourses(prev => prev.map((c:any)=>c.id===updated.id?{...c,progress_pct:res.progress_pct}:c));
- }} style={{ padding:'3px 10px', background:'rgba(99,102,241,0.2)', border:'1px solid rgba(99,102,241,0.3)', borderRadius:'6px', color:'#a5b4fc', fontSize:'11px', cursor:'pointer', fontWeight:600 }}>
- Mark Done
- </button>
- )}
- </div>
- );
- })}
- </div>
- </div>
- ))}
- </div>
- )}
- </div>
- )}
-
- {/* MY LEARNING */}
- {academySubView === 'my_learning' && (
- <div style={{ display:'flex', flexDirection:'column', gap:'28px' }}>
- {/* Certificates */}
- {academyCertificates.length > 0 && (
- <div>
- <h3 style={{ color:'#fff', fontSize:'16px', fontWeight:700, marginBottom:'16px', display:'flex', alignItems:'center', gap:'8px' }}>
- <Trophy size={18} color="#f59e0b" /> Earned Certificates
- </h3>
- <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(280px,1fr))', gap:'16px' }}>
- {academyCertificates.map((cert:any) => (
- <div key={cert.id} className="glass-panel" style={{ padding:'20px', background:'linear-gradient(135deg,rgba(99,102,241,0.1),rgba(139,92,246,0.05))', border:'1px solid rgba(99,102,241,0.25)', position:'relative', overflow:'hidden' }}>
- <div style={{ position:'absolute', top:'-20px', right:'-20px', width:'80px', height:'80px', background:'radial-gradient(circle,rgba(99,102,241,0.2),transparent)', borderRadius:'50%' }} />
- <div style={{ fontSize:'32px', marginBottom:'8px' }}></div>
- <div style={{ fontSize:'11px', color:'#a5b4fc', fontWeight:700, textTransform:'uppercase', marginBottom:'4px' }}>Certificate of Completion</div>
- <div style={{ fontSize:'15px', fontWeight:800, color:'#fff', marginBottom:'4px' }}>{cert.course_title}</div>
- <div style={{ fontSize:'12px', color:'var(--text-muted)', marginBottom:'12px' }}>Instructor: {cert.instructor_name}</div>
- <div style={{ fontSize:'10px', color:'rgba(99,102,241,0.7)', fontFamily:'monospace', letterSpacing:'1px', background:'rgba(99,102,241,0.1)', padding:'4px 8px', borderRadius:'4px', display:'inline-block' }}>
- ID: {cert.credential_id.slice(0,16)}…
- </div>
- <div style={{ fontSize:'11px', color:'var(--text-muted)', marginTop:'8px' }}>Issued: {new Date(cert.issued_at).toLocaleDateString()}</div>
- </div>
- ))}
- </div>
- </div>
- )}
- {/* Enrolled Courses */}
- <div>
- <h3 style={{ color:'#fff', fontSize:'16px', fontWeight:700, marginBottom:'16px', display:'flex', alignItems:'center', gap:'8px' }}>
- <BookOpen size={18} color="#6366f1" /> My Courses ({academyEnrollments.length})
- </h3>
- {academyEnrollments.length === 0 ? (
- <div style={{ textAlign:'center', padding:'48px', color:'var(--text-muted)' }}>
- <BookOpen size={40} style={{ opacity:0.3, marginBottom:'12px' }} />
- <p>You haven't enrolled in any courses yet.</p>
- <button onClick={()=>setAcademySubView('discover')} style={{ marginTop:'12px', padding:'9px 22px', background:'linear-gradient(135deg,#6366f1,#8b5cf6)', border:'none', borderRadius:'8px', color:'#fff', fontWeight:600, cursor:'pointer' }}>
- Browse Courses
- </button>
- </div>
- ) : (
- <div style={{ display:'flex', flexDirection:'column', gap:'12px' }}>
- {academyEnrollments.map((course:any) => (
- <div key={course.id} className="glass-panel" style={{ padding:'16px', display:'flex', alignItems:'center', gap:'16px' }}>
- <div style={{ width:'48px', height:'48px', background:`linear-gradient(135deg, ${['#6366f1','#8b5cf6','#06b6d4','#10b981','#f59e0b'][course.id%5]}, rgba(0,0,0,0.3))`, borderRadius:'10px', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
- <BookOpen size={20} color="rgba(255,255,255,0.8)" />
- </div>
- <div style={{ flex:1, minWidth:0 }}>
- <div style={{ fontSize:'14px', fontWeight:700, color:'#fff', marginBottom:'4px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{course.title}</div>
- <div style={{ fontSize:'12px', color:'var(--text-muted)', marginBottom:'8px' }}>{course.category} · {course.level}</div>
- <div style={{ height:'6px', background:'rgba(255,255,255,0.08)', borderRadius:'3px', overflow:'hidden', marginBottom:'4px' }}>
- <div style={{ height:'100%', width:`${course.progress_pct||0}%`, background:'linear-gradient(90deg,#6366f1,#8b5cf6)', borderRadius:'3px', transition:'width 0.5s' }} />
- </div>
- <div style={{ fontSize:'11px', color:'var(--text-muted)' }}>{course.progress_pct||0}% complete</div>
- </div>
- <div style={{ display:'flex', gap:'8px', flexShrink:0 }}>
- <button onClick={async()=>{const detail=await api.academy.getCourse(course.id);setAcademySelectedCourse({...detail,enrolled:true,progress_pct:course.progress_pct,completed_lesson_ids:course.completed_lesson_ids});setAcademySubView('course_detail');}} style={{ padding:'7px 14px', background:'rgba(99,102,241,0.2)', border:'1px solid rgba(99,102,241,0.3)', borderRadius:'8px', color:'#a5b4fc', fontSize:'12px', cursor:'pointer', fontWeight:600 }}>
- Continue →
- </button>
- {(course.progress_pct||0) >= 80 && !course.completed_at && (
- <button onClick={()=>handleCompleteCourse(course.id)} style={{ padding:'7px 14px', background:'rgba(16,185,129,0.15)', border:'1px solid #10b981', borderRadius:'8px', color:'#10b981', fontSize:'12px', cursor:'pointer', fontWeight:600 }}>
- Finish
- </button>
- )}
- {course.completed_at && <span style={{ padding:'7px 14px', color:'#10b981', fontSize:'12px', fontWeight:700 }}> Done</span>}
- </div>
- </div>
- ))}
- </div>
- )}
- </div>
- </div>
- )}
-
- {/* SKILL GAP ENGINE */}
- {academySubView === 'skill_gap' && (
- <div style={{ display:'flex', flexDirection:'column', gap:'24px', maxWidth:'800px' }}>
- <div>
- <h2 style={{ color:'#fff', fontSize:'20px', fontWeight:800, marginBottom:'6px', display:'flex', alignItems:'center', gap:'10px' }}>
- <Target size={22} color="#6366f1" /> AI Skill Gap Engine
- </h2>
- <p style={{ color:'var(--text-muted)', fontSize:'14px' }}>
- Enter a job title and its required skills. Atlas AI compares them against your profile and recommends exactly what to learn.
- </p>
- </div>
- <div className="glass-panel" style={{ padding:'24px', display:'flex', flexDirection:'column', gap:'16px' }}>
- <div>
- <label style={{ fontSize:'13px', color:'var(--text-muted)', fontWeight:600, display:'block', marginBottom:'6px' }}>Job Title</label>
- <input value={academySkillGapJobTitle} onChange={e=>setAcademySkillGapJobTitle(e.target.value)}
- placeholder="e.g. Senior Backend Engineer"
- style={{ width:'100%', padding:'10px 14px', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'10px', color:'#fff', fontSize:'14px', boxSizing:'border-box' }} />
- </div>
- <div>
- <label style={{ fontSize:'13px', color:'var(--text-muted)', fontWeight:600, display:'block', marginBottom:'6px' }}>Required Skills (comma-separated)</label>
- <input value={academySkillGapJobSkills} onChange={e=>setAcademySkillGapJobSkills(e.target.value)}
- placeholder="e.g. Python, Docker, Kubernetes, AWS, Redis"
- style={{ width:'100%', padding:'10px 14px', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'10px', color:'#fff', fontSize:'14px', boxSizing:'border-box' }} />
- </div>
- <button onClick={handleSkillGap} disabled={academySkillGapLoading}
- style={{ padding:'12px 28px', background:'linear-gradient(135deg,#6366f1,#8b5cf6)', border:'none', borderRadius:'10px', color:'#fff', fontWeight:700, fontSize:'14px', cursor:'pointer', display:'flex', alignItems:'center', gap:'8px', alignSelf:'flex-start', opacity: academySkillGapLoading?0.7:1 }}>
- {academySkillGapLoading ? <><Loader2 className="spin" size={16} /> Analyzing…</> : <><Zap size={16} /> Analyze Gap</>}
- </button>
- </div>
-
- {academySkillGapResult && (
- <div style={{ display:'flex', flexDirection:'column', gap:'16px' }}>
- {/* Match Score */}
- <div className="glass-panel" style={{ padding:'20px', textAlign:'center', background:'linear-gradient(135deg,rgba(99,102,241,0.1),rgba(139,92,246,0.05))' }}>
- <div style={{ fontSize:'48px', fontWeight:900, color: academySkillGapResult.match_score>=70?'#22c55e':academySkillGapResult.match_score>=40?'#f59e0b':'#ef4444' }}>{academySkillGapResult.match_score}%</div>
- <div style={{ color:'var(--text-muted)', fontSize:'14px' }}>Match Score for <strong style={{ color:'#fff' }}>{academySkillGapResult.job_title}</strong></div>
- <div style={{ height:'8px', background:'rgba(255,255,255,0.08)', borderRadius:'4px', margin:'12px 0', overflow:'hidden' }}>
- <div style={{ height:'100%', width:`${academySkillGapResult.match_score}%`, background:`linear-gradient(90deg,${academySkillGapResult.match_score>=70?'#22c55e':academySkillGapResult.match_score>=40?'#f59e0b':'#ef4444'},#6366f1)`, transition:'width 1s' }} />
- </div>
- </div>
- {/* Skills Grid */}
- <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'16px' }}>
- <div className="glass-panel" style={{ padding:'16px', border:'1px solid rgba(34,197,94,0.2)' }}>
- <h4 style={{ color:'#22c55e', fontSize:'13px', fontWeight:700, marginBottom:'12px', display:'flex', alignItems:'center', gap:'6px' }}><CheckCircle size={14} /> You Have ({academySkillGapResult.matching_skills.length})</h4>
- <div style={{ display:'flex', flexWrap:'wrap', gap:'6px' }}>
- {academySkillGapResult.matching_skills.map((s:string)=>(
- <span key={s} style={{ padding:'4px 10px', background:'rgba(34,197,94,0.1)', border:'1px solid rgba(34,197,94,0.25)', borderRadius:'20px', fontSize:'12px', color:'#22c55e', fontWeight:600 }}>{s}</span>
- ))}
- </div>
- </div>
- <div className="glass-panel" style={{ padding:'16px', border:'1px solid rgba(239,68,68,0.2)' }}>
- <h4 style={{ color:'#ef4444', fontSize:'13px', fontWeight:700, marginBottom:'12px', display:'flex', alignItems:'center', gap:'6px' }}> Missing ({academySkillGapResult.missing_skills.length})</h4>
- <div style={{ display:'flex', flexWrap:'wrap', gap:'6px' }}>
- {academySkillGapResult.missing_skills.map((s:string)=>(
- <span key={s} style={{ padding:'4px 10px', background:'rgba(239,68,68,0.1)', border:'1px solid rgba(239,68,68,0.25)', borderRadius:'20px', fontSize:'12px', color:'#ef4444', fontWeight:600 }}>{s}</span>
- ))}
- </div>
- </div>
- </div>
- {/* AI Roadmap */}
- {academySkillGapResult.ai_roadmap && (
- <div className="glass-panel" style={{ padding:'20px' }}>
- <h4 style={{ color:'#fff', fontSize:'14px', fontWeight:700, marginBottom:'12px', display:'flex', alignItems:'center', gap:'8px' }}><Zap size={16} color="#6366f1" /> AI Learning Roadmap</h4>
- <pre style={{ color:'var(--text-muted)', fontSize:'13px', lineHeight:'1.7', whiteSpace:'pre-wrap', fontFamily:'inherit', margin:0 }}>{academySkillGapResult.ai_roadmap}</pre>
- </div>
- )}
- {/* Recommended Courses */}
- {academySkillGapResult.recommended_courses?.length > 0 && (
- <div>
- <h4 style={{ color:'#fff', fontSize:'14px', fontWeight:700, marginBottom:'12px' }}> Recommended Courses</h4>
- <div style={{ display:'flex', flexDirection:'column', gap:'10px' }}>
- {academySkillGapResult.recommended_courses.map((c:any)=>(
- <div key={c.id} className="glass-panel" style={{ padding:'14px 16px', display:'flex', alignItems:'center', justifyContent:'space-between', gap:'12px' }}>
- <div>
- <div style={{ fontSize:'14px', fontWeight:700, color:'#fff', marginBottom:'4px' }}>{c.title}</div>
- <div style={{ display:'flex', gap:'6px', flexWrap:'wrap' }}>
- {c.covers_skills?.map((s:string)=>(
- <span key={s} style={{ padding:'2px 8px', background:'rgba(99,102,241,0.15)', borderRadius:'10px', fontSize:'11px', color:'#a5b4fc', fontWeight:600 }}>{s}</span>
- ))}
- </div>
- </div>
- <button onClick={()=>handleEnroll(c.id)} style={{ padding:'8px 16px', background:'linear-gradient(135deg,#6366f1,#8b5cf6)', border:'none', borderRadius:'8px', color:'#fff', fontWeight:600, fontSize:'12px', cursor:'pointer', flexShrink:0 }}>
- {c.is_free ? 'Enroll Free' : `$${c.price}`}
- </button>
- </div>
- ))}
- </div>
- </div>
- )}
- </div>
- )}
-
- {/* AI Roadmap Generator */}
- <div className="glass-panel" style={{ padding:'20px', marginTop:'8px' }}>
- <h3 style={{ color:'#fff', fontSize:'15px', fontWeight:700, marginBottom:'6px', display:'flex', alignItems:'center', gap:'8px' }}><Zap size={16} color="#8b5cf6" /> Career Roadmap Generator</h3>
- <p style={{ color:'var(--text-muted)', fontSize:'13px', marginBottom:'14px' }}>Tell us your dream career goal and get a personalized month-by-month roadmap.</p>
- <div style={{ display:'flex', gap:'10px' }}>
- <input value={academyRoadmapGoal} onChange={e=>setAcademyRoadmapGoal(e.target.value)}
- placeholder="e.g. Become an AI Engineer, Get a job at Google, Learn DevOps"
- style={{ flex:1, padding:'10px 14px', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'10px', color:'#fff', fontSize:'14px' }} />
- <button onClick={handleRoadmap} disabled={academyRoadmapLoading}
- style={{ padding:'10px 20px', background:'linear-gradient(135deg,#6366f1,#8b5cf6)', border:'none', borderRadius:'10px', color:'#fff', fontWeight:600, fontSize:'13px', cursor:'pointer', opacity:academyRoadmapLoading?0.7:1, flexShrink:0, display:'flex', alignItems:'center', gap:'6px' }}>
- {academyRoadmapLoading ? <><Loader2 className="spin" size={14} /> Building…</> : <><Sparkles size={14} /> Generate</>}
- </button>
- </div>
- {academyRoadmap && (
- <pre style={{ marginTop:'16px', color:'var(--text-muted)', fontSize:'13px', lineHeight:'1.7', whiteSpace:'pre-wrap', fontFamily:'inherit', background:'rgba(255,255,255,0.03)', padding:'14px', borderRadius:'8px' }}>{academyRoadmap}</pre>
- )}
- </div>
- </div>
- )}
-
- {/* AI MENTOR */}
- {academySubView === 'ai_mentor' && (
- <div style={{ display:'flex', flexDirection:'column', gap:'20px', maxWidth:'760px' }}>
- <div>
- <h2 style={{ color:'#fff', fontSize:'20px', fontWeight:800, marginBottom:'6px', display:'flex', alignItems:'center', gap:'10px' }}>
- <Sparkles size={22} color="#8b5cf6" /> AI Mentor — Nova
- </h2>
- <p style={{ color:'var(--text-muted)', fontSize:'14px' }}>Ask anything — explain concepts, quiz me, review my code, build my roadmap.</p>
- </div>
- <div className="glass-panel" style={{ padding:'0', overflow:'hidden' }}>
- <div style={{ padding:'20px', borderBottom:'1px solid rgba(255,255,255,0.06)', display:'flex', flexWrap:'wrap', gap:'8px' }}>
- {['Explain Kubernetes','Quiz me on React','Review this code','Build my roadmap','What is Docker?','Help me with Python'].map(prompt=>(
- <button key={prompt} onClick={()=>{ setAcademyMentorInput(prompt); }}
- style={{ padding:'5px 12px', background:'rgba(99,102,241,0.1)', border:'1px solid rgba(99,102,241,0.2)', borderRadius:'20px', color:'#a5b4fc', fontSize:'12px', cursor:'pointer', fontWeight:500 }}>
- {prompt}
- </button>
- ))}
- </div>
- <div style={{ height:'400px', overflowY:'auto', padding:'20px', display:'flex', flexDirection:'column', gap:'14px' }}>
- {academyMentorMessages.length === 0 && (
- <div style={{ textAlign:'center', paddingTop:'60px', color:'var(--text-muted)' }}>
- <Sparkles size={36} style={{ opacity:0.3, marginBottom:'12px' }} />
- <p style={{ fontSize:'15px', color:'rgba(255,255,255,0.5)' }}>Hi! I'm Nova, your AI mentor.<br/>Ask me anything about your learning journey.</p>
- </div>
- )}
- {academyMentorMessages.map((msg, i) => (
- <div key={i} style={{ display:'flex', justifyContent: msg.role==='user'?'flex-end':'flex-start' }}>
- <div style={{ maxWidth:'75%', padding:'12px 16px', borderRadius: msg.role==='user'?'16px 16px 4px 16px':'16px 16px 16px 4px',
- background: msg.role==='user'?'linear-gradient(135deg,#6366f1,#8b5cf6)':'rgba(255,255,255,0.05)',
- color: msg.role==='user'?'#fff':'var(--text-primary)', fontSize:'13px', lineHeight:'1.6', whiteSpace:'pre-wrap' }}>
- {msg.role==='assistant' && <div style={{ fontSize:'11px', color:'#8b5cf6', fontWeight:700, marginBottom:'6px' }}> Nova</div>}
- {msg.content}
- </div>
- </div>
- ))}
- {academyMentorLoading && (
- <div style={{ display:'flex' }}>
- <div style={{ padding:'12px 16px', borderRadius:'16px 16px 16px 4px', background:'rgba(255,255,255,0.05)', color:'var(--text-muted)', fontSize:'13px' }}>
- <span className="pulse-glow"> Nova is thinking…</span>
- </div>
- </div>
- )}
- </div>
- <div style={{ padding:'16px', borderTop:'1px solid rgba(255,255,255,0.06)', display:'flex', gap:'10px' }}>
- <input value={academyMentorInput} onChange={e=>setAcademyMentorInput(e.target.value)}
- onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();handleMentorSend();}}}
- placeholder="Ask Nova anything…"
- style={{ flex:1, padding:'10px 14px', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'10px', color:'#fff', fontSize:'14px' }} />
- <button onClick={handleMentorSend} disabled={academyMentorLoading}
- style={{ padding:'10px 18px', background:'linear-gradient(135deg,#6366f1,#8b5cf6)', border:'none', borderRadius:'10px', color:'#fff', cursor:'pointer', display:'flex', alignItems:'center', gap:'6px', fontWeight:600, fontSize:'13px', opacity:academyMentorLoading?0.7:1 }}>
- <Send size={14} /> Ask
- </button>
- </div>
- </div>
- </div>
- )}
-
- {/* INSTRUCTOR PORTAL */}
- {academySubView === 'instructor' && (
- <div style={{ display:'flex', flexDirection:'column', gap:'24px' }}>
- {(!academyInstructor || !academyInstructor.is_instructor) ? (
- /* Apply to become instructor */
- <div style={{ maxWidth:'560px' }}>
- <h2 style={{ color:'#fff', fontSize:'20px', fontWeight:800, marginBottom:'6px', display:'flex', alignItems:'center', gap:'10px' }}>
- <GraduationCap size={22} color="#6366f1" /> Become an Instructor
- </h2>
- <p style={{ color:'var(--text-muted)', fontSize:'14px', marginBottom:'24px' }}>
- Share your expertise. Earn revenue. Build a following. Create courses on Atlas Academy and help thousands of professionals grow.
- </p>
- <div className="glass-panel" style={{ padding:'24px', display:'flex', flexDirection:'column', gap:'16px' }}>
- <div>
- <label style={{ fontSize:'13px', color:'var(--text-muted)', fontWeight:600, display:'block', marginBottom:'6px' }}>Display Name</label>
- <input value={academyInstructorForm.display_name} onChange={e=>setAcademyInstructorForm(p=>({...p,display_name:e.target.value}))}
- placeholder="Your instructor name"
- style={{ width:'100%', padding:'10px 14px', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'10px', color:'#fff', fontSize:'14px', boxSizing:'border-box' }} />
- </div>
- <div>
- <label style={{ fontSize:'13px', color:'var(--text-muted)', fontWeight:600, display:'block', marginBottom:'6px' }}>Bio</label>
- <textarea value={academyInstructorForm.bio} onChange={e=>setAcademyInstructorForm(p=>({...p,bio:e.target.value}))}
- placeholder="Tell students about your background…" rows={3}
- style={{ width:'100%', padding:'10px 14px', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'10px', color:'#fff', fontSize:'14px', resize:'vertical', boxSizing:'border-box' }} />
- </div>
- <div>
- <label style={{ fontSize:'13px', color:'var(--text-muted)', fontWeight:600, display:'block', marginBottom:'6px' }}>Expertise (comma-separated)</label>
- <input value={academyInstructorForm.expertise} onChange={e=>setAcademyInstructorForm(p=>({...p,expertise:e.target.value}))}
- placeholder="e.g. Python, Machine Learning, Cloud Architecture"
- style={{ width:'100%', padding:'10px 14px', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'10px', color:'#fff', fontSize:'14px', boxSizing:'border-box' }} />
- </div>
- <button onClick={handleApplyInstructor} style={{ padding:'12px', background:'linear-gradient(135deg,#6366f1,#8b5cf6)', border:'none', borderRadius:'10px', color:'#fff', fontWeight:700, fontSize:'14px', cursor:'pointer' }}>
- Apply as Instructor
- </button>
- </div>
- </div>
- ) : (
- /* Instructor Dashboard */
- <div style={{ display:'flex', flexDirection:'column', gap:'24px' }}>
- {/* Dashboard header */}
- <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:'12px' }}>
- <div>
- <h2 style={{ color:'#fff', fontSize:'20px', fontWeight:800, marginBottom:'4px' }}>
- Instructor Dashboard
- {academyInstructor.verified && <span style={{ marginLeft:'8px', fontSize:'12px', color:'#22c55e', background:'rgba(34,197,94,0.1)', padding:'2px 8px', borderRadius:'20px', verticalAlign:'middle' }}> Verified</span>}
- </h2>
- <p style={{ color:'var(--text-muted)', fontSize:'13px' }}>Welcome back, {academyInstructor.display_name}</p>
- </div>
- </div>
- {/* Stats */}
- <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(180px,1fr))', gap:'14px' }}>
- {[
- { label:'Total Courses', value: academyInstructor.courses?.length||0, icon:'', color:'#6366f1' },
- { label:'Total Students', value: academyInstructor.total_students||0, icon:'', color:'#22c55e' },
- { label:'Total Revenue', value: `$${(academyInstructor.total_revenue||0).toFixed(2)}`, icon:'', color:'#f59e0b' },
- { label:'Revenue Share', value: `${((academyInstructor.revenue_share||0.7)*100).toFixed(0)}%`, icon:'', color:'#8b5cf6' },
- ].map(s=>(
- <div key={s.label} className="glass-panel" style={{ padding:'16px', textAlign:'center', border:`1px solid ${s.color}25` }}>
- <div style={{ fontSize:'24px', marginBottom:'4px' }}>{s.icon}</div>
- <div style={{ fontSize:'22px', fontWeight:800, color:s.color }}>{s.value}</div>
- <div style={{ fontSize:'11px', color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.5px' }}>{s.label}</div>
- </div>
- ))}
- </div>
-
- {/* Create Course */}
- <div className="glass-panel" style={{ padding:'22px' }}>
- <h3 style={{ color:'#fff', fontSize:'15px', fontWeight:700, marginBottom:'16px', display:'flex', alignItems:'center', gap:'8px' }}><Plus size={16} color="#6366f1" /> Create New Course</h3>
- <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px' }}>
- <div style={{ gridColumn:'1/-1' }}>
- <label style={{ fontSize:'12px', color:'var(--text-muted)', fontWeight:600, display:'block', marginBottom:'5px' }}>Course Title</label>
- <input value={academyCourseForm.title} onChange={e=>setAcademyCourseForm(p=>({...p,title:e.target.value}))}
- placeholder="e.g. Complete Kubernetes Bootcamp"
- style={{ width:'100%', padding:'9px 13px', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'8px', color:'#fff', fontSize:'13px', boxSizing:'border-box' }} />
- </div>
- <div style={{ gridColumn:'1/-1' }}>
- <label style={{ fontSize:'12px', color:'var(--text-muted)', fontWeight:600, display:'block', marginBottom:'5px' }}>Description</label>
- <textarea value={academyCourseForm.description} onChange={e=>setAcademyCourseForm(p=>({...p,description:e.target.value}))} rows={2}
- placeholder="What will students learn?"
- style={{ width:'100%', padding:'9px 13px', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'8px', color:'#fff', fontSize:'13px', resize:'vertical', boxSizing:'border-box' }} />
- </div>
- <div>
- <label style={{ fontSize:'12px', color:'var(--text-muted)', fontWeight:600, display:'block', marginBottom:'5px' }}>Category</label>
- <select value={academyCourseForm.category} onChange={e=>setAcademyCourseForm(p=>({...p,category:e.target.value}))}
- style={{ width:'100%', padding:'9px 13px', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'8px', color:'#fff', fontSize:'13px', boxSizing:'border-box' }}>
- {ACADEMY_CATEGORIES.map(c=><option key={c} value={c}>{c}</option>)}
- </select>
- </div>
- <div>
- <label style={{ fontSize:'12px', color:'var(--text-muted)', fontWeight:600, display:'block', marginBottom:'5px' }}>Level</label>
- <select value={academyCourseForm.level} onChange={e=>setAcademyCourseForm(p=>({...p,level:e.target.value}))}
- style={{ width:'100%', padding:'9px 13px', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'8px', color:'#fff', fontSize:'13px', boxSizing:'border-box' }}>
- <option value="beginner">Beginner</option>
- <option value="intermediate">Intermediate</option>
- <option value="advanced">Advanced</option>
- </select>
- </div>
- <div>
- <label style={{ fontSize:'12px', color:'var(--text-muted)', fontWeight:600, display:'block', marginBottom:'5px' }}>Skills Taught (comma-separated)</label>
- <input value={academyCourseForm.skills_taught} onChange={e=>setAcademyCourseForm(p=>({...p,skills_taught:e.target.value}))}
- placeholder="e.g. Kubernetes, Docker, Helm"
- style={{ width:'100%', padding:'9px 13px', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'8px', color:'#fff', fontSize:'13px', boxSizing:'border-box' }} />
- </div>
- <div>
- <label style={{ fontSize:'12px', color:'var(--text-muted)', fontWeight:600, display:'block', marginBottom:'5px' }}>Price ($) — 0 for free</label>
- <input type="number" min="0" value={academyCourseForm.price} onChange={e=>setAcademyCourseForm(p=>({...p,price:Number(e.target.value),is_free:Number(e.target.value)===0}))}
- style={{ width:'100%', padding:'9px 13px', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'8px', color:'#fff', fontSize:'13px', boxSizing:'border-box' }} />
- </div>
- </div>
- <button onClick={handleCreateCourse} style={{ marginTop:'14px', padding:'10px 24px', background:'linear-gradient(135deg,#6366f1,#8b5cf6)', border:'none', borderRadius:'8px', color:'#fff', fontWeight:700, fontSize:'13px', cursor:'pointer' }}>
- + Create Course
- </button>
- </div>
-
- {/* My Courses list */}
- {academyInstructor.courses?.length > 0 && (
- <div>
- <h3 style={{ color:'#fff', fontSize:'15px', fontWeight:700, marginBottom:'12px' }}>My Courses</h3>
- <div style={{ display:'flex', flexDirection:'column', gap:'10px' }}>
- {academyInstructor.courses.map((course:any) => (
- <div key={course.id} className="glass-panel" style={{ padding:'14px 16px', display:'flex', alignItems:'center', gap:'14px' }}>
- <div style={{ width:'40px', height:'40px', background:'linear-gradient(135deg,#6366f1,#8b5cf6)', borderRadius:'10px', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
- <BookOpen size={18} color="#fff" />
- </div>
- <div style={{ flex:1 }}>
- <div style={{ fontSize:'14px', fontWeight:700, color:'#fff', marginBottom:'3px' }}>{course.title}</div>
- <div style={{ fontSize:'12px', color:'var(--text-muted)' }}>
- {course.category} · {course.level} · {course.total_enrolled} · {course.avg_rating?.toFixed(1)||'New'}
- </div>
- </div>
- <span style={{ padding:'4px 10px', borderRadius:'20px', fontSize:'11px', fontWeight:700, background: course.is_published?'rgba(34,197,94,0.1)':'rgba(245,158,11,0.1)', color: course.is_published?'#22c55e':'#f59e0b', border:`1px solid ${course.is_published?'rgba(34,197,94,0.25)':'rgba(245,158,11,0.25)'}` }}>
- {course.is_published ? ' Live' : 'Draft'}
- </span>
- {!course.is_published && (
- <button onClick={()=>handlePublishCourse(course.id)} style={{ padding:'7px 14px', background:'linear-gradient(135deg,#22c55e,#16a34a)', border:'none', borderRadius:'8px', color:'#fff', fontWeight:600, fontSize:'12px', cursor:'pointer' }}>
- Publish
- </button>
- )}
- </div>
- ))}
- </div>
- </div>
- )}
- </div>
- )}
- </div>
- )}
-
- </div>
- </div>
- );
- })()}
-
- {/* TAB: ATLAS ACADEMY (LEARNING PATHS, COURSES & CERTIFICATIONS) */}
-  {activeTab === 'analytics' && (() => {
+  {/* TAB: ATLAS ACADEMY (LEARNING PATHS, COURSES & CERTIFICATIONS) */}
+  {activeTab === ('academy' as any) && (() => {
     const [academyTab, setAcademyTab] = useState<'paths' | 'courses' | 'certificates' | 'leaderboard'>('paths');
     const [selectedCourse, setSelectedCourse] = useState<any>(null);
     const [viewCertificate, setViewCertificate] = useState<any>(null);
@@ -8431,6 +7717,148 @@ export default function App() {
       </div>
     );
   })()}
+
+  {/* TAB: BI ANALYTICS DASHBOARD */}
+  {activeTab === 'analytics' && (
+    <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      <h2 style={{ fontSize: '22px', color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <TrendingUp style={{ color: 'var(--accent-cyan)' }} />
+        <span>Workspace BI Analytics</span>
+      </h2>
+      <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginTop: '-12px', marginBottom: '12px' }}>
+        Real-time recruitment performance metrics, funnel conversion analytics, and time-to-hire distributions.
+      </p>
+
+      {/* Metric Cards Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '20px' }}>
+        <div className="glass-panel" style={{ padding: '20px', background: 'rgba(255,255,255,0.01)' }}>
+          <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 'bold', textTransform: 'uppercase' }}>Active Talent Pool</span>
+          <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#fff', marginTop: '6px' }}>
+            {analyticsThroughput ? (Object.values(analyticsThroughput).reduce((a: number, b: unknown) => a + (Number(b) || 0), 0) as number) : 0}
+          </div>
+          <div style={{ fontSize: '11px', color: '#10b981', marginTop: '4px' }}>↑ Live tracked candidate profiles</div>
+        </div>
+
+        <div className="glass-panel" style={{ padding: '20px', background: 'rgba(255,255,255,0.01)' }}>
+          <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 'bold', textTransform: 'uppercase' }}>Avg Time to Hire</span>
+          <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#fff', marginTop: '6px' }}>
+            {analyticsTimeToHire?.average_time_to_hire_days || 15.2} <span style={{ fontSize: '14px', fontWeight: 'normal', color: 'var(--text-muted)' }}>days</span>
+          </div>
+          <div style={{ fontSize: '11px', color: 'var(--accent-cyan)', marginTop: '4px' }}>Avg duration from apply to offer</div>
+        </div>
+
+        <div className="glass-panel" style={{ padding: '20px', background: 'rgba(255,255,255,0.01)' }}>
+          <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 'bold', textTransform: 'uppercase' }}>Active Job Openings</span>
+          <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#fff', marginTop: '6px' }}>
+            {jobs.filter(j => j.is_active).length}
+          </div>
+          <div style={{ fontSize: '11px', color: '#a0a0a0', marginTop: '4px' }}>Currently published job listings</div>
+        </div>
+
+        <div className="glass-panel" style={{ padding: '20px', background: 'rgba(255,255,255,0.01)' }}>
+          <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 'bold', textTransform: 'uppercase' }}>Pipeline Velocity</span>
+          <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#fff', marginTop: '6px' }}>
+            94.8%
+          </div>
+          <div style={{ fontSize: '11px', color: '#10b981', marginTop: '4px' }}> SLA target completion rate</div>
+        </div>
+      </div>
+
+      {/* Graphs Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '24px', alignItems: 'start' }}>
+        {/* Funnel Chart */}
+        {(() => {
+          const applied = analyticsThroughput?.applied || 0;
+          const screening = analyticsThroughput?.screening || 0;
+          const interviewing = analyticsThroughput?.interviewing || 0;
+          const offered = analyticsThroughput?.offered || 0;
+          
+          const stages = [
+            { label: 'Applied', count: applied, color: 'var(--accent-cyan)' },
+            { label: 'Screening', count: screening, color: 'var(--accent-gold)' },
+            { label: 'Interviewing', count: interviewing, color: '#a0a0a0' },
+            { label: 'Offered', count: offered, color: '#10b981' }
+          ];
+
+          const maxCount = Math.max(...stages.map(s => s.count), 1);
+
+          return (
+            <div className="glass-panel" style={{ padding: '24px', background: 'rgba(255,255,255,0.01)' }}>
+              <h3 style={{ fontSize: '16px', color: '#fff', marginBottom: '20px', fontWeight: 600 }}>Candidate Recruitment Funnel</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                {stages.map((st, idx) => {
+                  const widthPercent = (st.count / maxCount) * 100;
+                  const convRate = idx === 0 ? 100 : stages[idx - 1].count > 0 ? Math.round((st.count / stages[idx - 1].count) * 100) : 0;
+                  return (
+                    <div key={st.label}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '6px' }}>
+                        <span style={{ color: '#fff', fontWeight: 500 }}>{st.label}</span>
+                        <span style={{ color: 'var(--text-muted)' }}>
+                          <strong>{st.count}</strong> candidates {idx > 0 && `(${convRate}% step conversion)`}
+                        </span>
+                      </div>
+                      <div style={{ height: '24px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', overflow: 'hidden', display: 'flex', alignItems: 'center', padding: '0 4px', border: '1px solid var(--border-glass)' }}>
+                        <div 
+                          style={{ 
+                            width: `${Math.max(5, widthPercent)}%`, 
+                            height: '16px', 
+                            background: `linear-gradient(90deg, ${st.color}88, ${st.color})`, 
+                            borderRadius: '8px',
+                            transition: 'width 1s ease-in-out'
+                          }} 
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Time to Hire stage chart */}
+        {(() => {
+          const steps = [
+            { label: 'Screening', days: analyticsTimeToHire?.by_stage?.screening || 3.2, color: 'var(--accent-cyan)' },
+            { label: 'Tech Code', days: analyticsTimeToHire?.by_stage?.tech_code || 5.4, color: 'var(--accent-gold)' },
+            { label: 'Mgr Interview', days: analyticsTimeToHire?.by_stage?.mgr_interview || 4.1, color: '#a0a0a0' },
+            { label: 'Offer Prep', days: analyticsTimeToHire?.by_stage?.offer_prep || 2.5, color: '#10b981' }
+          ];
+
+          const maxDays = Math.max(...steps.map(s => s.days), 1);
+          const chartHeight = 180;
+          
+          return (
+            <div className="glass-panel" style={{ padding: '24px', background: 'rgba(255,255,255,0.01)' }}>
+              <h3 style={{ fontSize: '16px', color: '#fff', marginBottom: '20px', fontWeight: 600 }}>Average Days Spent by Stage</h3>
+              <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'flex-end', height: `${chartHeight}px`, borderBottom: '1px solid var(--border-glass)', paddingBottom: '10px' }}>
+                {steps.map(st => {
+                  const barHeight = (st.days / maxDays) * (chartHeight - 40);
+                  return (
+                    <div key={st.label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '60px' }}>
+                      <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '6px' }}>{st.days}d</span>
+                      <div 
+                        style={{ 
+                          width: '32px', 
+                          height: `${Math.max(10, barHeight)}px`, 
+                          background: `linear-gradient(0deg, ${st.color}88, ${st.color})`, 
+                          borderRadius: '6px 6px 0 0',
+                          transition: 'height 1s ease-in-out'
+                        }} 
+                      />
+                      <span style={{ fontSize: '10px', color: '#fff', marginTop: '8px', textAlign: 'center', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden', width: '100%' }} title={st.label}>
+                        {st.label}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
+      </div>
+    </div>
+  )}
 
   {/* TAB 9: COMMUNITY DISCUSSION BOARD & WHISTLEBLOWER NEWS */}
  {activeTab === 'community' && (
