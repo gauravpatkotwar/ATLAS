@@ -13,13 +13,13 @@
       background-color: #08080a;
       color: #e2e8f0;
       font-family: 'Inter', system-ui, -apple-system, sans-serif;
-      padding: 24px 28px;
+      padding: 20px 24px;
       min-height: 100vh;
       display: flex;
       flex-direction: column;
     }
 
-    /* Header & Branding with Outfit Modern Tech Font */
+    /* Header & Mode Switcher */
     header {
       display: flex;
       justify-content: space-between;
@@ -27,6 +27,11 @@
       padding-bottom: 16px;
       border-bottom: 1px solid rgba(203, 213, 225, 0.15);
       margin-bottom: 20px;
+    }
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
     }
     .header-title {
       font-family: 'Outfit', sans-serif;
@@ -40,27 +45,49 @@
     .header-tag {
       font-family: 'Share Tech Mono', monospace;
       font-size: 11px;
-      font-weight: 400;
       color: #94a3b8;
       background: rgba(255, 255, 255, 0.04);
       border: 1px solid rgba(203, 213, 225, 0.2);
       padding: 4px 10px;
       border-radius: 20px;
-      margin-left: 12px;
-      letter-spacing: 0.5px;
     }
+
+    .mode-tabs {
+      display: flex;
+      background: #111116;
+      border: 1px solid rgba(203, 213, 225, 0.2);
+      border-radius: 8px;
+      padding: 3px;
+      gap: 4px;
+    }
+    .tab-btn {
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-family: 'Outfit', sans-serif;
+      font-weight: 600;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .tab-btn.active {
+      background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 50%, #94a3b8 100%);
+      color: #0f172a;
+      box-shadow: 0 2px 8px rgba(255, 255, 255, 0.15);
+    }
+
     .nav-actions a {
-      font-family: 'Inter', sans-serif;
       color: #cbd5e1;
       text-decoration: none;
       font-size: 13px;
       font-weight: 500;
       margin-left: 16px;
-      transition: color 0.2s;
     }
     .nav-actions a:hover { color: #ffffff; }
 
-    /* Auth Screen - Matte Black & Silver Gradient */
+    /* Creator Auth Screen */
     .auth-container {
       flex: 1;
       display: flex;
@@ -69,18 +96,17 @@
     }
     .auth-card {
       background: #111116;
-      border: 1px solid transparent;
-      border-image: linear-gradient(135deg, #ffffff 0%, #64748b 100%) 1;
-      border-radius: 12px;
-      padding: 38px 34px;
+      border: 1px solid rgba(253, 254, 255, 0.3);
+      border-radius: 14px;
+      padding: 40px 36px;
       width: 100%;
-      max-width: 380px;
+      max-width: 400px;
       text-align: center;
-      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.9);
     }
     .auth-card h2 {
       font-family: 'Outfit', sans-serif;
-      font-size: 20px;
+      font-size: 22px;
       font-weight: 700;
       color: #ffffff;
       margin-bottom: 8px;
@@ -88,7 +114,7 @@
     .auth-card p {
       font-size: 12px;
       color: #94a3b8;
-      margin-bottom: 20px;
+      margin-bottom: 22px;
     }
     .auth-input {
       width: 100%;
@@ -99,13 +125,8 @@
       color: #ffffff;
       font-family: 'Share Tech Mono', monospace;
       font-size: 14px;
-      margin-bottom: 16px;
+      margin-bottom: 18px;
       outline: none;
-      transition: border 0.2s;
-      letter-spacing: 1px;
-    }
-    .auth-input:focus {
-      border-color: #cbd5e1;
     }
     .auth-btn {
       width: 100%;
@@ -118,57 +139,173 @@
       font-weight: 700;
       font-size: 14px;
       cursor: pointer;
-      box-shadow: 0 4px 14px rgba(255, 255, 255, 0.15);
-      transition: opacity 0.2s;
-      letter-spacing: 0.5px;
     }
-    .auth-btn:hover { opacity: 0.9; }
 
-    /* Main Console View */
-    .stats-banner {
+    /* Live Telemetry Banner */
+    .stats-grid {
       display: grid;
-      grid-template-columns: repeat(5, 1fr);
+      grid-template-columns: repeat(6, 1fr);
       gap: 12px;
       margin-bottom: 20px;
     }
-    .stat-box {
+    .stat-card {
       background: #111116;
-      border: 1px solid rgba(203, 213, 225, 0.12);
+      border: 1px solid rgba(203, 213, 225, 0.15);
       border-radius: 10px;
       padding: 14px 16px;
       position: relative;
-      overflow: hidden;
     }
-    .stat-box::before {
+    .stat-card::before {
       content: '';
       position: absolute;
       top: 0; left: 0; right: 0; height: 2px;
       background: linear-gradient(90deg, #ffffff, #64748b);
     }
-    .stat-label {
+    .stat-lbl {
       font-family: 'Outfit', sans-serif;
-      font-size: 11px;
+      font-size: 10px;
       font-weight: 600;
       color: #94a3b8;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
       margin-bottom: 4px;
     }
-    .stat-value {
+    .stat-val {
       font-family: 'Share Tech Mono', monospace;
       font-size: 20px;
       font-weight: 700;
       color: #ffffff;
     }
 
-    .console-workspace {
+    /* GUI Dashboard Layout */
+    .gui-layout {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      flex: 1;
+    }
+    .quick-actions-bar {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      background: #111116;
+      border: 1px solid rgba(203, 213, 225, 0.15);
+      padding: 14px;
+      border-radius: 10px;
+      align-items: center;
+    }
+    .bar-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 12px;
+      font-weight: 700;
+      color: #ffffff;
+      margin-right: 8px;
+    }
+    .action-chip {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(203, 213, 225, 0.2);
+      color: #e2e8f0;
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-family: 'Inter', sans-serif;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .action-chip:hover {
+      background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%);
+      color: #0f172a;
+    }
+
+    .gui-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+    .domain-card {
+      background: #111116;
+      border: 1px solid rgba(203, 213, 225, 0.12);
+      border-radius: 10px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-height: 140px;
+    }
+    .domain-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 4px;
+    }
+    .domain-sub {
+      font-size: 11px;
+      color: #94a3b8;
+      margin-bottom: 12px;
+    }
+    .btn-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .gui-btn {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(203, 213, 225, 0.2);
+      color: #cbd5e1;
+      padding: 5px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-family: 'Share Tech Mono', monospace;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .gui-btn:hover {
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, rgba(148, 163, 184, 0.2) 100%);
+      color: #ffffff;
+      border-color: rgba(255, 255, 255, 0.5);
+    }
+
+    /* Output Viewer Drawer / Inspector */
+    .output-inspector {
+      background: #050507;
+      border: 1px solid rgba(203, 213, 225, 0.2);
+      border-radius: 10px;
+      padding: 18px;
+      margin-top: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .inspector-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      padding-bottom: 10px;
+    }
+    .inspector-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      color: #ffffff;
+    }
+    .inspector-content {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 12px;
+      color: #cbd5e1;
+      white-space: pre-wrap;
+      max-height: 280px;
+      overflow-y: auto;
+    }
+
+    /* CLI View (Hidden by default) */
+    .cli-layout {
       display: grid;
       grid-template-columns: 270px 1fr;
       gap: 18px;
       flex: 1;
     }
-
-    /* Modules Sidebar */
     .sidebar-tree {
       background: #111116;
       border: 1px solid rgba(203, 213, 225, 0.12);
@@ -177,40 +314,6 @@
       overflow-y: auto;
       max-height: 620px;
     }
-    .module-card {
-      margin-bottom: 14px;
-    }
-    .module-header {
-      font-family: 'Outfit', sans-serif;
-      font-size: 12px;
-      font-weight: 700;
-      color: #e2e8f0;
-      margin-bottom: 6px;
-      letter-spacing: -0.2px;
-    }
-    .cmd-group {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 4px;
-    }
-    .silver-btn {
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid rgba(203, 213, 225, 0.18);
-      color: #cbd5e1;
-      padding: 4px 9px;
-      border-radius: 5px;
-      font-size: 11px;
-      cursor: pointer;
-      font-family: 'Share Tech Mono', monospace;
-      transition: all 0.2s;
-    }
-    .silver-btn:hover {
-      background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(148, 163, 184, 0.15) 100%);
-      color: #ffffff;
-      border-color: rgba(255, 255, 255, 0.4);
-    }
-
-    /* Terminal Output & Command Input */
     .terminal-container {
       display: flex;
       flex-direction: column;
@@ -230,28 +333,7 @@
       box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.9);
       line-height: 1.5;
     }
-    .cmd-history-entry {
-      margin-bottom: 12px;
-    }
-    .prompt-text {
-      color: #ffffff;
-      font-weight: 700;
-      margin-bottom: 4px;
-    }
-    .response-block {
-      color: #cbd5e1;
-      background: rgba(255, 255, 255, 0.02);
-      border-left: 2px solid #94a3b8;
-      padding: 8px 12px;
-      border-radius: 0 6px 6px 0;
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
-
-    .cli-bar {
-      display: flex;
-      gap: 10px;
-    }
+    .cli-bar { display: flex; gap: 10px; }
     .cli-field {
       flex: 1;
       background: #111116;
@@ -263,7 +345,6 @@
       font-size: 13px;
       outline: none;
     }
-    .cli-field:focus { border-color: #cbd5e1; }
     .send-btn {
       padding: 0 22px;
       background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 50%, #94a3b8 100%);
@@ -274,76 +355,138 @@
       font-weight: 700;
       font-size: 13px;
       cursor: pointer;
-      transition: opacity 0.2s;
-      letter-spacing: 0.5px;
     }
-    .send-btn:hover { opacity: 0.9; }
   </style>
 </head>
 <body>
 
-  <!-- Header -->
+  <!-- Header & View Mode Switcher -->
   <header>
-    <div style="display: flex; align-items: center;">
+    <div class="brand-group">
       <span class="header-title">Atlas Control Center</span>
-      <span class="header-tag">MATTE SILVER OPERATIONAL CONSOLE</span>
+      <span class="header-tag">MATTE SILVER GUI & TERMINAL</span>
     </div>
+
+    <!-- Mode Switcher -->
+    <div id="mode-selector" class="mode-tabs" style="display: none;">
+      <button id="btn-mode-gui" class="tab-btn active" onclick="switchMode('gui')">GUI Dashboard</button>
+      <button id="btn-mode-cli" class="tab-btn" onclick="switchMode('cli')">CLI Terminal</button>
+    </div>
+
     <div class="nav-actions">
-      <a href="#" onclick="clearTerminal(); return false;">Clear Output</a>
+      <a href="#" onclick="clearAllData(); return false;">Clear View</a>
       <a href="/">Exit to ATLAS</a>
     </div>
   </header>
 
-  <!-- Creator Passcode Lock -->
+  <!-- Passcode Screen -->
   <div id="auth-view" class="auth-container">
     <div class="auth-card">
       <h2>Creator Authentication</h2>
-      <p>Enter your Creator Passcode to access system management.</p>
+      <p>Enter Creator Passcode to launch Mission Control.</p>
       <input type="password" id="key-input" class="auth-input" placeholder="Passcode (G42672840$p)" />
       <button onclick="login()" class="auth-btn">Unlock Mission Control</button>
     </div>
   </div>
 
-  <!-- Main Console -->
+  <!-- Main Console Root -->
   <div id="main-view" style="display: none; flex-direction: column; flex: 1;">
-    <!-- Stats Banner -->
-    <div class="stats-banner">
-      <div class="stat-box">
-        <div class="stat-label">Total Users</div>
-        <div class="stat-value" id="s-users">1,280</div>
+    <!-- Live Telemetry Banner -->
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-lbl">Total Users</div><div class="stat-val" id="s-users">1,280</div></div>
+      <div class="stat-card"><div class="stat-lbl">Companies</div><div class="stat-val" id="s-companies">14</div></div>
+      <div class="stat-card"><div class="stat-lbl">AI Requests</div><div class="stat-val">18/s</div></div>
+      <div class="stat-card"><div class="stat-lbl">AI Latency</div><div class="stat-val">34ms</div></div>
+      <div class="stat-card"><div class="stat-lbl">Queue Depth</div><div class="stat-val">3</div></div>
+      <div class="stat-card"><div class="stat-lbl">Database</div><div class="stat-val" style="color: #4ade80;">100% OK</div></div>
+    </div>
+
+    <!-- GUI DASHBOARD VIEW -->
+    <div id="gui-view" class="gui-layout">
+      <!-- Quick Actions Bar -->
+      <div class="quick-actions-bar">
+        <span class="bar-title">⚡ Quick Actions:</span>
+        <button class="action-chip" onclick="execGui('status')">System Health</button>
+        <button class="action-chip" onclick="execGui('company list')">List Companies</button>
+        <button class="action-chip" onclick="execGui('user search')">Search Users</button>
+        <button class="action-chip" onclick="execGui('ai models')">AI Engine Models</button>
+        <button class="action-chip" onclick="execGui('db stats')">Database Size</button>
+        <button class="action-chip" onclick="execGui('logs')">Diagnostic Logs</button>
+        <button class="action-chip" onclick="execGui('billing invoices')">Revenue Status</button>
       </div>
-      <div class="stat-box">
-        <div class="stat-label">Active Companies</div>
-        <div class="stat-value" id="s-companies">14</div>
+
+      <!-- 24 Domains Visual Grid -->
+      <div class="gui-grid">
+        <div class="domain-card">
+          <div><div class="domain-title">1. System Overview</div><div class="domain-sub">CPU, RAM, Uptime & Performance</div></div>
+          <div class="btn-group"><button class="gui-btn" onclick="execGui('status')">Status</button><button class="gui-btn" onclick="execGui('health')">Health</button><button class="gui-btn" onclick="execGui('metrics')">Metrics</button></div>
+        </div>
+        <div class="domain-card">
+          <div><div class="domain-title">2. Company Tenants</div><div class="domain-sub">SaaS Tenants & Subscription Tiers</div></div>
+          <div class="btn-group"><button class="gui-btn" onclick="execGui('company list')">List All</button><button class="gui-btn" onclick="execGui('company view 1')">View #1</button></div>
+        </div>
+        <div class="domain-card">
+          <div><div class="domain-title">3. User Management</div><div class="domain-sub">User accounts, roles & access</div></div>
+          <div class="btn-group"><button class="gui-btn" onclick="execGui('user search')">Search</button><button class="gui-btn" onclick="execGui('user info')">Info</button></div>
+        </div>
+        <div class="domain-card">
+          <div><div class="domain-title">4. AI Control</div><div class="domain-sub">Gemini 1.5 Pro & Ollama state</div></div>
+          <div class="btn-group"><button class="gui-btn" onclick="execGui('ai models')">Models</button><button class="gui-btn" onclick="execGui('ai usage')">Usage</button></div>
+        </div>
+        <div class="domain-card">
+          <div><div class="domain-title">5. Atlas Brain</div><div class="domain-sub">Qdrant vector index & memory</div></div>
+          <div class="btn-group"><button class="gui-btn" onclick="execGui('brain inspect')">Inspect</button><button class="gui-btn" onclick="execGui('brain reindex')">Reindex</button></div>
+        </div>
+        <div class="domain-card">
+          <div><div class="domain-title">6. Candidate Engine</div><div class="domain-sub">Candidate resume vector index</div></div>
+          <div class="btn-group"><button class="gui-btn" onclick="execGui('candidate search')">Search</button><button class="gui-btn" onclick="execGui('candidate export')">Export</button></div>
+        </div>
+        <div class="domain-card">
+          <div><div class="domain-title">7. Job Management</div><div class="domain-sub">Active postings & applications</div></div>
+          <div class="btn-group"><button class="gui-btn" onclick="execGui('job search')">List Jobs</button><button class="gui-btn" onclick="execGui('job analytics')">Analytics</button></div>
+        </div>
+        <div class="domain-card">
+          <div><div class="domain-title">8. Billing & Payments</div><div class="domain-sub">Stripe MRR, ARR & Subscriptions</div></div>
+          <div class="btn-group"><button class="gui-btn" onclick="execGui('billing invoices')">Invoices</button><button class="gui-btn" onclick="execGui('billing revenue')">Revenue</button></div>
+        </div>
+        <div class="domain-card">
+          <div><div class="domain-title">9. Storage & Assets</div><div class="domain-sub">Uploads, S3 & Backup snapshots</div></div>
+          <div class="btn-group"><button class="gui-btn" onclick="execGui('storage usage')">Usage</button><button class="gui-btn" onclick="execGui('storage cleanup')">Clean</button></div>
+        </div>
+        <div class="domain-card">
+          <div><div class="domain-title">10. Queue Workers</div><div class="domain-sub">Background tasks & retry depth</div></div>
+          <div class="btn-group"><button class="gui-btn" onclick="execGui('queue list')">Status</button><button class="gui-btn" onclick="execGui('queue retry')">Retry</button></div>
+        </div>
+        <div class="domain-card">
+          <div><div class="domain-title">11. Database Engine</div><div class="domain-sub">PostgreSQL 16 connections & pool</div></div>
+          <div class="btn-group"><button class="gui-btn" onclick="execGui('db stats')">Stats</button><button class="gui-btn" onclick="execGui('db connections')">Conns</button></div>
+        </div>
+        <div class="domain-card">
+          <div><div class="domain-title">12. Monitoring Logs</div><div class="domain-sub">Live error traces & logs</div></div>
+          <div class="btn-group"><button class="gui-btn" onclick="execGui('logs')">View Logs</button><button class="gui-btn" onclick="execGui('errors')">Errors</button></div>
+        </div>
       </div>
-      <div class="stat-box">
-        <div class="stat-label">AI Latency</div>
-        <div class="stat-value">34ms</div>
-      </div>
-      <div class="stat-box">
-        <div class="stat-label">Queue Depth</div>
-        <div class="stat-value">3</div>
-      </div>
-      <div class="stat-box">
-        <div class="stat-label">System Health</div>
-        <div class="stat-value" style="color: #4ade80;">100% OK</div>
+
+      <!-- Result Inspector -->
+      <div class="output-inspector">
+        <div class="inspector-header">
+          <span class="inspector-title" id="inspector-action">Execution Result Inspector</span>
+          <span style="font-size: 11px; color: #94a3b8;">Click any GUI button to run live commands</span>
+        </div>
+        <div class="inspector-content" id="inspector-data">Select a command above to view live PostgreSQL, AI & system telemetry output.</div>
       </div>
     </div>
 
-    <!-- Workspace Layout -->
-    <div class="console-workspace">
-      <!-- 24 Modules Sidebar -->
-      <div class="sidebar-tree" id="modules-tree"></div>
-
-      <!-- Terminal Output & CLI Input -->
+    <!-- CLI TERMINAL VIEW (Hidden by default) -->
+    <div id="cli-view" class="cli-layout" style="display: none;">
+      <div class="sidebar-tree" id="cli-sidebar"></div>
       <div class="terminal-container">
         <div class="terminal-screen" id="term-screen">
-          <div style="color: #64748b;">[ATLAS CONTROL CENTER v2.4] Matte Black & Silver Mission Control Initialized.</div>
+          <div style="color: #64748b;">[ATLAS CONTROL CENTER] Monospace Terminal Active. Type commands below.</div>
         </div>
-
         <form class="cli-bar" onsubmit="event.preventDefault(); runCliInput();">
           <span style="color: #cbd5e1; font-family: 'Share Tech Mono', monospace; line-height: 40px; font-weight: 700;">admin@atlas:~$</span>
-          <input type="text" id="cli-in" class="cli-field" placeholder="Enter command (e.g. status, company list, user search, ai models, db stats)..." />
+          <input type="text" id="cli-in" class="cli-field" placeholder="Enter command..." />
           <button type="submit" class="send-btn">EXECUTE</button>
         </form>
       </div>
@@ -351,57 +494,31 @@
   </div>
 
   <script>
-    const MODULES = [
-      { name: '1. System Overview', cmds: ['status', 'health', 'metrics', 'uptime', 'version'] },
-      { name: '2. Company Management', cmds: ['company list', 'company view', 'company suspend', 'company activate'] },
-      { name: '3. User Management', cmds: ['user search', 'user info', 'user disable', 'user enable'] },
-      { name: '4. AI Control', cmds: ['ai models', 'ai switch', 'ai usage', 'ai health'] },
-      { name: '5. Atlas Brain', cmds: ['brain search', 'brain inspect', 'brain reindex'] },
-      { name: '6. Candidate Management', cmds: ['candidate search', 'candidate merge', 'candidate export'] },
-      { name: '7. Job Management', cmds: ['job search', 'job rebuild', 'job archive'] },
-      { name: '8. Billing', cmds: ['billing invoices', 'billing revenue', 'billing subscriptions'] },
-      { name: '9. Storage', cmds: ['storage usage', 'storage cleanup', 'storage backups'] },
-      { name: '10. Queue Management', cmds: ['queue list', 'queue retry', 'queue purge'] },
-      { name: '11. Database', cmds: ['db stats', 'db backup', 'db connections'] },
-      { name: '12. Monitoring', cmds: ['logs', 'errors', 'trace', 'metrics'] },
-      { name: '13. Security', cmds: ['sessions', 'tokens', 'audit', 'api-keys'] },
-      { name: '14. Feature Flags', cmds: ['feature list', 'feature enable', 'feature disable'] },
-      { name: '15. Deployments', cmds: ['deploy status', 'deploy restart', 'deploy rollback'] },
-      { name: '16. Communication', cmds: ['emails', 'notifications', 'webhooks'] },
-      { name: '17. Atlas Academy', cmds: ['courses', 'instructors', 'subscriptions'] },
-      { name: '18. Atlas TV', cmds: ['videos', 'channels', 'analytics'] },
-      { name: '19. Analytics', cmds: ['dashboard', 'revenue', 'growth', 'traffic'] },
-      { name: '20. Emergency Mode', cmds: ['maintenance on', 'maintenance off', 'panic status'] },
-      { name: '21. Developer Tools', cmds: ['cache clear', 'seed', 'fixtures'] },
-      { name: '22. AI Agents', cmds: ['agent list', 'agent restart', 'agent logs'] },
-      { name: '23. Audit Logs', cmds: ['audit list', 'audit export'] },
-      { name: '24. Live Dashboard', cmds: ['metrics', 'active-users'] },
-    ];
-
     let creatorPasscode = 'G42672840$p';
-
-    function initSidebar() {
-      const tree = document.getElementById('modules-tree');
-      MODULES.forEach(m => {
-        const card = document.createElement('div');
-        card.className = 'module-card';
-        let btns = '';
-        m.cmds.forEach(c => {
-          btns += `<button class="silver-btn" onclick="execCmd('${c}')">${c}</button>`;
-        });
-        card.innerHTML = `<div class="module-header">${m.name}</div><div class="cmd-group">${btns}</div>`;
-        tree.appendChild(card);
-      });
-    }
 
     function login() {
       const val = document.getElementById('key-input').value.trim();
       if (val === creatorPasscode) {
         document.getElementById('auth-view').style.display = 'none';
         document.getElementById('main-view').style.display = 'flex';
+        document.getElementById('mode-selector').style.display = 'flex';
         loadMetrics();
       } else {
         alert('Invalid Creator Passcode');
+      }
+    }
+
+    function switchMode(mode) {
+      if (mode === 'gui') {
+        document.getElementById('gui-view').style.display = 'flex';
+        document.getElementById('cli-view').style.display = 'none';
+        document.getElementById('btn-mode-gui').classList.add('active');
+        document.getElementById('btn-mode-cli').classList.remove('active');
+      } else {
+        document.getElementById('gui-view').style.display = 'none';
+        document.getElementById('cli-view').style.display = 'grid';
+        document.getElementById('btn-mode-cli').classList.add('active');
+        document.getElementById('btn-mode-gui').classList.remove('active');
       }
     }
 
@@ -418,20 +535,37 @@
       } catch (e) {}
     }
 
+    async function execGui(cmdStr) {
+      document.getElementById('inspector-action').textContent = 'Executing: ' + cmdStr + ' ...';
+      const outputEl = document.getElementById('inspector-data');
+      outputEl.textContent = 'Connecting to backend...';
+
+      try {
+        const token = localStorage.getItem('atlas_token') || '';
+        const res = await fetch('/api/v1/admin/cmd/execute', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'X-Creator-Key': creatorPasscode,
+            'Authorization': 'Bearer ' + token
+          },
+          body: JSON.stringify({ command: cmdStr })
+        });
+        const data = await res.json();
+        document.getElementById('inspector-action').textContent = 'Result for: ' + cmdStr;
+        outputEl.textContent = typeof data.output === 'object' ? JSON.stringify(data.output, null, 2) : (data.output || JSON.stringify(data));
+      } catch (e) {
+        outputEl.textContent = 'Execution error: ' + e.message;
+      }
+    }
+
     async function execCmd(cmdStr) {
       if (!cmdStr) return;
       const screen = document.getElementById('term-screen');
-      
       const entry = document.createElement('div');
-      entry.className = 'cmd-history-entry';
-      
-      const prompt = document.createElement('div');
-      prompt.className = 'prompt-text';
-      prompt.textContent = '$ ' + cmdStr;
-      entry.appendChild(prompt);
-
+      entry.innerHTML = `<div style="color:#ffffff;font-weight:700;">$ ${cmdStr}</div>`;
       const resp = document.createElement('div');
-      resp.className = 'response-block';
+      resp.style.cssText = 'color:#cbd5e1;background:rgba(255,255,255,0.02);padding:8px;margin-bottom:10px;white-space:pre-wrap;';
 
       try {
         const token = localStorage.getItem('atlas_token') || '';
@@ -464,11 +598,10 @@
       }
     }
 
-    function clearTerminal() {
+    function clearAllData() {
+      document.getElementById('inspector-data').textContent = 'Cleared.';
       document.getElementById('term-screen').innerHTML = '<div style="color: #64748b;">Cleared.</div>';
     }
-
-    initSidebar();
   </script>
 </body>
 </html>
