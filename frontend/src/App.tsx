@@ -2475,14 +2475,17 @@ export default function App() {
     }
   };
 
- const handleLogout = () => {
- if (window.speechSynthesis) {
- window.speechSynthesis.cancel();
- }
- api.auth.logout();
- setToken(null);
- setUser(null);
- setCandidates([]);
+  const handleLogout = () => {
+    if (window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
+    try {
+      supabase.auth.signOut();
+    } catch (sErr) {}
+    api.auth.logout();
+    setToken(null);
+    setUser(null);
+    setCandidates([]);
  setJobs([]);
  setSelectedCandidate(null);
  setSelectedJob(null);
