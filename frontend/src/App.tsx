@@ -4,7 +4,7 @@ import {
  Trash2, MapPin, DollarSign, LogOut, 
  AlertCircle, Sparkles, Send, Plus, X, Award, HelpCircle, Settings, CreditCard, CheckCircle,
  Mic, Volume2, VolumeX, Phone, PhoneOff, Video, VideoOff, MicOff, TrendingUp, Shield, Key, Activity, Share2, ShoppingBag, GraduationCap, BookOpen, Star, CheckCircle2, Lock, PlayCircle, Trophy, Zap, Target, FileText, Github, ExternalLink, Copy, Tv, Radio, Bookmark, BookmarkCheck, AlignLeft,
-  Loader2, Smartphone, UserPlus, Inbox, Clock, Bot, BarChart3, Monitor, MonitorOff
+  Loader2, Smartphone, UserPlus, Inbox, Clock, Bot, BarChart3, Monitor, MonitorOff, Terminal
 } from 'lucide-react';
 import { api } from './services/api';
 import { supabase } from './services/supabase';
