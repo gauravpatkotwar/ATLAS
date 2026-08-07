@@ -3694,7 +3694,7 @@ export default function App() {
  className={activeTab === 'marketplace' ? 'btn-primary lining-settings' : 'btn-secondary lining-settings'} 
  style={{ padding: '10px 16px', fontSize: '14px', borderRadius: '30px' }}
  >
- <ShoppingBag size={16} style={{ color: 'var(--accent-cyan)' }} /> Developer Store
+ <ShoppingBag size={16} style={{ color: 'var(--accent-cyan)' }} /> Atlas Store
  </button>
  <button 
  onClick={() => setActiveTab('settings')}
@@ -3746,7 +3746,7 @@ export default function App() {
  className={activeTab === 'marketplace' ? 'btn-primary lining-settings' : 'btn-secondary lining-settings'} 
  style={{ padding: '10px 16px', fontSize: '14px', borderRadius: '30px' }}
  >
- <Sparkles size={16} style={{ color: 'var(--accent-cyan)' }} /> Developer Store
+ <Sparkles size={16} style={{ color: 'var(--accent-cyan)' }} /> Atlas Store
  </button>
  <button 
  onClick={() => setActiveTab('analytics')}

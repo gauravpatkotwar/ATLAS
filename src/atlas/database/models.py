@@ -246,7 +246,10 @@ class MarketplaceProduct(Base):
     name: Mapped[str] = mapped_column(nullable=False)
     description: Mapped[str] = mapped_column(nullable=False)
     price: Mapped[float] = mapped_column(nullable=False)
-    category: Mapped[str] = mapped_column(nullable=False)  # "software" or "service"
+    category: Mapped[str] = mapped_column(nullable=False)  # "hardware", "apparel", "gear", "software", "ai_agents", etc.
+    product_type: Mapped[str] = mapped_column(default="digital", nullable=False)  # "physical" or "digital"
+    icon: Mapped[Optional[str]] = mapped_column(nullable=True)
+    badge: Mapped[Optional[str]] = mapped_column(nullable=True)
     download_url: Mapped[Optional[str]] = mapped_column(nullable=True)
     author_email: Mapped[str] = mapped_column(nullable=False)
     created_at: Mapped[datetime.datetime] = mapped_column(
