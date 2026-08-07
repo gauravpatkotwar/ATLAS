@@ -24,3 +24,5 @@ uploads/
 *.faiss
 *.faiss.map
 .env
+docker/ssl/
+
