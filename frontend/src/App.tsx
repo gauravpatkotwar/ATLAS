@@ -298,12 +298,26 @@ export default function App() {
  const [resetLoading, setResetLoading] = useState(false);
  const [resetSuccess, setResetSuccess] = useState(false);
   const [forgotMessage, setForgotMessage] = useState('');
+  const [forgotEmailSent, setForgotEmailSent] = useState(false);
   const [magicLinkSent, setMagicLinkSent] = useState(false);
   const [magicLinkLoading, setMagicLinkLoading] = useState(false);
 
   useEffect(() => {
+    const isRecoveryUrl = window.location.hash.includes('type=recovery') || 
+                          window.location.search.includes('type=recovery') ||
+                          window.location.search.includes('resetPassword=true');
+    if (isRecoveryUrl) {
+      setShowForgotPassword(true);
+      setShowResetForm(true);
+      setForgotMessage('Email verified! Enter your new password below to reset your account.');
+    }
+
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session?.access_token) {
+      if (event === 'PASSWORD_RECOVERY') {
+        setShowForgotPassword(true);
+        setShowResetForm(true);
+        setForgotMessage('Email verified! Enter your new password below to reset your account.');
+      } else if (session?.access_token) {
         localStorage.setItem('atlas_token', session.access_token);
         setToken(session.access_token);
       }
@@ -2402,27 +2416,21 @@ export default function App() {
     setForgotLoading(true);
     setForgotMessage('');
     try {
-      let supaSent = false;
-      try {
-        const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail.trim(), {
-          redirectTo: `${window.location.origin}?resetPassword=true`,
-        });
-        if (!error) {
-          supaSent = true;
-        }
-      } catch (sErr) {}
+      const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail.trim(), {
+        redirectTo: `${window.location.origin}?type=recovery`,
+      });
 
-      const res = await api.auth.forgotPassword(forgotEmail.trim());
-      if (res.reset_token) {
-        setResetToken(res.reset_token);
-      }
-      
-      if (supaSent) {
-        setForgotMessage(`✉️ Password reset email link sent to ${forgotEmail}! Please check your inbox to reset your password.`);
+      try {
+        const res = await api.auth.forgotPassword(forgotEmail.trim());
+        if (res.reset_token) setResetToken(res.reset_token);
+      } catch (lErr) {}
+
+      if (error) {
+        setForgotMessage(error.message || 'Failed to send password reset link. Please check the email address.');
       } else {
-        setForgotMessage(res.message || 'Password reset link sent to your email. Check your inbox.');
+        setForgotEmailSent(true);
+        setForgotMessage(`✉️ Password reset email link sent to ${forgotEmail}! Please check your inbox and click the reset link.`);
       }
-      setShowResetForm(true);
     } catch (err: any) {
       setForgotMessage(err.message || 'Something went wrong. Please try again.');
     } finally {
@@ -2448,12 +2456,16 @@ export default function App() {
       } catch (sErr) {}
 
       const tokenToUse = resetTokenInput.trim() || resetToken;
-      await api.auth.resetPassword(tokenToUse, newPassword);
+      if (tokenToUse) {
+        try {
+          await api.auth.resetPassword(tokenToUse, newPassword);
+        } catch (lErr) {}
+      }
       
       setResetSuccess(true);
       setForgotMessage('Password reset successfully! You can now sign in with your new password.');
     } catch (err: any) {
-      setForgotMessage(err.message || 'Invalid or expired token. Please try again.');
+      setForgotMessage(err.message || 'Failed to update password. Please try requesting a new reset link.');
     } finally {
       setResetLoading(false);
     }
@@ -3293,7 +3305,7 @@ export default function App() {
  </div>
  <h3 style={{ fontSize: '20px', fontWeight: 700, color: '#ffffff', marginBottom: '6px' }}>{resetSuccess ? 'Password Reset!' : showResetForm ? 'Set New Password' : 'Forgot Password'}</h3>
  <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.50)' }}>
- {resetSuccess ? 'Your password has been updated. Sign in with your new password.' : showResetForm ? 'Enter your reset token and choose a new password.' : 'Enter your primary or recovery email address. We\'ll send a password reset link to your inbox.'}
+ {resetSuccess ? 'Your password has been updated. Sign in with your new password.' : showResetForm ? 'Choose a new password for your account.' : 'Enter your primary or recovery email address. We\'ll send a password reset link to your inbox.'}
  </p>
  </div>
 
@@ -3301,17 +3313,13 @@ export default function App() {
  {forgotMessage && (
  <div style={{ padding: '12px 14px', background: resetSuccess ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.06)', border: `1px solid ${resetSuccess ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.15)'}`, borderRadius: '12px', color: resetSuccess ? '#ffffff' : '#cbd5e1', fontSize: '13px', marginBottom: '20px', lineHeight: '1.5' }}>
  {forgotMessage}
- {resetToken && !showResetForm && (
- <div style={{ marginTop: '12px', padding: '10px', background: 'rgba(255,255,255,0.08)', borderRadius: '8px', fontFamily: 'var(--font-mono)', fontSize: '11px', wordBreak: 'break-all', color: '#ffffff', border: '1px solid rgba(255,255,255,0.15)' }}>
- <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.45)', marginBottom: '4px', fontFamily: 'var(--font-body)' }}>BACKUP RESET TOKEN (valid 1 hour):</div>
- {resetToken}
- </div>
- )}
  </div>
  )}
 
- {/* Step 1: Request reset */}
+ {/* Step 1: Request reset email link */}
  {!showResetForm && !resetSuccess && (
+ <div>
+ {!forgotEmailSent ? (
  <form onSubmit={handleForgotPassword} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
  <div>
  <label style={{ display: 'block', color: 'rgba(255,255,255,0.65)', fontSize: '12px', fontWeight: 500, marginBottom: '6px' }}>Email Address</label>
@@ -3320,28 +3328,18 @@ export default function App() {
  <button type="submit" disabled={forgotLoading} className="btn-primary" style={{ justifyContent: 'center', padding: '13px', borderRadius: '14px', fontSize: '14px', opacity: forgotLoading ? 0.6 : 1 }}>
  {forgotLoading ? 'Sending Email Link...' : 'Send Password Reset Email Link'}
  </button>
- {resetToken && (
- <button type="button" onClick={() => setShowResetForm(true)} style={{ background: 'none', border: '1px solid rgba(255,255,255,0.20)', borderRadius: '12px', color: '#ffffff', cursor: 'pointer', fontSize: '13px', fontFamily: 'var(--font-body)', padding: '11px', textAlign: 'center' }}>
- I have my token → Set New Password
+ </form>
+ ) : (
+ <button type="button" className="btn-primary" onClick={() => { setShowForgotPassword(false); setForgotEmailSent(false); setForgotMessage(''); }} style={{ justifyContent: 'center', width: '100%', padding: '13px', borderRadius: '14px', fontSize: '14px' }}>
+ Close
  </button>
  )}
- </form>
+ </div>
  )}
 
- {/* Step 2: Enter token + new password */}
+ {/* Step 2: Set new password (shown ONLY after user clicks email reset link!) */}
  {showResetForm && !resetSuccess && (
  <form onSubmit={handleResetPassword} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
- {!resetToken && (
- <div>
- <label style={{ display: 'block', color: 'rgba(255,255,255,0.65)', fontSize: '12px', fontWeight: 500, marginBottom: '6px' }}>Reset Token</label>
- <input type="text" required className="input-field" value={resetTokenInput} onChange={e => setResetTokenInput(e.target.value)} placeholder="Paste your reset token here" style={{ fontFamily: 'var(--font-mono)', fontSize: '12px' }} />
- </div>
- )}
- {resetToken && (
- <div style={{ padding: '10px 12px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '10px', fontSize: '11px', color: '#94a3b8', fontFamily: 'var(--font-mono)', wordBreak: 'break-all' }}>
- <span style={{ fontFamily: 'var(--font-body)', color: 'rgba(255,255,255,0.45)', fontSize: '10px' }}>Token loaded ✓</span>
- </div>
- )}
  <div>
  <label style={{ display: 'block', color: 'rgba(255,255,255,0.65)', fontSize: '12px', fontWeight: 500, marginBottom: '6px' }}>New Password</label>
  <input type="password" required className="input-field" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Min. 6 characters" />
@@ -3351,18 +3349,17 @@ export default function App() {
  <input type="password" required className="input-field" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="Repeat new password" />
  </div>
  <button type="submit" disabled={resetLoading} className="btn-primary" style={{ justifyContent: 'center', padding: '13px', borderRadius: '14px', fontSize: '14px', opacity: resetLoading ? 0.6 : 1 }}>
- {resetLoading ? 'Resetting...' : 'Reset Password'}
+ {resetLoading ? 'Updating Password...' : 'Save New Password'}
  </button>
  </form>
  )}
 
  {/* Success state */}
  {resetSuccess && (
- <button type="button" className="btn-primary" onClick={() => { setShowForgotPassword(false); setResetSuccess(false); setShowResetForm(false); setForgotMessage(''); }} style={{ justifyContent: 'center', width: '100%', padding: '13px', borderRadius: '14px', fontSize: '14px' }}>
+ <button type="button" className="btn-primary" onClick={() => { setShowForgotPassword(false); setResetSuccess(false); setShowResetForm(false); setForgotMessage(''); setForgotEmailSent(false); }} style={{ justifyContent: 'center', width: '100%', padding: '13px', borderRadius: '14px', fontSize: '14px' }}>
  Back to Sign In
  </button>
  )}
-
  {/* Cancel */}
  {!resetSuccess && (
  <button type="button" onClick={() => setShowForgotPassword(false)} style={{ display: 'block', width: '100%', marginTop: '12px', background: 'none', border: 'none', color: 'rgba(255,255,255,0.35)', cursor: 'pointer', fontSize: '13px', fontFamily: 'var(--font-body)', textAlign: 'center' }}>
